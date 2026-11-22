@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI 中控台</title>
+<style>
+:root{
+  --bg:hsl(200 16% 96%); --card:hsl(200 20% 99%); --ink:hsl(200 30% 13%); --sub:hsl(200 10% 40%);
+  --line:hsl(200 14% 88%); --hover:hsl(200 16% 93%); --accent:hsl(200 60% 34%); --accent-soft:hsl(200 50% 92%);
+  --danger:hsl(0 55% 42%); --r:12px; --r-in:8px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;overflow-x:hidden;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  font-size:16px;line-height:1.5;font-variant-numeric:tabular-nums;line-break:strict;overflow-wrap:anywhere;text-wrap:pretty}
+h1,h2,h3{margin:0;text-wrap:balance;font-weight:600}
+::selection{background:hsl(200 70% 86%);color:var(--ink)}
+input,textarea,select,button{font:inherit;color:inherit;caret-color:var(--accent)}
+button{cursor:pointer;border:none;background:none;padding:0}
+textarea{resize:vertical}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-in)}
+.i{width:20px;height:20px;flex:none}
+.wrap{min-height:100vh}
+.hidden{display:none !important}
+.muted{color:var(--sub);font-size:14px}
+.small{font-size:12px}
+.row{display:flex;align-items:center;gap:8px}
+.spacer{flex:1}
+.pad{padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.sec{font-size:14px;color:var(--sub);font-weight:600;margin:16px 0 8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 12px;
+  border:1px solid var(--line);border-radius:var(--r-in);font-size:14px;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:hsl(200 60% 28%)}
+.btn-danger{color:var(--danger)}
+.btn-stop{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-stop:hover{background:hsl(0 55% 36%)}
+.btn-ghost{border-color:transparent}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.icon-btn,.btn.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;
+  border:none;border-radius:var(--r-in);color:var(--sub)}
+.icon-btn:hover{background:var(--hover);color:var(--ink)}
+.shell{display:flex;height:100vh;height:100dvh}
+.side{width:296px;flex:none;display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line)}
+.side-head{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 8px 16px}
+.side-head h1{font-size:16px}
+.side-list{flex:1;overflow-y:auto;padding:8px}
+.side-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 16px;border-top:1px solid var(--line)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto}
+.welcome{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
+.welcome h2{font-size:20px;margin-bottom:8px}
+.topbar{flex:none;display:flex;align-items:center;gap:8px;height:52px;padding:0 12px;border-bottom:1px solid var(--line)}
+.topbar h1{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.content{flex:1;overflow-y:auto;padding:16px}
+.main>.content{width:100%;max-width:800px;margin:0 auto}
+.tree-node{user-select:none}
+.node-row{display:flex;align-items:center;gap:4px;min-height:40px;padding:0 4px;border-radius:var(--r-in)}
+.node-row:hover{background:var(--hover)}
+.node-row.current,.win-row.current{background:var(--accent-soft);color:var(--accent)}
+.node-name{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;text-align:left;padding:8px 0}
+.caret{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;color:var(--sub);flex:none}
+.caret .i{width:16px;height:16px;transition:transform .15s}
+.caret.open .i{transform:rotate(90deg)}
+.node-children{margin-left:32px}
+.win-row{display:block;width:100%;text-align:left;padding:8px 12px;border-radius:var(--r-in);color:var(--sub);font-size:14px}
+.win-row:hover{background:var(--hover);color:var(--ink)}
+.tree-actions{display:flex;gap:4px}
+.tree-actions .btn{height:28px;padding:0 8px;border-color:transparent;color:var(--sub);font-size:12px}
+.tree-actions .btn-danger{color:var(--danger)}
+.badge,.tag{font-size:12px;color:var(--sub)}
+.indent-window{margin-left:16px}
+.tabs{display:flex;gap:16px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+.tab{padding:8px 0;color:var(--sub);font-size:14px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:14px;color:var(--sub);margin-bottom:4px}
+.field input,.field textarea,.field select{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-in);background:var(--card)}
+.field textarea{min-height:120px}
+.field .hint{font-size:12px;color:var(--sub);margin-top:4px}
+.mem-item{border:1px solid var(--line);border-radius:var(--r-in);padding:12px;margin-bottom:8px;background:var(--card)}
+.mem-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.mem-content{white-space:pre-wrap}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:14px}
+.switch input{width:16px;height:16px;accent-color:var(--accent)}
+.chat-page{flex:1;display:flex;flex-direction:column;min-height:0}
+.msg-list{flex:1;overflow-y:auto;padding:16px max(16px,calc((100% - 800px)/2));display:flex;flex-direction:column;gap:16px}
+.msg{max-width:100%;white-space:pre-wrap;line-height:1.75}
+.msg.user{align-self:flex-end;max-width:85%;padding:8px 12px;background:var(--accent);color:#fff;border-radius:var(--r) var(--r) 4px var(--r)}
+.msg.ai{align-self:flex-start}
+.msg.err{align-self:center;color:var(--danger);font-size:14px;text-align:center}
+.msg.sysnote{align-self:center;color:var(--sub);font-size:12px}
+.msg-meta{margin-top:4px;font-size:12px;color:var(--sub);display:flex;gap:8px;flex-wrap:wrap}
+.msg[data-msg-id]{-webkit-touch-callout:none;user-select:text}
+.msg-actions-hint{font-size:11px;color:var(--sub);opacity:.65;margin-top:3px}
+.msg.user .msg-meta{color:hsl(200 40% 90%)}
+.reason-box{background:var(--hover);border-radius:var(--r-in);padding:8px 12px;margin-bottom:8px;font-size:14px;line-height:1.5}
+.reason-box summary{cursor:pointer;color:var(--sub)}
+.reason-box pre{white-space:pre-wrap;margin:8px 0 0;font-family:inherit}
+.chat-input{flex:none;padding:8px max(16px,calc((100% - 800px)/2)) calc(16px + env(safe-area-inset-bottom))}
+.estimate{font-size:12px;color:var(--sub);margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap}
+.estimate b{color:var(--ink);font-weight:600}
+.input-row{display:flex;gap:8px;align-items:flex-end;padding:4px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+.input-row:focus-within{border-color:var(--accent)}
+.input-row textarea{flex:1;min-height:36px;max-height:160px;padding:8px;border:none;outline:none;background:none;resize:none}
+.cost-pill{font-size:12px;color:var(--sub)}
+.cost-pill.over{color:var(--danger)}
+.modal-mask{position:fixed;inset:0;background:hsl(200 30% 10% / .45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:var(--card);width:100%;max-width:760px;border-radius:16px 16px 0 0;max-height:88vh;display:flex;flex-direction:column}
+.modal-head{padding:16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.modal-head h3{font-size:16px}
+.modal-body{padding:16px;overflow:auto}
+.modal-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.preview-table{width:100%;border-collapse:collapse;font-size:14px}
+.preview-table th,.preview-table td{border-bottom:1px solid var(--line);padding:8px;text-align:left}
+.radio-line{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:14px}
+.toast{position:fixed;left:50%;bottom:12%;transform:translateX(-50%);background:var(--ink);color:#fff;
+  padding:8px 16px;border-radius:var(--r-in);font-size:14px;z-index:80;max-width:88%;text-align:center}
+.input-row input{flex:1;min-width:0;padding:8px;border:none;outline:none;background:none}
+.w-box{width:100%;max-width:560px;display:flex;flex-direction:column;gap:16px}
+.w-box h2{text-align:center;margin:0}
+.w-box p{margin:0;text-align:center}
+.w-box .input-row textarea{min-height:72px}
+.w-pick{justify-content:center}
+.w-pick select{border:none;background:none;color:var(--ink);padding:4px;border-radius:var(--r-in)}
+.node-name{white-space:nowrap}
+@media(min-width:641px){.modal-mask{align-items:center}.modal{border-radius:16px;max-width:520px;max-height:82vh}}
+@media(prefers-reduced-motion:reduce){*{transition:none !important}}
+
+:root{--bg:hsl(214 45% 97%);--card:hsl(0 0% 100% / .78);--ink:hsl(216 28% 18%);--sub:hsl(216 12% 48%);--line:hsl(214 30% 90%);
+  --hover:hsl(214 40% 94%);--accent:hsl(212 62% 52%);--accent-soft:hsl(212 80% 94%);--serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong",serif}
+html,body{background:linear-gradient(180deg,hsl(210 40% 99%) 0%,hsl(214 55% 95%) 100%) fixed}
+.side{background:hsl(0 0% 100% / .55);backdrop-filter:blur(16px);border-right:1px solid hsl(214 30% 92%)}
+.side-head h1,.welcome h2,.w-box h2{font-family:var(--serif);font-weight:700;letter-spacing:.02em}
+.w-box h2{font-size:28px}
+.avatar{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:50%;
+  background:linear-gradient(145deg,hsl(214 60% 92%),hsl(216 40% 86%));color:var(--ink);font-family:var(--serif);font-weight:700;font-size:16px}
+.who{display:flex;flex-direction:column;min-width:0;line-height:1.3;text-align:left}
+.who small{font-size:12px;font-weight:400;color:var(--sub)}
+.node-name{align-items:center;gap:12px;padding:4px 0}
+.node-row{min-height:52px;border-radius:var(--r)}
+.node-row.current,.win-row.current{background:hsl(0 0% 100% / .9);color:var(--ink);box-shadow:0 1px 6px hsl(214 40% 40% / .08)}
+.topbar{border-bottom:none;background:none;height:64px}
+.topbar h1{display:inline-flex;align-items:center;gap:12px;padding:4px 16px 4px 4px;border-radius:999px;background:hsl(0 0% 100% / .8);
+  backdrop-filter:blur(12px);box-shadow:0 1px 8px hsl(214 40% 40% / .1);font-size:16px}
+.topbar h1 .avatar{width:32px;height:32px;font-size:14px}
+.msg.user{background:var(--accent-soft);color:var(--ink);border-radius:18px 18px 4px 18px;padding:10px 14px}
+.msg.ai{background:hsl(0 0% 100% / .85);border-radius:18px 18px 18px 4px;padding:10px 14px;box-shadow:0 1px 4px hsl(214 40% 40% / .07)}
+.msg.user .msg-meta{color:var(--sub)}
+.msg-meta{font-size:12px;opacity:.9}
+.reason-box{background:none;padding:0;margin-bottom:8px;font-size:13px}
+.reason-box summary{list-style:none;display:inline-flex;align-items:center;gap:8px;color:var(--sub)}
+.reason-box summary::-webkit-details-marker{display:none}
+.reason-box summary::before{content:"";width:14px;height:14px;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E") center/contain no-repeat}
+.reason-box pre{color:var(--sub)}
+.input-row{border-radius:28px;padding:4px 4px 4px 16px;background:hsl(0 0% 100% / .9);box-shadow:0 2px 12px hsl(214 40% 40% / .1)}
+.input-row textarea{padding:8px 0;min-height:44px}
+.input-row .btn,.input-row .btn-primary,.input-row .btn-stop{height:44px;border-radius:22px;padding:0 20px}
+.w-box .input-row textarea{min-height:72px}
+.estimate{padding-left:16px}
+.side-foot,.modal-head,.modal-foot{border-color:hsl(214 30% 92%)}
+.card,.mem-item{background:hsl(0 0% 100% / .8);border-color:hsl(214 30% 92%)}
+.topbar .btn-stop:disabled{display:none}
+.msg-meta{white-space:normal}
+.side{position:fixed;top:0;bottom:0;left:0;width:min(320px,86vw);z-index:40;transform:translateX(-100%);transition:transform .2s;background:hsl(0 0% 100% / .96)}
+.shell.drawer .side{transform:none}
+.mask{position:fixed;inset:0;z-index:30;background:hsl(216 30% 10% / .35);display:none}
+.shell.drawer .mask{display:block}
+.main{width:100%}
+.avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.avatar-btn{display:inline-flex;border-radius:50%;flex:none}
+.win-line{display:flex;align-items:center}
+.win-line .win-row{flex:1;min-width:0}
+.sec{padding:0 8px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+"use strict";
+
+const DB_NAME = "multi_ai_chat_v1";
+const DB_VERSION = 1;
+const STORES = ["settings","providers","models","personas","persons","memories","sessions","messages"];
+const MEM_LEVELS = ["L0","L1","L2","L3"];
+const DEFAULT_SETTINGS = {
+  id: "app",
+  monthlyCap: 50,          // 月费用上限（元）
+  personaCharCap: 1500,    // 人设注入字符上限
+  memoryCharCap: 2000,     // 长期记忆注入字符上限
+  recentCharCap: 6000      // 最近聊天注入字符上限
+};
+
+let dbPromise = null;
+let db = null;
+
+const state = {
+  view: "tree",          // tree | person | chat | settings
+  tab: "persona",        // persona | memory | sessions
+  personId: null,
+  sessionId: null,
+  expanded: {},          // 树节点展开状态
+  sending: false,
+  controller: null,
+  chatMessages: []
+};
+let cache = { settings:null, providers:[], models:[], personas:[], persons:[], memories:[], sessions:[] };
+
+function openDB(){
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (ev)=>{
+      const d = req.result;
+      if (!d.objectStoreNames.contains("settings")) d.createObjectStore("settings", {keyPath:"id"});
+      if (!d.objectStoreNames.contains("providers")){
+        const s = d.createObjectStore("providers", {keyPath:"id"});
+        s.createIndex("name","name",{unique:false});
+      }
+      if (!d.objectStoreNames.contains("models")){
+        const s = d.createObjectStore("models", {keyPath:"id"});
+        s.createIndex("providerId","providerId",{unique:false});
+      }
+      if (!d.objectStoreNames.contains("personas")) d.createObjectStore("personas", {keyPath:"id"});
+      if (!d.objectStoreNames.contains("persons")){
+        const s = d.createObjectStore("persons", {keyPath:"id"});
+        s.createIndex("modelId","modelId",{unique:false});
+      }
+      if (!d.objectStoreNames.contains("memories")){
+        const s = d.createObjectStore("memories", {keyPath:"id"});
+        s.createIndex("personId","personId",{unique:false});
+      }
+      if (!d.objectStoreNames.contains("sessions")){
+        const s = d.createObjectStore("sessions", {keyPath:"id"});
+        s.createIndex("personId","personId",{unique:false});
+      }
+      if (!d.objectStoreNames.contains("messages")){
+        const s = d.createObjectStore("messages", {keyPath:"id"});
+        s.createIndex("sessionId","sessionId",{unique:false});
+        s.createIndex("createdAt","createdAt",{unique:false});
+      }
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+  return dbPromise;
+}
+function tx(storeName, mode="readonly"){
+  return db.transaction(storeName, mode).objectStore(storeName);
+}
+function idbReq(request){
+  return new Promise((resolve,reject)=>{
+    request.onsuccess = ()=>resolve(request.result);
+    request.onerror = ()=>reject(request.error);
+  });
+}
+async function dbGet(store,id){ return idbReq(tx(store).get(id)); }
+async function dbPut(store,record){ return idbReq(tx(store,"readwrite").put(record)); }
+async function dbDelete(store,id){ return idbReq(tx(store,"readwrite").delete(id)); }
+async function dbAll(store){ return idbReq(tx(store).getAll()); }
+async function dbBulkPut(store,records){
+  return new Promise((resolve,reject)=>{
+    const t = db.transaction(store,"readwrite");
+    const os = t.objectStore(store);
+    records.forEach(r=>os.put(r));
+    t.oncomplete = ()=>resolve();
+    t.onerror = ()=>reject(t.error);
+  });
+}
+
+function uid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function nowISO(){ return new Date().toISOString(); }
+function todayDate(){ return new Date().toISOString().slice(0,10); }
+function esc(s){
+  return String(s ?? "").replace(/[&<>"']/g, c => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function fmtTime(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+  }catch(e){ return iso; }
+}
+function money(n){ return "¥" + Number(n||0).toFixed(4).replace(/0+$/,"").replace(/\.$/,".0"); }
+function money2(n){ return "¥" + Number(n||0).toFixed(2); }
+function estimateTokens(text){
+  return Math.max(1, Math.ceil(String(text||"").length * 0.9));
+}
+function findById(arr,id){ return arr.find(x=>x.id===id); }
+function toast(msg){
+  const el = document.createElement("div");
+  el.className = "toast"; el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+
+async function seedIfNeeded(){
+  const existing = await dbAll("settings");
+  if (existing.length) return;
+  const ts = nowISO();
+  const settings = Object.assign({}, DEFAULT_SETTINGS, {createdAt:ts, updatedAt:ts});
+  await dbPut("settings",settings);
+}
+
+async function loadCache(){
+  const [settings,providers,models,personas,persons,memories,sessions] = await Promise.all([
+    dbGet("settings","app"), dbAll("providers"), dbAll("models"), dbAll("personas"),
+    dbAll("persons"), dbAll("memories"), dbAll("sessions")
+  ]);
+  cache = {
+    settings: settings || Object.assign({}, DEFAULT_SETTINGS),
+    providers, models, personas, persons, memories, sessions
+  };
+  // 旧版本中一个 person 只绑定一个 model。迁移为 AI 身份可绑定多个模型的结构，旧数据原样保留。
+  const personUpdates=[];
+  for(const person of cache.persons){
+    if(!Array.isArray(person.modelIds)){
+      person.modelIds=person.modelId?[person.modelId]:[];
+      personUpdates.push(person);
+    }
+    if(person.breakLimitDoc===undefined) person.breakLimitDoc="";
+    if(person.breakLimitEnabled===undefined) person.breakLimitEnabled=false;
+  }
+  if(personUpdates.length) await dbBulkPut("persons",personUpdates);
+  const sessionUpdates=[];
+  for(const session of cache.sessions){
+    const person=findById(cache.persons,session.personId);
+    if(person && !session.modelId){ session.modelId=person.modelId; sessionUpdates.push(session); }
+  }
+  if(sessionUpdates.length) await dbBulkPut("sessions",sessionUpdates);
+}
+
+
+const modelsOf = (providerId)=>cache.models.filter(m=>m.providerId===providerId);
+const personOfModel = (modelId)=>cache.persons.find(p=>(Array.isArray(p.modelIds)?p.modelIds:[p.modelId]).includes(modelId));
+const modelsOfPerson = (person)=>cache.models.filter(m=>(Array.isArray(person.modelIds)?person.modelIds:[person.modelId]).includes(m.id));
+const sessionModel = (session, person)=>findById(cache.models, session?.modelId || person?.modelId);
+const memoriesOf = (personId)=>cache.memories.filter(m=>m.personId===personId);
+const sessionsOf = (personId)=>cache.sessions.filter(s=>s.personId===personId)
+  .sort((a,b)=> (b.updatedAt||"").localeCompare(a.updatedAt||""));
+
+const ICONS={menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'};
+function icon(n){return `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;}
+function avatar(n,img){return img?`<span class="avatar"><img src="${esc(img)}" alt=""></span>`:`<span class="avatar">${esc([...String(n)][0]||"?")}</span>`;}
+function latestSession(){ return [...cache.sessions].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]; }
+function toggleDrawer(){ state.drawer=!state.drawer; render(); }
+async function renameSession(id){
+  const w=findById(cache.sessions,id); if(!w) return;
+  const t=prompt("窗口名称",w.title);
+  if(!t||!t.trim()) return;
+  await dbPut("sessions",Object.assign({},w,{title:t.trim().slice(0,40)}));
+  await loadCache(); render();
+}
+function pickAvatar(who){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
+  inp.onchange=()=>{
+    const f=inp.files[0]; if(!f) return;
+    const img=new Image(), url=URL.createObjectURL(f);
+    img.onload=async()=>{
+      const c=document.createElement("canvas"); c.width=c.height=128;
+      const n=Math.min(img.width,img.height);
+      c.getContext("2d").drawImage(img,(img.width-n)/2,(img.height-n)/2,n,n,0,0,128,128);
+      URL.revokeObjectURL(url);
+      const data=c.toDataURL("image/jpeg",0.85), ts=nowISO();
+      if(who==="user") await dbPut("settings",Object.assign({},cache.settings,{userAvatar:data,updatedAt:ts}));
+      else await dbPut("persons",Object.assign({},findById(cache.persons,who),{avatar:data,updatedAt:ts}));
+      await loadCache(); render();
+    };
+    img.src=url;
+  };
+  inp.click();
+}
+function newWindow(id){state.personId=id;createSession();}
+function viewWelcome(){
+  if(!cache.persons.length) return `<div class="welcome"><div class="w-box"><h2>开始聊天</h2><p class="muted">先在设置里添加厂商和模型。</p><div><button class="btn btn-primary" onclick="goSettings()">打开设置</button></div></div></div>`;
+  const nokey=cache.providers.find(p=>!p.apiKey);
+  if(nokey&&!cache.providers.some(p=>p.apiKey)) return `<div class="welcome"><div class="w-box"><h2>先连接 ${esc(nokey.name)}</h2><p class="muted">粘贴 API Key，只保存在这台设备的浏览器里。在 ${esc(nokey.name)} 开放平台的 API Keys 页面可以创建。</p>
+    <div class="input-row"><input id="wKey" type="password" placeholder="sk-..."><button class="btn btn-primary" onclick="saveWelcomeKey()">保存</button></div></div></div>`;
+  const pick=cache.persons.length>1?`<select id="wPerson">${cache.persons.map(pn=>`<option value="${pn.id}"${pn.id===state.personId?" selected":""}>${esc(pn.name)}</option>`).join("")}</select>`:`<input id="wPerson" type="hidden" value="${cache.persons[0].id}"><span>${esc(cache.persons[0].name)}</span>`;
+  return `<div class="welcome"><div class="w-box"><h2>开始聊天</h2>
+    <div class="input-row"><textarea id="wInput" rows="3" placeholder="输入第一句话"></textarea><button class="btn btn-primary" onclick="quickStart()">发送</button></div>
+    <div class="row muted w-pick"><span>对话对象</span>${pick}</div></div></div>`;
+}
+async function saveWelcomeKey(){
+  const k=document.getElementById("wKey").value.trim();
+  if(!k){ toast("请先粘贴 API Key"); return; }
+  const p=cache.providers.find(x=>!x.apiKey);
+  await dbPut("providers",Object.assign({},p,{apiKey:k,updatedAt:nowISO()}));
+  await loadCache(); render();
+}
+async function quickStart(){
+  const text=document.getElementById("wInput").value.trim();
+  if(!text) return;
+  const pid=document.getElementById("wPerson").value, ts=nowISO();
+  const person=findById(cache.persons,pid);
+  const rec={id:uid("ss"),personId:pid,modelId:person?.modelId,title:text.slice(0,20),createdAt:ts,updatedAt:ts};
+  state.personId=pid;
+  await dbPut("sessions",rec); await loadCache();
+  state.view="chat"; state.sessionId=rec.id; state.sending=false;
+  await render();
+  document.getElementById("chatInput").value=text; refreshEstimate(); sendMessage();
+}
+async function render(){
+  if (state.view === "chat" && !findById(cache.sessions, state.sessionId)){
+    state.view = "tree";
+  }
+  const app = document.getElementById("app");
+  let main = "";
+  if (state.view === "person") main = viewPerson();
+  else if (state.view === "settings") main = viewSettings();
+  else if (state.view === "chat") main = viewChatShell();
+  if (state.view === "tree") main = "";
+  if (!main) main = `<div class="topbar"><span class="spacer"></span><button class="btn icon-btn" title="打开抽屉" onclick="toggleDrawer()">${icon("menu")}</button></div>`+viewWelcome();
+  app.innerHTML = `<div class="shell${state.drawer?" drawer":""}"><div class="mask" onclick="toggleDrawer()"></div><aside class="side">${viewTree()}</aside><main class="main">${main}</main></div>`;
+  if (state.view === "chat"){
+    await loadChatMessages();
+    bindChatInput();
+  }
+  if (state.view === "person" && state.tab === "memory") bindMemoryEvents();
+}
+
+function viewTree(){
+  const rows=cache.persons.map(pn=>{
+    const open=state.expanded[pn.id]!==false;
+    const m=findById(cache.models,pn.modelId);
+    const cur=state.view==="person"&&state.personId===pn.id;
+    return `<div class="tree-node">
+      <div class="node-row${cur?" current":""}">
+        <button class="caret${open?" open":""}" onclick="state.expanded['${pn.id}']=${!open};render()">${icon("chev")}</button>
+        <button class="node-name" onclick="openPerson('${pn.id}')">${avatar(pn.name,pn.avatar)}<span class="who">${esc(pn.name)}${m&&m.name!==pn.name?`<small>${esc(m.name)}</small>`:""}</span></button>
+        <button class="icon-btn" title="新窗口" onclick="newWindow('${pn.id}')">${icon("plus")}</button>
+      </div>
+      ${open?`<div class="node-children">${sessionsOf(pn.id).map(w=>`<div class="win-line"><button class="win-row${state.view==="chat"&&state.sessionId===w.id?" current":""}" onclick="openChat('${w.id}')">${esc(w.title)}</button><button class="icon-btn" title="改名" onclick="renameSession('${w.id}')">${icon("edit")}</button></div>`).join("")}</div>`:""}
+    </div>`;
+  }).join("");
+  return `<div class="side-head"><h1>AI 中控台</h1><button class="icon-btn" title="关闭" onclick="toggleDrawer()">${icon("x")}</button></div>
+  <div class="side-list"><div class="sec">单聊</div>${rows||`<p class="muted pad">还没有 AI 身份，请先在设置里添加厂商和模型。</p>`}</div>
+  <div class="side-foot"><button class="avatar-btn" title="更换我的头像" onclick="pickAvatar('user')">${avatar("我",cache.settings.userAvatar)}</button><span class="muted" id="monthPill" style="flex:1">本月费用计算中…</span><button class="btn btn-ghost" onclick="goSettings()">${icon("gear")}设置</button></div>`;
+}
+function providerNode(p){
+  const open = !!state.expanded[p.id];
+  const models = modelsOf(p.id);
+  return `
+  <div class="tree-node">
+    <div class="node-row">
+      <button class="caret ${open?"open":""}" onclick="toggleNode('${p.id}')">${icon("chev")}</button>
+      <strong>${esc(p.name)}</strong>
+      <span class="badge gray">${models.length} 个模型</span>
+      <span class="spacer"></span>
+      <span class="tree-actions">
+        <button class="btn" onclick="modelForm('${p.id}')">添加模型</button>
+        <button class="btn" onclick="providerForm('${p.id}')">编辑</button>
+        <button class="btn btn-danger" onclick="deleteProvider('${p.id}')">删除</button>
+      </span>
+    </div>
+    ${open ? `<div class="node-children">
+      ${models.map(modelNode).join("") || `<div class="muted" style="padding:6px">该厂商下还没有模型</div>`}
+    </div>` : ""}
+  </div>`;
+}
+function modelNode(m){
+  const open = !!state.expanded[m.id];
+  const person = personOfModel(m.id);
+  const p = findById(cache.providers, m.providerId);
+  return `
+  <div class="tree-node" style="margin-top:6px">
+    <div class="node-row">
+      <button class="caret ${open?"open":""}" onclick="toggleNode('${m.id}')">${icon("chev")}</button>
+      <span>${esc(m.name)}</span>
+      <span class="badge gray">输入 ${esc(m.priceInput)} / 输出 ${esc(m.priceOutput)} 元每百万token</span>
+      <span class="spacer"></span>
+      <span class="tree-actions">
+        <button class="btn" onclick="modelForm('${m.providerId}','${m.id}')">编辑</button>
+        <button class="btn btn-danger" onclick="deleteModel('${m.id}')">删除</button>
+      </span>
+    </div>
+    ${open ? `<div class="node-children">
+      ${person ? `<div class="muted" style="padding:8px">AI 身份：${esc(person.name)}</div>` :
+        `<div style="padding:6px"><button class="btn" onclick="createDefaultPerson('${m.id}')">
+          创建默认小人</button></div>`}
+    </div>` : ""}
+  </div>`;
+}
+function toggleNode(id){ state.expanded[id] = !state.expanded[id]; render(); }
+
+function viewPerson(){
+  const pn = findById(cache.persons, state.personId);
+  if (!pn){ state.view="tree"; return ""; }
+  const m = findById(cache.models, pn.modelId);
+  const pv = m && findById(cache.providers, m.providerId);
+  const persona = findById(cache.personas, pn.personaId) || {content:""};
+  const mems = memoriesOf(pn.id);
+  const wins = sessionsOf(pn.id);
+  return `
+  <div class="topbar">
+    <button class="btn icon-btn" onclick="goTree()">${icon("back")}</button>
+    <button class="avatar-btn" title="更换头像" onclick="pickAvatar('${pn.id}')">${avatar(pn.name,pn.avatar)}</button>
+    <h1>${esc(pn.name)} <span class="muted small">${esc(pv?pv.name+" · ":"")}${esc(m?m.name:"")}</span></h1>
+  </div>
+  <div class="content">
+    <div class="tabs">
+      <button class="tab ${state.tab==='persona'?'active':''}" onclick="switchTab('persona')">人设</button>
+      <button class="tab ${state.tab==='memory'?'active':''}" onclick="switchTab('memory')">长期记忆</button>
+      <button class="tab ${state.tab==='sessions'?'active':''}" onclick="switchTab('sessions')">窗口列表</button>
+    </div>
+
+    ${state.tab==="persona" ? `
+    <div class="card">
+      <div class="field">
+        <label>AI 身份名称</label>
+        <input id="personName" value="${esc(pn.name)}">
+      </div>
+      <div class="field">
+        <label>身份设定</label>
+        <textarea id="personaText" placeholder="写这个小人的身份、性格、说话方式、规则……">${esc(persona.content)}</textarea>
+        <div class="hint">身份设定由该 AI 身份下的所有模型型号共用。</div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+      <div class="field">
+        <label class="switch"><input type="checkbox" id="breakLimitEnabled" ${pn.breakLimitEnabled?"checked":""}> 启用破限文档</label>
+        <div class="hint">每个 AI 身份独立保存。切换该身份下的模型型号时继续使用同一份文档。</div>
+      </div>
+      <div class="field">
+        <label>破限文档</label>
+        <textarea id="breakLimitDoc" style="min-height:220px" placeholder="把你准备好的破限文档粘贴在这里。平台不会替你编写或改写。">${esc(pn.breakLimitDoc||"")}</textarea>
+        <div class="hint">独立于身份设定和长期记忆；只有启用开关后才会加入请求上下文。</div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="savePersona()">保存</button>
+      </div>
+      <div class="muted small" style="margin-top:12px">当前身份绑定模型：${modelsOfPerson(pn).map(x=>esc((findById(cache.providers,x.providerId)||{}).name||"")+" / "+esc(x.name)).join("、")||"无"}</div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+      <button class="btn btn-danger" onclick="deletePerson()">删除这个 AI 身份（含其记忆与全部窗口）</button>
+    </div>` : ""}
+
+    ${state.tab==="memory" ? `
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn btn-primary" onclick="memoryForm()">＋ 添加长期记忆</button>
+      <span class="muted">共 ${mems.length} 条，启用 ${mems.filter(x=>x.enabled).length} 条；
+      注入上限 ${cache.settings.memoryCharCap} 字符</span>
+    </div>
+    ${mems.map(memItem).join("") || `<div class="card muted">还没有长期记忆。</div>`}` : ""}
+
+    ${state.tab==="sessions" ? `
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn btn-primary" onclick="createSession()">＋ 新建窗口</button>
+      <span class="muted">共 ${wins.length} 个窗口</span>
+    </div>
+    ${wins.map(w=>`
+      <div class="card row">
+        <div style="flex:1">
+          <strong>${esc(w.title||"未命名窗口")}</strong>
+          <div class="muted small">更新于 ${fmtTime(w.updatedAt)}</div>
+        </div>
+        <button class="btn" onclick="openChat('${w.id}')">进入</button>
+        <button class="btn btn-danger" onclick="deleteSession('${w.id}')">删除</button>
+      </div>`).join("") || `<div class="card muted">还没有窗口。</div>`}` : ""}
+  </div>`;
+}
+function memItem(mem){
+  return `
+  <div class="mem-item">
+    <div class="mem-head">
+      <span class="tag lvl">${esc(mem.level)}</span>
+      <span class="tag">重要度 ${esc(mem.importance)}</span>
+      <span class="tag">来源：${esc(mem.source||"未填")}</span>
+      <span class="spacer"></span>
+      <label class="switch"><input type="checkbox" ${mem.enabled?"checked":""}
+        onchange="toggleMemory('${mem.id}', this.checked)">启用</label>
+      <button class="btn" style="padding:4px 9px;font-size:12px"
+        onclick="memoryForm('${mem.id}')">编辑</button>
+      <button class="btn btn-danger" style="padding:4px 9px;font-size:12px"
+        onclick="deleteMemory('${mem.id}')">删</button>
+    </div>
+    <div class="mem-content">${esc(mem.content)}</div>
+    <div class="muted small" style="margin-top:6px">记录时间：${fmtTime(mem.createdAt)}</div>
+  </div>`;
+}
+function switchTab(t){ state.tab=t; render(); }
+function openPerson(id){ state.drawer=false; state.personId=id; state.view="person"; state.tab="persona"; render(); }
+function goTree(){ const l=latestSession(); if(l){ state.view="chat"; state.sessionId=l.id; state.personId=l.personId; } else state.view="tree"; state.drawer=false; render(); }
+function goSettings(){ state.drawer=false; state.view="settings"; render(); }
+
+function viewSettings(){
+  const s = cache.settings;
+  return `
+  <div class="topbar">
+    <button class="btn icon-btn" onclick="goTree()">${icon("back")}</button>
+    <h1>设置</h1>
+  </div>
+  <div class="content">
+    <div class="row"><h2 class="sec" style="margin:0">接口与模型</h2><span class="spacer"></span>
+      <button class="btn btn-primary" onclick="providerForm()">${icon("plus")}添加厂商</button></div>
+    <div style="margin:8px 0 16px">${cache.providers.map(providerNode).join("")||`<p class="muted">还没有厂商。</p>`}</div>
+    <h2 class="sec">用量与上限</h2>
+    <div class="card">
+      <div class="field">
+        <label>月费用上限（元），达到后禁止继续发送</label>
+        <input id="setCap" type="number" min="0" step="1" value="${esc(s.monthlyCap)}">
+      </div>
+      <div class="field">
+        <label>人设注入字符上限</label>
+        <input id="setPersonaCap" type="number" min="100" step="100" value="${esc(s.personaCharCap)}">
+      </div>
+      <div class="field">
+        <label>长期记忆注入字符上限</label>
+        <input id="setMemCap" type="number" min="100" step="100" value="${esc(s.memoryCharCap)}">
+      </div>
+      <div class="field">
+        <label>最近聊天注入字符上限（从最新消息往回取）</label>
+        <input id="setRecentCap" type="number" min="200" step="200" value="${esc(s.recentCharCap)}">
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+    </div>
+
+    <div class="card">
+      <strong>数据导出 / 导入</strong>
+      <div class="muted" style="margin:6px 0 10px">全部数据为一个 JSON 文件，可用于备份或换机。</div>
+      <div class="row" style="margin-bottom:10px">
+        <label class="switch"><input type="checkbox" id="includeKeys">导出内容包含 API Key</label>
+      </div>
+      <div class="muted small" style="margin-bottom:10px">默认不含 Key。勾选后导出文件将包含明文密钥，请自行妥善保管。</div>
+      <div class="row" style="flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="exportData()">导出 JSON</button>
+        <button class="btn" onclick="document.getElementById('importFile').click()">导入 JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json" class="hidden"
+          onchange="importData(this)">
+      </div>
+    </div>
+
+    <div class="card muted small">
+      当前版本：AI 身份可绑定多个模型型号；破限文档按 AI 身份独立保存。模型能力仍受服务商接口支持范围约束。
+    </div>
+  </div>`;
+}
+async function saveSettings(){
+  const s = Object.assign({}, cache.settings);
+  s.monthlyCap = Number(document.getElementById("setCap").value) || 0;
+  s.personaCharCap = Number(document.getElementById("setPersonaCap").value) || 1500;
+  s.memoryCharCap = Number(document.getElementById("setMemCap").value) || 2000;
+  s.recentCharCap = Number(document.getElementById("setRecentCap").value) || 6000;
+  s.updatedAt = nowISO();
+  await dbPut("settings", s);
+  await loadCache(); toast("设置已保存"); render();
+}
+
+function modal({title, body, actions}){
+  closeModal();
+  const mask = document.createElement("div");
+  mask.className = "modal-mask"; mask.id = "modalMask";
+  mask.innerHTML = `
+    <div class="modal">
+      <div class="modal-head"><h3>${esc(title)}</h3><span class="spacer"></span>
+        <button class="btn icon-btn" title="关闭" onclick="closeModal()">${icon("x")}</button></div>
+      <div class="modal-body">${body}</div>
+      <div class="modal-foot">${actions.map((a,i)=>
+        `<button class="btn ${a.primary?"btn-primary":""} ${a.danger?"btn-danger":""}"
+          data-act="${i}">${esc(a.label)}</button>`).join("")}</div>
+    </div>`;
+  mask.addEventListener("click", e=>{ if(e.target===mask) closeModal(); });
+  document.body.appendChild(mask);
+  mask.querySelectorAll("[data-act]").forEach((btn,i)=>{
+    btn.onclick = ()=>actions[i].onClick();
+  });
+  return mask;
+}
+function closeModal(){ const m=document.getElementById("modalMask"); if(m) m.remove(); }
+function confirmDialog(title, text, onOk){
+  modal({title, body:`<div>${esc(text)}</div>`, actions:[
+    {label:"取消", onClick:closeModal},
+    {label:"确认", danger:true, onClick:onOk}
+  ]});
+}
+
+function providerForm(id){
+  const p = id ? findById(cache.providers,id) : {name:"",baseUrl:"",apiKey:""};
+  modal({
+    title: id ? "编辑厂商" : "添加厂商",
+    body:`
+      <div class="field"><label>厂商名</label>
+        <input id="fPvName" value="${esc(p.name)}" placeholder="例如 DeepSeek"></div>
+      <div class="field"><label>接口地址（基础地址，不带 /chat/completions）</label>
+        <input id="fPvUrl" value="${esc(p.baseUrl)}" placeholder="https://api.deepseek.com"></div>
+      <div class="field"><label>API Key（只保存在本机浏览器，不会写进代码）</label>
+        <input id="fPvKey" type="password" value="${esc(p.apiKey)}" placeholder="sk-...">
+        <div class="hint">留空表示暂不填写，之后可再编辑。</div></div>
+      <div class="field"><label class="switch"><input type="checkbox" id="fPvStream" ${p.streamEnabled!==false?"checked":""}> 启用流式输出</label>
+        <div class="hint">适用于支持 OpenAI 兼容 SSE 流式响应的接口；如果服务商不支持，可关闭后使用普通 JSON 响应。</div></div>`,
+    actions:[
+      {label:"取消",onClick:closeModal},
+      {label:"保存",primary:true,onClick:async()=>{
+        const name = document.getElementById("fPvName").value.trim();
+        const baseUrl = document.getElementById("fPvUrl").value.trim();
+        const apiKey = document.getElementById("fPvKey").value.trim();
+        const streamEnabled = document.getElementById("fPvStream").checked;
+        if(!name || !baseUrl){ toast("厂商名和接口地址必填"); return; }
+        const rec = id ? Object.assign({}, p) : {id:uid("pv"),createdAt:nowISO()};
+        rec.name=name; rec.baseUrl=baseUrl; rec.apiKey=apiKey; rec.streamEnabled=streamEnabled; rec.updatedAt=nowISO();
+        await dbPut("providers",rec); closeModal(); await loadCache(); render();
+      }}
+    ]
+  });
+}
+function modelForm(providerId, id){
+  const m = id ? findById(cache.models,id) : {name:"",priceInput:0,priceOutput:0,priceUpdatedAt:null};
+  modal({
+    title: id ? "编辑模型" : "添加模型",
+    body:`
+      <div class="field"><label>模型名（按厂商官方名称填写）</label>
+        <input id="fMdName" value="${esc(m.name)}" placeholder="例如 deepseek-chat"></div>
+      <div class="field"><label>输入单价（元 / 百万 token）</label>
+        <input id="fMdIn" type="number" min="0" step="0.01" value="${esc(m.priceInput)}"></div>
+      <div class="field"><label>输出单价（元 / 百万 token）</label>
+        <input id="fMdOut" type="number" min="0" step="0.01" value="${esc(m.priceOutput)}"></div>
+      ${!id?`<div class="field"><label>归属 AI 身份</label><select id="fMdIdentity"><option value="new">创建一个新的 AI 身份</option>${cache.persons.map(person=>`<option value="${person.id}">${esc(person.name)}（${modelsOfPerson(person).length} 个模型）</option>`).join("")}</select><div class="hint">选择已有身份后，新模型会成为该身份的另一个型号，共用身份设定与破限文档。</div></div>`:""}
+      <div class="hint">单价以厂商官方价格页为准；保存时自动记录更新日期。
+        当前记录日期：${m.priceUpdatedAt ? esc(m.priceUpdatedAt) : "未填写"}</div>`,
+    actions:[
+      {label:"取消",onClick:closeModal},
+      {label:"保存",primary:true,onClick:async()=>{
+        const name = document.getElementById("fMdName").value.trim();
+        const priceInput = Number(document.getElementById("fMdIn").value) || 0;
+        const priceOutput = Number(document.getElementById("fMdOut").value) || 0;
+        if(!name){ toast("模型名必填"); return; }
+        const rec = id ? Object.assign({},m) : {id:uid("md"),providerId,createdAt:nowISO()};
+        rec.name=name; rec.priceInput=priceInput; rec.priceOutput=priceOutput;
+        rec.priceUpdatedAt=todayDate(); rec.updatedAt=nowISO();
+        await dbPut("models",rec);
+        if(!id){
+          const ts=nowISO();
+          const identityId=document.getElementById("fMdIdentity").value;
+          if(identityId!=="new"){
+            const identity=findById(cache.persons,identityId);
+            const ids=Array.isArray(identity.modelIds)?identity.modelIds.slice():[identity.modelId];
+            if(!ids.includes(rec.id)) ids.push(rec.id);
+            await dbPut("persons",Object.assign({},identity,{modelIds:ids,updatedAt:ts}));
+          }else{
+            const persona={id:uid("ps"),content:"",createdAt:ts,updatedAt:ts};
+            const person={id:uid("pn"),modelId:rec.id,modelIds:[rec.id],name:name,personaId:persona.id,
+              breakLimitDoc:"",breakLimitEnabled:false,createdAt:ts,updatedAt:ts};
+            await dbPut("personas",persona); await dbPut("persons",person);
+          }
+        }
+        closeModal(); await loadCache(); render();
+      }}
+    ]
+  });
+}
+async function deleteProvider(id){
+  if (modelsOf(id).length){ toast("该厂商下还有模型，请先删除模型"); return; }
+  confirmDialog("删除厂商","删除后不可恢复，确定？", async()=>{
+    await dbDelete("providers",id); closeModal(); await loadCache(); render();
+  });
+}
+async function deleteModel(id){
+  const identity=personOfModel(id);
+  if(identity){
+    const ids=Array.isArray(identity.modelIds)?identity.modelIds.slice():[identity.modelId];
+    if(ids.length<=1){ toast("这是该 AI 身份唯一绑定的模型。请先给它添加另一个模型型号，或删除整个 AI 身份。"); return; }
+    confirmDialog("移除模型型号","将从该 AI 身份中移除此型号。使用该型号的窗口会切换到身份的默认型号；身份设定、破限文档和记忆不会删除。确定？",async()=>{
+      const remaining=ids.filter(x=>x!==id);
+      const defaultId=identity.modelId===id?remaining[0]:identity.modelId;
+      await dbPut("persons",Object.assign({},identity,{modelIds:remaining,modelId:defaultId,updatedAt:nowISO()}));
+      const affected=cache.sessions.filter(w=>w.personId===identity.id&&w.modelId===id)
+        .map(w=>Object.assign({},w,{modelId:defaultId,updatedAt:nowISO()}));
+      if(affected.length) await dbBulkPut("sessions",affected);
+      await dbDelete("models",id); closeModal(); await loadCache(); render();
+    });
+    return;
+  }
+  confirmDialog("删除模型","删除后不可恢复，确定？", async()=>{
+    await dbDelete("models",id); closeModal(); await loadCache(); render();
+  });
+}
+async function createDefaultPerson(modelId){
+  const m = findById(cache.models, modelId);
+  const ts = nowISO();
+  const persona = {id:uid("ps"),content:"",createdAt:ts,updatedAt:ts};
+  const person = {id:uid("pn"),modelId,modelIds:[modelId],name:m.name,personaId:persona.id,breakLimitDoc:"",breakLimitEnabled:false,
+    createdAt:ts,updatedAt:ts};
+  await dbPut("personas",persona); await dbPut("persons",person);
+  await loadCache(); render();
+}
+
+async function savePersona(){
+  const pn = findById(cache.persons, state.personId);
+  const persona = findById(cache.personas, pn.personaId);
+  const name = document.getElementById("personName").value.trim() || pn.name;
+  const content = document.getElementById("personaText").value;
+  const breakLimitDoc = document.getElementById("breakLimitDoc").value;
+  const breakLimitEnabled = document.getElementById("breakLimitEnabled").checked;
+  const ts = nowISO();
+  const personaRec = Object.assign({}, persona, {content, updatedAt:ts});
+  const personRec = Object.assign({}, pn, {name, breakLimitDoc, breakLimitEnabled, updatedAt:ts});
+  await dbPut("personas",personaRec); await dbPut("persons",personRec);
+  await loadCache(); toast("已保存"); render();
+}
+function copyPersona(){
+  const pn = findById(cache.persons, state.personId);
+  const targets = cache.models.filter(m=>!personOfModel(m.id));
+  if (!targets.length){ toast("其他模型都已有小人，没有可复制目标"); return; }
+  modal({
+    title:"复制为新的 AI 身份",
+    body:`
+      <div class="muted" style="margin-bottom:10px">将复制一份独立的身份设定，并为目标模型创建新的 AI 身份；
+        原身份不会被修改。</div>
+      <div class="field"><label>选择目标模型</label>
+        <select id="copyTarget">${targets.map(m=>{
+          const pv=findById(cache.providers,m.providerId);
+          return `<option value="${m.id}">${esc(pv?pv.name:"")} · ${esc(m.name)}</option>`;
+        }).join("")}</select></div>`,
+    actions:[
+      {label:"取消",onClick:closeModal},
+      {label:"复制",primary:true,onClick:async()=>{
+        const modelId=document.getElementById("copyTarget").value;
+        const m=findById(cache.models,modelId);
+        const src=findById(cache.personas,pn.personaId);
+        const ts=nowISO();
+        const persona={id:uid("ps"),content:src.content,createdAt:ts,updatedAt:ts};
+        const person={id:uid("pn"),modelId,modelIds:[modelId],name:m.name,personaId:persona.id,breakLimitDoc:"",breakLimitEnabled:false,
+          createdAt:ts,updatedAt:ts};
+        await dbPut("personas",persona); await dbPut("persons",person);
+        closeModal(); await loadCache(); toast("已复制"); render();
+      }}
+    ]
+  });
+}
+
+async function deletePerson(){
+  const pn=findById(cache.persons,state.personId);
+  confirmDialog("删除 AI 身份",
+    "将同时删除该 AI 身份的长期记忆、全部窗口和窗口内消息，以及它引用的身份设定。确定？",
+    async()=>{
+      const wins=sessionsOf(pn.id);
+      const t=db.transaction(["messages","sessions","memories","persons","personas"],"readwrite");
+      const msgOs=t.objectStore("messages");
+      for(const w of wins){
+        const msgs=await idbReq(tx("messages").index("sessionId").getAll(w.id));
+        msgs.forEach(m=>msgOs.delete(m.id));
+        t.objectStore("sessions").delete(w.id);
+      }
+      const mems=memoriesOf(pn.id);
+      mems.forEach(m=>t.objectStore("memories").delete(m.id));
+      t.objectStore("persons").delete(pn.id);
+      t.objectStore("personas").delete(pn.personaId);
+      await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=rej;});
+      closeModal(); await loadCache(); goTree();
+    });
+}
+
+function memoryForm(id){
+  const mem = id ? findById(cache.memories,id) :
+    {content:"",level:"L1",importance:3,source:"",enabled:true};
+  modal({
+    title:id?"编辑长期记忆":"添加长期记忆",
+    body:`
+      <div class="field"><label>内容</label>
+        <textarea id="fMemContent" placeholder="一条具体、可被 AI 使用的信息">${esc(mem.content)}</textarea></div>
+      <div class="field"><label>层级</label>
+        <select id="fMemLevel">${MEM_LEVELS.map(l=>
+          `<option value="${l}" ${mem.level===l?"selected":""}>${l}</option>`).join("")}</select></div>
+      <div class="field"><label>重要程度（1–5，越高越重要）</label>
+        <select id="fMemImp">${[1,2,3,4,5].map(n=>
+          `<option value="${n}" ${Number(mem.importance)===n?"selected":""}>${n}</option>`).join("")}</select></div>
+      <div class="field"><label>来源</label>
+        <input id="fMemSrc" value="${esc(mem.source)}" placeholder="例如：菽菽口述 / 某次聊天"></div>
+      <div class="field"><label class="switch"><input type="checkbox" id="fMemEn"
+        ${mem.enabled?"checked":""}> 启用（停用后不会发送给 AI）</label></div>`,
+    actions:[
+      {label:"取消",onClick:closeModal},
+      {label:"保存",primary:true,onClick:async()=>{
+        const content=document.getElementById("fMemContent").value.trim();
+        if(!content){ toast("内容不能为空"); return; }
+        const ts=nowISO();
+        const rec=id?Object.assign({},mem):{id:uid("mm"),personId:state.personId,createdAt:ts};
+        rec.content=content;
+        rec.level=document.getElementById("fMemLevel").value;
+        rec.importance=Number(document.getElementById("fMemImp").value);
+        rec.source=document.getElementById("fMemSrc").value.trim();
+        rec.enabled=document.getElementById("fMemEn").checked;
+        rec.updatedAt=ts;
+        await dbPut("memories",rec); closeModal(); await loadCache(); render();
+      }}
+    ]
+  });
+}
+async function toggleMemory(id,enabled){
+  const mem=findById(cache.memories,id);
+  await dbPut("memories",Object.assign({},mem,{enabled,updatedAt:nowISO()}));
+  await loadCache();
+}
+async function deleteMemory(id){
+  confirmDialog("删除记忆","确定删除这条长期记忆？",async()=>{
+    await dbDelete("memories",id); closeModal(); await loadCache(); render();
+  });
+}
+function bindMemoryEvents(){  }
+
+async function createSession(){
+  const pn=findById(cache.persons,state.personId);
+  const ts=nowISO();
+  const rec={id:uid("ss"),personId:pn.id,modelId:pn.modelId,title:"新窗口",createdAt:ts,updatedAt:ts};
+  await dbPut("sessions",rec); await loadCache();
+  openChat(rec.id);
+}
+function openChat(id){
+  state.drawer=false; state.view="chat"; state.sessionId=id; state.sending=false;
+  render();
+}
+async function changeSessionModel(modelId){
+  const session=findById(cache.sessions,state.sessionId);
+  const person=findById(cache.persons,session?.personId);
+  if(!session||!person||!modelsOfPerson(person).some(m=>m.id===modelId)) return;
+  await dbPut("sessions",Object.assign({},session,{modelId,updatedAt:nowISO()}));
+  await loadCache(); render();
+}
+async function deleteSession(id){
+  confirmDialog("删除窗口","该窗口内全部消息会一起删除，确定？",async()=>{
+    const msgs=await idbReq(tx("messages").index("sessionId").getAll(id));
+    const t=db.transaction(["messages","sessions"],"readwrite");
+    const mos=t.objectStore("messages");
+    msgs.forEach(m=>mos.delete(m.id));
+    t.objectStore("sessions").delete(id);
+    await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=rej;});
+    closeModal(); await loadCache(); render();
+  });
+}
+
+function viewChatShell(){
+  const session=findById(cache.sessions,state.sessionId);
+  const pn=findById(cache.persons,session.personId);
+  const m=sessionModel(session,pn)||findById(cache.models,pn.modelId);
+  const pv=findById(cache.providers,m.providerId);
+  const identityModels=modelsOfPerson(pn);
+  return `
+  <div class="chat-page">
+    <div class="topbar">
+      <h1 style="cursor:pointer" title="AI 身份设置" onclick="openPerson('${pn.id}')">${avatar(pn.name,pn.avatar)}<span class="who">${esc(pn.name)}<small>AI 身份</small></span></h1>
+      <select aria-label="切换模型型号" title="切换此 AI 身份的模型型号" onchange="changeSessionModel(this.value)" style="max-width:42%;min-width:100px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--card)">${identityModels.map(x=>`<option value="${x.id}" ${x.id===m.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
+      <span class="spacer"></span>
+      <button class="btn btn-stop" id="stopBtn" onclick="stopSending()" disabled>停止</button>
+      <button class="btn icon-btn" title="打开抽屉" onclick="toggleDrawer()">${icon("menu")}</button>
+    </div>
+    <div class="msg-list" id="msgList"></div>
+    <div class="chat-input">
+      <div class="estimate" id="estimateLine"></div>
+      <div class="input-row">
+        <textarea id="chatInput" rows="1" placeholder="发消息给 ${esc(pn.name)}…"
+          oninput="refreshEstimate()"></textarea>
+        <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">发送</button>
+      </div>
+    </div>
+  </div>`;
+}
+function backToPerson(){
+  if(state.sending && state.controller){ try{state.controller.abort();}catch(e){} }
+  state.sending=false; state.view="person"; state.personId=
+    (findById(cache.sessions,state.sessionId)||{}).personId || state.personId;
+  render();
+}
+async function loadChatMessages(){
+  state.chatMessages = (await idbReq(
+    tx("messages").index("sessionId").getAll(state.sessionId)))
+    .sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
+  renderMessages();
+}
+function renderMessages(){
+  const list=document.getElementById("msgList");
+  if(!list) return;
+  list.innerHTML = state.chatMessages.map(msgHTML).join("");
+  list.querySelectorAll(".msg[data-msg-id]").forEach(node=>{
+    const id=node.dataset.msgId;
+    node.addEventListener("contextmenu",e=>{e.preventDefault();openMessageActions(id);});
+    let pressTimer=null, moved=false;
+    node.addEventListener("pointerdown",()=>{moved=false;pressTimer=setTimeout(()=>{if(!moved)openMessageActions(id);},520);});
+    node.addEventListener("pointermove",()=>{moved=true;if(pressTimer)clearTimeout(pressTimer);});
+    ["pointerup","pointercancel","pointerleave"].forEach(type=>node.addEventListener(type,()=>{if(pressTimer)clearTimeout(pressTimer);}));
+  });
+  list.scrollTop = list.scrollHeight;
+  const stop=document.getElementById("stopBtn");
+  const send=document.getElementById("sendBtn");
+  if(stop) stop.disabled = !state.sending;
+  if(send) send.disabled = state.sending;
+}
+function msgHTML(msg){
+  if(msg.role==="user"){
+    return `<div class="msg user" data-msg-id="${msg.id}" data-role="user"><div>${esc(msg.content)}</div><div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div>`;
+  }
+  if(msg.role==="error"){
+    return `<div class="msg err">${esc(msg.content)}</div>`;
+  }
+  if(msg.role==="system-note"){
+    return `<div class="msg sysnote">${esc(msg.content)}</div>`;
+  }
+  const m=findById(cache.models,msg.modelId);
+  const reason = msg.reasoning ? `
+    <details class="reason-box" open>
+      <summary>思考摘要（模型提供）</summary>
+      <pre>${esc(msg.reasoning)}</pre>
+    </details>` : "";
+  return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">
+    ${reason}
+    <div>${esc(msg.content)}</div>
+    <div class="msg-meta">
+      <span>模型：${esc(m?m.name:msg.modelId)}</span>
+      <span>输入 ${msg.promptTokens||0} / 输出 ${msg.completionTokens||0} tokens</span>
+      ${(msg.cachedTokens||0)>0?`<span>缓存命中 ${msg.cachedTokens} tokens</span>`:""}
+      ${msg.partial?`<span>部分回复</span>`:""}
+      ${msg.streaming?`<span>生成中…</span>`:""}
+      <span>本条 ${money(msg.cost)}</span>
+      <span>${fmtTime(msg.createdAt)}</span>
+    </div></div>`;
+}
+async function copyMessageText(id){
+  const msg=state.chatMessages.find(x=>x.id===id); if(!msg) return;
+  try{
+    if(navigator.clipboard?.writeText) await navigator.clipboard.writeText(msg.content||"");
+    else{
+      const box=document.createElement("textarea"); box.value=msg.content||""; document.body.appendChild(box);
+      box.select(); document.execCommand("copy"); box.remove();
+    }
+    toast("已复制");
+  }catch(e){toast("复制失败，请手动选择文字");}
+  closeModal();
+}
+function openMessageActions(id){
+  const msg=state.chatMessages.find(x=>x.id===id); if(!msg||state.sending) return;
+  const isUser=msg.role==="user";
+  const actions=[{label:"复制",onClick:()=>copyMessageText(id)}];
+  if(isUser) actions.push({label:"编辑这条消息",onClick:()=>editUserMessage(id)});
+  if(!isUser) actions.push({label:"重新生成",onClick:()=>regenerateFromMessage(id)});
+  actions.push({label:"删除",danger:true,onClick:()=>deleteOneMessage(id)});
+  actions.push({label:"关闭",onClick:closeModal});
+  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="muted">${isUser?"长按消息可再次打开此菜单。编辑用户消息时，会一并清除它之后的对话，避免旧回复与新内容错位。":"可以复制、重新生成或删除这条回复。"}</div>`,actions});
+}
+async function deleteOneMessage(id){
+  const index=state.chatMessages.findIndex(x=>x.id===id); if(index<0) return;
+  const msg=state.chatMessages[index];
+  const tail=msg.role==="user"?state.chatMessages.slice(index):[msg];
+  const remove=async()=>{
+    for(const item of tail) await dbDelete("messages",item.id);
+    const ids=new Set(tail.map(x=>x.id));
+    state.chatMessages=state.chatMessages.filter(x=>!ids.has(x.id));
+    closeModal(); renderMessages();
+  };
+  if(msg.role==="user") confirmDialog("删除这条用户消息","为了避免留下失去上下文的旧回复，这条消息及之后的对话都会删除。确定？",remove);
+  else await remove();
+}
+function editUserMessage(id){
+  const msg=state.chatMessages.find(x=>x.id===id); if(!msg||msg.role!=="user") return;
+  modal({title:"编辑用户消息",body:`<div class="field"><label>消息内容</label><textarea id="editMessageText" style="min-height:160px">${esc(msg.content)}</textarea></div><div class="muted small">保存后，这条消息之后的对话会被删除，因为旧回复是基于原内容生成的。</div>`,actions:[
+    {label:"取消",onClick:closeModal},
+    {label:"保存并清除后续对话",primary:true,onClick:async()=>{
+      const next=document.getElementById("editMessageText").value.trim(); if(!next){toast("消息不能为空");return;}
+      const index=state.chatMessages.findIndex(x=>x.id===id);
+      const tail=state.chatMessages.slice(index+1);
+      await dbPut("messages",Object.assign({},msg,{content:next,updatedAt:nowISO()}));
+      for(const item of tail) await dbDelete("messages",item.id);
+      closeModal(); await loadChatMessages(); toast("已更新消息");
+    }}
+  ]});
+}
+function regenerateFromMessage(id){
+  const index=state.chatMessages.findIndex(x=>x.id===id);
+  const msg=state.chatMessages[index]; if(!msg||msg.role!=="assistant") return;
+  let user=null;
+  for(let i=index-1;i>=0;i--){if(state.chatMessages[i].role==="user"){user=state.chatMessages[i];break;}}
+  if(!user){toast("找不到对应的用户消息");return;}
+  confirmDialog("重新生成回复","将从对应的用户消息重新开始，并删除该轮及之后的旧对话。确定？",async()=>{
+    const userIndex=state.chatMessages.findIndex(x=>x.id===user.id);
+    const tail=state.chatMessages.slice(userIndex);
+    const session=findById(cache.sessions,state.sessionId);
+    if(session && user.modelId) await dbPut("sessions",Object.assign({},session,{modelId:user.modelId,updatedAt:nowISO()}));
+    for(const item of tail) await dbDelete("messages",item.id);
+    state.chatMessages=state.chatMessages.slice(0,userIndex);
+    await loadCache(); closeModal(); renderMessages();
+    const input=document.getElementById("chatInput");
+    if(input){input.value=user.content;refreshEstimate();sendMessage();}
+  });
+}
+
+function bindChatInput(){
+  refreshEstimate();
+  const ta=document.getElementById("chatInput");
+  if(ta){ ta.focus(); ta.addEventListener("keydown",e=>{
+    if(e.key==="Enter" && !e.shiftKey &&
+      !("ontouchstart" in window)){ e.preventDefault(); sendMessage(); }
+  });}
+}
+
+function buildOutgoing(draft){
+  const session=findById(cache.sessions,state.sessionId);
+  const pn=findById(cache.persons,session.personId);
+  const persona=findById(cache.personas,pn.personaId)||{content:""};
+  const s=cache.settings;
+  const personaText=(persona.content||"").slice(0,s.personaCharCap);
+  const mems=cache.memories.filter(x=>x.personId===pn.id && x.enabled)
+    .sort((a,b)=> MEM_LEVELS.indexOf(a.level)-MEM_LEVELS.indexOf(b.level)
+      || b.importance-a.importance
+      || (a.createdAt||"").localeCompare(b.createdAt||""));
+  let memBudget=s.memoryCharCap; const memLines=[];
+  for(const mm of mems){
+    const line=`[${mm.level}|重要度${mm.importance}] ${mm.content}`;
+    if(line.length>memBudget) break;
+    memLines.push(line); memBudget-=line.length;
+  }
+  let recentBudget=s.recentCharCap; const picked=[];
+  const history=state.chatMessages.filter(x=>x.role==="user"||x.role==="assistant");
+  for(let i=history.length-1;i>=0;i--){
+    const line=history[i].content||"";
+    if(line.length>recentBudget) break;
+    picked.unshift({role:history[i].role,content:line});
+    recentBudget-=line.length;
+  }
+
+  const systemParts=[];
+  if(pn.breakLimitEnabled && pn.breakLimitDoc?.trim()) systemParts.push("【用户提供的独立上下文文档】\n"+pn.breakLimitDoc);
+  if(personaText) systemParts.push("【AI 身份设定】\n"+personaText);
+  if(memLines.length) systemParts.push("【长期记忆】\n"+memLines.join("\n"));
+  const messages=[];
+  if(systemParts.length) messages.push({role:"system",content:systemParts.join("\n\n")});
+  messages.push(...picked);
+  messages.push({role:"user",content:draft});
+
+  const sendChars=messages.reduce((n,x)=>n+(x.content||"").length,0);
+  return {messages,sendChars,person:pn,memCount:memLines.length,breakDocIncluded:!!(pn.breakLimitEnabled && pn.breakLimitDoc?.trim())};
+}
+function refreshEstimate(){
+  const ta=document.getElementById("chatInput");
+  const line=document.getElementById("estimateLine");
+  if(!ta||!line) return;
+  const draft=ta.value;
+  if(!draft.trim()){ line.innerHTML=`<span class="muted">输入内容后显示本次发送量与预计费用</span>`; return; }
+  const {sendChars,messages}=buildOutgoing(draft);
+  const session=findById(cache.sessions,state.sessionId);
+  const pn=findById(cache.persons,session.personId);
+  const m=sessionModel(session,pn)||findById(cache.models,pn.modelId);
+  const inTokens=estimateTokens(messages.map(x=>x.content).join(""));
+  const outTokens=inTokens; // 预估假设回复长度与输入相当，仅用于估算
+  const estCost=(inTokens*(Number(m.priceInput)||0)+outTokens*(Number(m.priceOutput)||0))/1e6;
+  const priceMissing=(!m.priceInput && !m.priceOutput);
+  line.innerHTML=`
+    <span>本次将发送 <b>${sendChars}</b> 字符，约 <b>${inTokens}</b> tokens
+      （含身份设定、${buildOutgoing(draft).breakDocIncluded?"破限文档、":""}${buildOutgoing(draft).memCount} 条记忆、最近聊天）</span>
+    <span>预计费用 <b>${money(estCost)}</b>${priceMissing?"（单价未填，按 0 估算）":""}
+      （实际以厂商返回为准）</span>`;
+}
+
+async function getMonthSpend(){
+  const now=new Date();
+  const all=await dbAll("messages");
+  return all.filter(x=>{
+    const d=new Date(x.createdAt);
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+  }).reduce((n,x)=>n+(Number(x.cost)||0),0);
+}
+async function refreshMonthPill(){
+  const pill=document.getElementById("monthPill");
+  if(!pill) return;
+  const spend=await getMonthSpend();
+  const cap=Number(cache.settings.monthlyCap)||0;
+  pill.textContent=`本月 ${money2(spend)} / 上限 ${money2(cap)}`;
+  pill.className="cost-pill"+(spend>=cap?" over":"");
+}
+
+async function readStreamingCompletion(resp, onDelta){
+  const contentType=(resp.headers.get("content-type")||"").toLowerCase();
+  if(!contentType.includes("text/event-stream") || !resp.body?.getReader){
+    const data=await resp.json();
+    const choice=(data.choices&&data.choices[0])||{};
+    const msg=choice.message||{};
+    return {content:msg.content||"",reasoning:msg.reasoning_content||"",usage:data.usage||{},raw:data};
+  }
+  const reader=resp.body.getReader();
+  const decoder=new TextDecoder();
+  let buffer="",content="",reasoning="",usage={};
+  const consumeLine=(line)=>{
+    const trimmed=line.trim();
+    if(!trimmed.startsWith("data:")) return;
+    const payload=trimmed.slice(5).trim();
+    if(!payload||payload==="[DONE]") return;
+    let data; try{data=JSON.parse(payload);}catch(e){return;}
+    if(data.usage) usage=data.usage;
+    const delta=data.choices?.[0]?.delta||{};
+    const textPart=typeof delta.content==="string"?delta.content:"";
+    const reasonPart=typeof delta.reasoning_content==="string"?delta.reasoning_content:
+      (typeof delta.reasoning==="string"?delta.reasoning:"");
+    if(textPart){content+=textPart;onDelta({content:textPart,reasoning:"",allContent:content,allReasoning:reasoning});}
+    if(reasonPart){reasoning+=reasonPart;onDelta({content:"",reasoning:reasonPart,allContent:content,allReasoning:reasoning});}
+  };
+  while(true){
+    const {value,done}=await reader.read();
+    if(done) break;
+    buffer+=decoder.decode(value,{stream:true});
+    const lines=buffer.split(/\r?\n/); buffer=lines.pop()||"";
+    lines.forEach(consumeLine);
+  }
+  buffer+=decoder.decode();
+  if(buffer.trim()) consumeLine(buffer);
+  return {content,reasoning,usage,raw:null};
+}
+
+async function sendMessage(){
+  if(state.sending) return;
+  const ta=document.getElementById("chatInput");
+  const draft=ta.value.trim();
+  if(!draft){ toast("请先输入内容"); return; }
+  const session=findById(cache.sessions,state.sessionId);
+  const pn=findById(cache.persons,session.personId);
+  const m=sessionModel(session,pn)||findById(cache.models,pn.modelId);
+  const pv=findById(cache.providers,m.providerId);
+  const spend=await getMonthSpend();
+  if(spend >= (Number(cache.settings.monthlyCap)||0)){
+    addErrorNote(`本月费用已达上限 ${money2(cache.settings.monthlyCap)}，已禁止继续发送。\n可在设置里调整上限。`);
+    return;
+  }
+  if(!pv.apiKey){ addErrorNote("该厂商还没有填写 API Key，请先到树状列表编辑厂商。"); return; }
+  if(!pv.baseUrl){ addErrorNote("厂商接口地址为空，请先补全。"); return; }
+
+  const built=buildOutgoing(draft);
+  const userMsg={id:uid("mg"),sessionId:session.id,role:"user",content:draft,
+    modelId:m.id,providerId:pv.id,promptTokens:0,completionTokens:0,totalTokens:0,
+    cost:0,reasoning:"",createdAt:nowISO()};
+  state.chatMessages.push(userMsg);
+  await dbPut("messages",userMsg);
+  session.updatedAt=nowISO();
+  if((session.title==="新窗口"||!session.title)) session.title=draft.slice(0,12);
+  await dbPut("sessions",session);
+  ta.value=""; refreshEstimate();
+
+  const controller=new AbortController();
+  state.controller=controller; state.sending=true;
+  const aiMsg={id:uid("mg"),sessionId:session.id,role:"assistant",content:"",reasoning:"",
+    modelId:m.id,providerId:pv.id,promptTokens:0,completionTokens:0,totalTokens:0,
+    cachedTokens:0,cost:0,createdAt:nowISO(),streaming:true};
+  state.chatMessages.push(aiMsg); renderMessages();
+  const endpoint=pv.baseUrl.replace(/\/+$/,"")+"/chat/completions";
+  let saved=false;
+  try{
+    const resp=await fetch(endpoint,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+pv.apiKey},
+      body:JSON.stringify({model:m.name,messages:built.messages,stream:pv.streamEnabled!==false}),
+      signal:controller.signal
+    });
+    if(!resp.ok){
+      let detail=""; try{detail=await resp.text();}catch(e){}
+      detail=detail.slice(0,500);
+      state.chatMessages=state.chatMessages.filter(x=>x.id!==aiMsg.id);
+      addErrorNote(`接口返回错误（HTTP ${resp.status}）。${detail}\n若状态码为 401，通常是 API Key 无效；若出现 CORS 字样，说明浏览器拦截了跨域请求。`);
+      return;
+    }
+    const result=await readStreamingCompletion(resp,parts=>{
+      aiMsg.content=parts.allContent; aiMsg.reasoning=parts.allReasoning;
+      renderMessages();
+    });
+    aiMsg.content=result.content||aiMsg.content;
+    aiMsg.reasoning=result.reasoning||aiMsg.reasoning;
+    const usage=result.usage||{};
+    const pt=Number(usage.prompt_tokens)||0;
+    const ct=Number(usage.completion_tokens)||0;
+    const cached=Number(usage.prompt_cache_hit_tokens ?? usage.cached_tokens ?? usage.input_cached_tokens)||0;
+    const cost=(pt*(Number(m.priceInput)||0)+ct*(Number(m.priceOutput)||0))/1e6;
+    if(!aiMsg.content && !aiMsg.reasoning){
+      state.chatMessages=state.chatMessages.filter(x=>x.id!==aiMsg.id);
+      addErrorNote("接口连接成功，但没有返回可显示的正文或思考摘要。请确认该模型支持 OpenAI 兼容的流式聊天接口。");
+      return;
+    }
+    Object.assign(aiMsg,{promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),
+      cachedTokens:cached,cost,streaming:false});
+    await dbPut("messages",aiMsg); saved=true;
+    session.updatedAt=nowISO(); await dbPut("sessions",session);
+  }catch(err){
+    if(aiMsg.content||aiMsg.reasoning){
+      aiMsg.streaming=false; aiMsg.partial=true;
+      await dbPut("messages",aiMsg); saved=true;
+    }else{
+      state.chatMessages=state.chatMessages.filter(x=>x.id!==aiMsg.id);
+    }
+    if(err.name==="AbortError"){
+      const note={id:uid("mg"),sessionId:session.id,role:"system-note",
+        content:saved?"已停止生成，已保留目前收到的内容。":"已停止生成。",createdAt:nowISO()};
+      state.chatMessages.push(note); await dbPut("messages",note);
+    }else{
+      addErrorNote(`流式请求中断：${err.message||err}\n如果服务商不支持 OpenAI 兼容的 stream=true，请检查该服务商的接口文档或关闭流式请求。`);
+    }
+  }finally{
+    state.sending=false; state.controller=null;
+    renderMessages();
+    await loadCache();
+    refreshMonthPill();
+  }
+}
+function stopSending(){
+  if(state.controller){ state.controller.abort(); }
+}
+async function addErrorNote(text){
+  const msg={id:uid("mg"),sessionId:state.sessionId,role:"error",content:text,
+    modelId:"",providerId:"",promptTokens:0,completionTokens:0,totalTokens:0,
+    cost:0,reasoning:"",createdAt:nowISO()};
+  state.chatMessages.push(msg);
+  await dbPut("messages",msg);
+  renderMessages();
+}
+
+async function exportData(){
+  const includeKeys=document.getElementById("includeKeys").checked;
+  const payload={
+    app:"multi-ai-chat",
+    version:2,
+    exportedAt:nowISO(),
+    includeKeys,
+    data:{}
+  };
+  for(const s of STORES){
+    let rows=await dbAll(s);
+    if(s==="providers" && !includeKeys){
+      rows=rows.map(r=>{ const c=Object.assign({},r); delete c.apiKey; return c; });
+    }
+    payload.data[s]=rows;
+  }
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="multi-ai-chat-备份-"+todayDate()+(includeKeys?"-含密钥":"")+".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  toast(includeKeys?"已导出（含明文 API Key）":"已导出（不含 API Key）");
+}
+function importData(inputEl){
+  const file=inputEl.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let parsed;
+    try{ parsed=JSON.parse(reader.result); }
+    catch(e){ toast("文件不是有效的 JSON"); resetImportInput(); return; }
+    if(!parsed || !parsed.data || typeof parsed.data!=="object"){
+      toast("文件结构不符，不是本台备份"); resetImportInput(); return;
+    }
+    showImportPreview(parsed);
+  };
+  reader.readAsText(file);
+}
+function resetImportInput(){
+  const el=document.getElementById("importFile"); if(el) el.value="";
+}
+function localRows(store){
+  if(store==="settings") return cache.settings ? [cache.settings] : [];
+  return cache[store]||[];
+}
+function showImportPreview(parsed){
+  const rows=STORES.map(s=>{
+    const incoming=parsed.data[s]||[];
+    const localIds=new Set(localRows(s).map(x=>x.id));
+    let conflicts=0,newCount=0;
+    incoming.forEach(r=>{ if(localIds.has(r.id))conflicts++; else newCount++; });
+    return {store:s,total:incoming.length,conflicts,newCount};
+  });
+  const hasKey=JSON.stringify(parsed).includes("apiKey");
+  modal({
+    title:"导入预览（尚未写入）",
+    body:`
+      <div class="muted" style="margin-bottom:10px">
+        导出时间：${parsed.exportedAt?fmtTime(parsed.exportedAt):"未知"}；
+        ${parsed.includeKeys?"文件标注：含 API Key":"文件标注：不含 API Key"}
+      </div>
+      <table class="preview-table">
+        <tr><th>数据类别</th><th>文件内</th><th>新增</th><th>冲突</th></tr>
+        ${rows.map(r=>`<tr><td>${r.store}</td><td>${r.total}</td><td>${r.newCount}</td>
+          <td>${r.conflicts}</td></tr>`).join("")}
+      </table>
+      <div style="margin-top:14px">
+        <strong>冲突处理（同 id 记录）</strong>
+        <div class="radio-line" style="margin-top:8px"><label class="switch"><input type="radio"
+          name="impStrategy" value="newer" checked>按更新时间自动：新的覆盖旧的（默认）</label></div>
+        <div class="radio-line"><label class="switch"><input type="radio"
+          name="impStrategy" value="import">全部以导入文件为准</label></div>
+        <div class="radio-line"><label class="switch"><input type="radio"
+          name="impStrategy" value="local">全部保留本机现有数据</label></div>
+      </div>
+      <div class="muted small">新增记录无论选哪项都会写入；点确认前不会改动本机数据。</div>`,
+    actions:[
+      {label:"取消",onClick:()=>{closeModal();resetImportInput();}},
+      {label:"确认导入",primary:true,onClick:async()=>{
+        const strategy=document.querySelector("input[name=impStrategy]:checked").value;
+        for(const s of STORES){
+          const incoming=parsed.data[s]||[];
+          if(!incoming.length) continue;
+          const localMap=new Map(localRows(s).map(x=>[x.id,x]));
+          const toPut=[];
+          for(const rec of incoming){
+            const local=localMap.get(rec.id);
+            if(!local){ toPut.push(rec); continue; }
+            if(strategy==="import") toPut.push(rec);
+            else if(strategy==="local") continue;
+            else{
+              const lt=new Date(local.updatedAt||local.createdAt||0).getTime();
+              const it=new Date(rec.updatedAt||rec.createdAt||0).getTime();
+              toPut.push(it>=lt?rec:local);
+            }
+          }
+          if(toPut.length) await dbBulkPut(s,toPut);
+        }
+        closeModal(); resetImportInput(); await loadCache(); render();
+        toast("导入完成");
+      }}
+    ]
+  });
+}
+
+(async function init(){
+  try{
+    db = await openDB();
+    await seedIfNeeded();
+    await loadCache();
+    const last=latestSession();
+    if(last){ state.view="chat"; state.sessionId=last.id; state.personId=last.personId; }
+    await render();
+    refreshMonthPill();
+  }catch(err){
+    document.getElementById("app").innerHTML =
+      `<div class="content"><div class="card" style="color:var(--danger)">
+        启动失败：${esc(err.message||String(err))}<br>
+        <span class="muted">如果提示 IndexedDB 相关错误，请换 Chrome/Edge 浏览器，或不要用隐私模式打开。</span>
+      </div></div>`;
+  }
+})();
+</script>
+</body>
+</html>
