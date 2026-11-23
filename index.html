@@ -1844,7 +1844,7 @@ function buildOutgoing(draft,historyOverride=null){
   const history=(historyOverride||state.chatMessages).filter(x=>x.role==="user"||x.role==="assistant").slice(-Math.max(1,Math.min(50,Number(s.recentMessageCount)||20)));
   for(let i=history.length-1;i>=0;i--){
     const line=history[i].content||"";
-    if(line.length>recentBudget) break;
+    if(line.length>recentBudget){if(!picked.length&&recentBudget>0)picked.unshift({role:history[i].role,content:line.slice(-recentBudget)});break;}
     picked.unshift({role:history[i].role,content:line});
     recentBudget-=line.length;
   }
