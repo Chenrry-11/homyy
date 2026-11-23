@@ -388,8 +388,8 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 "use strict";
 
 const DB_NAME = "multi_ai_chat_v1";
-const DB_VERSION = 4;
-const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages","groups","groupMessages"];
+const DB_VERSION = 5;
+const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages","groups","groupMessages","usageEvents"];
 const MEM_LEVELS = ["L0","L1","L2","L3"];
 const MEMORY_CATEGORIES = ["重要经历","关系变化","共同约定","持续事实"];
 const DEFAULT_SETTINGS = {
@@ -481,6 +481,9 @@ function openDB(){
       if (!d.objectStoreNames.contains("groupMessages")){
         const s=d.createObjectStore("groupMessages",{keyPath:"id"});s.createIndex("groupId","groupId",{unique:false});s.createIndex("createdAt","createdAt",{unique:false});
       }
+      if (!d.objectStoreNames.contains("usageEvents")){
+        const s=d.createObjectStore("usageEvents",{keyPath:"id"});s.createIndex("createdAt","createdAt",{unique:false});s.createIndex("sessionId","sessionId",{unique:false});s.createIndex("groupId","groupId",{unique:false});
+      }
     };
     req.onsuccess = ()=>resolve(req.result);
     req.onerror = ()=>reject(req.error);
@@ -499,6 +502,13 @@ function idbReq(request){
 async function dbGet(store,id){ return idbReq(tx(store).get(id)); }
 async function dbPut(store,record){ return idbReq(tx(store,"readwrite").put(record)); }
 async function dbDelete(store,id){ return idbReq(tx(store,"readwrite").delete(id)); }
+async function recordUsageEvent(meta){
+  const usage=meta.usage||{},promptTokens=Number(usage.prompt_tokens)||0,completionTokens=Number(usage.completion_tokens)||0;
+  const cachedTokens=Number(usage.prompt_cache_hit_tokens??usage.cached_tokens??usage.input_cached_tokens)||0;
+  const model=findById(cache.models,meta.modelId);
+  const rec={id:uid("ue"),createdAt:nowISO(),sessionId:meta.sessionId||null,groupId:meta.groupId||null,personId:meta.personId||null,modelId:meta.modelId||null,providerId:meta.providerId||null,promptTokens,completionTokens,totalTokens:Number(usage.total_tokens)||(promptTokens+completionTokens),cachedTokens,cost:model?calculateRequestCost(model,usage):0};
+  await dbPut("usageEvents",rec);return rec;
+}
 async function dbAll(store){ return idbReq(tx(store).getAll()); }
 async function dbBulkPut(store,records){
   return new Promise((resolve,reject)=>{
@@ -1932,10 +1942,12 @@ function refreshEstimate(){
 async function getMonthSpend(){
   const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),1).toISOString(),end=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString();
   const sumStore=name=>new Promise((resolve,reject)=>{const request=tx(name).index("createdAt").openCursor(IDBKeyRange.bound(start,end,false,true));let total=0;
-    request.onsuccess=()=>{const cursor=request.result;if(!cursor){resolve(total);return;}total+=Number(cursor.value.cost)||0;cursor.continue();};
+    request.onsuccess=()=>{const cursor=request.result;if(!cursor){resolve(total);return;}if(!cursor.value.usageEventId)total+=Number(cursor.value.cost)||0;cursor.continue();};
     request.onerror=()=>reject(request.error||new Error("费用统计读取失败"));
   });
-  const sums=await Promise.all([sumStore("messages"),sumStore("groupMessages")]);const sessions=await idbReq(tx("sessions").getAll());const summarySpend=sessions.flatMap(x=>x.summaryEvents||[]).filter(x=>x.createdAt>=start&&x.createdAt<end).reduce((n,x)=>n+(Number(x.cost)||0),0);return sums[0]+sums[1]+summarySpend;
+  const sums=await Promise.all([sumStore("messages"),sumStore("groupMessages")]);
+  const events=await idbReq(tx("usageEvents").index("createdAt").getAll(IDBKeyRange.bound(start,end,false,true)));
+  return sums[0]+sums[1]+events.reduce((n,x)=>n+(Number(x.cost)||0),0);
 }
 async function getMonthTokenUsage(){
   const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),1).toISOString(),end=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString();
@@ -1943,13 +1955,14 @@ async function getMonthTokenUsage(){
     const request=tx(name).index("createdAt").openCursor(IDBKeyRange.bound(start,end,false,true));
     const total={input:0,output:0,tokens:0,cached:0};
     request.onsuccess=()=>{const cursor=request.result;if(!cursor){resolve(total);return;}const row=cursor.value;
-      if(row.role==="assistant"){total.input+=Number(row.promptTokens)||0;total.output+=Number(row.completionTokens)||0;total.tokens+=Number(row.totalTokens)||0;total.cached+=Number(row.cachedTokens)||0;}
+      if(row.role==="assistant"&&!row.usageEventId){total.input+=Number(row.promptTokens)||0;total.output+=Number(row.completionTokens)||0;total.tokens+=Number(row.totalTokens)||0;total.cached+=Number(row.cachedTokens)||0;}
       cursor.continue();
     };request.onerror=()=>reject(request.error);
   });
   const parts=await Promise.all([readStore("messages"),readStore("groupMessages")]);
-  const sessions=await idbReq(tx("sessions").getAll());const summary=sessions.flatMap(x=>x.summaryEvents||[]).filter(x=>x.createdAt>=start&&x.createdAt<end).reduce((sum,x)=>({input:sum.input+(Number(x.promptTokens)||0),output:sum.output+(Number(x.completionTokens)||0),tokens:sum.tokens+(Number(x.totalTokens)||0),cached:sum.cached+(Number(x.cachedTokens)||0)}),{input:0,output:0,tokens:0,cached:0});
-  return parts.concat([summary]).reduce((sum,item)=>({input:sum.input+item.input,output:sum.output+item.output,tokens:sum.tokens+item.tokens,cached:sum.cached+item.cached}),{input:0,output:0,tokens:0,cached:0});
+  const events=await idbReq(tx("usageEvents").index("createdAt").getAll(IDBKeyRange.bound(start,end,false,true)));
+  const actual=events.reduce((sum,x)=>({input:sum.input+(Number(x.promptTokens)||0),output:sum.output+(Number(x.completionTokens)||0),tokens:sum.tokens+(Number(x.totalTokens)||0),cached:sum.cached+(Number(x.cachedTokens)||0)}),{input:0,output:0,tokens:0,cached:0});
+  return parts.concat([actual]).reduce((sum,item)=>({input:sum.input+item.input,output:sum.output+item.output,tokens:sum.tokens+item.tokens,cached:sum.cached+item.cached}),{input:0,output:0,tokens:0,cached:0});
 }
 async function refreshMonthPill(){
   const pill=document.getElementById("monthPill");
