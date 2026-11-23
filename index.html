@@ -1665,7 +1665,7 @@ function msgHTML(msg){
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
     ${!state.sending&&!msg.streaming?`<div class="msg-actions"><button onclick="regenerateFromMessage('${msg.id}')">重新生成</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回回复</button><button onclick="copyMessageText('${msg.id}')">复制</button>${speakOn?`<button data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}</div>`:""}
-    <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${fmtTime(msg.createdAt)}</span></div>
+    <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${msg.totalTokens?msg.totalTokens+" tokens":""}</span><span>${msg.cachedTokens?"缓存 "+msg.cachedTokens:""}</span><span>${fmtTime(msg.createdAt)}</span></div>
   </div></div>`;
 }
 async function copyMessageText(id){
@@ -1832,7 +1832,7 @@ async function readProviderCompletion(resp,protocol,onDelta=()=>{}){
     const content=blocks.filter(x=>x.type==="text").map(x=>x.text||"").join("");
     const reasoning=blocks.filter(x=>x.type==="thinking").map(x=>x.thinking||"").join("");
     const usage=data.usage||{},pt=Number(usage.input_tokens)||0,ct=Number(usage.output_tokens)||0;
-    return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:pt+ct},raw:data};
+    return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:pt+ct,prompt_cache_hit_tokens:Number(usage.cache_read_input_tokens)||0},raw:data};
   }
   if(protocol==="gemini-generate"){
     const parts=data.candidates?.[0]?.content?.parts||[];
