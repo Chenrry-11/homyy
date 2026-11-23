@@ -1889,7 +1889,7 @@ function buildProviderRequest(provider,modelId,messages,options={}){
     return {protocol,stream:false,endpoint:base+"/messages",headers:{"Content-Type":"application/json","x-api-key":provider.apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body};
   }
   if(protocol==="gemini-interactions"){
-    const model=String(modelId||"").replace(/^models\\//,"");
+    let model=String(modelId||"");if(model.startsWith("models/"))model=model.slice(7);
     const input=turns.map(x=>({type:x.role==="assistant"?"model_output":"user_input",content:x.content}));
     const body={model,input,store:false};
     if(system)body.system_instruction=system;
