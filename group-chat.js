@@ -95,7 +95,7 @@ function groupMessageHTML(m){
  if(m.role==="error")return '<div class="msg err">'+esc(m.content)+'</div>';
  var p=findById(cache.persons,m.personId),model=findById(cache.models,m.modelId);
  var reason=m.reasoning?'<details class="reason-box"><summary><span>深度思考</span><span class="reason-hint">模型提供 · 点击展开</span></summary><pre>'+esc(m.reasoning)+'</pre></details>':"";
- return '<div class="group-message-row group-ai-row" data-group-msg-id="'+m.id+'"><span class="group-message-avatar">'+(p?avatar(p.name,p.avatar):avatar("AI",""))+'</span><div class="group-message-stack"><div class="group-ai-name">'+esc(p?p.name:"AI")+'</div>'+reason+'<div class="msg-body group-bubble group-ai-bubble">'+esc(m.content)+'</div><div class="group-msg-meta"><span>'+esc(model?model.name:m.modelId||"模型")+'</span><span>'+(m.thinkingUsed?"深度思考":"")+'</span><span>'+fmtTime(m.createdAt)+'</span></div></div></div>';
+ return '<div class="group-message-row group-ai-row" data-group-msg-id="'+m.id+'"><span class="group-message-avatar">'+(p?avatar(p.name,p.avatar):avatar("AI",""))+'</span><div class="group-message-stack"><div class="group-ai-name">'+esc(p?p.name:"AI")+'</div>'+reason+'<div class="msg-body group-bubble group-ai-bubble">'+esc(m.content)+'</div><div class="group-msg-meta"><span>'+esc(model?model.name:m.modelId||"模型")+'</span><span>'+(m.thinkingUsed?"深度思考":"")+'</span><span>'+(m.totalTokens?m.totalTokens+" tokens":"")+'</span><span>'+(m.cachedTokens?"缓存 "+m.cachedTokens:"")+'</span><span>'+fmtTime(m.createdAt)+'</span></div></div></div>';
 }
 function bindGroupMessageEvents(list){
  if(!list||list.dataset.messageEvents==="1")return;list.dataset.messageEvents="1";
@@ -229,8 +229,8 @@ async function requestGroupCandidate(g,member,turn){
   if(!resp.ok)throw new Error(p.name+" 接口错误 HTTP "+resp.status+"："+(await resp.text()).slice(0,240));
   var result=await readProviderCompletion(resp,request.protocol,function(){}),content=String(result.content||"").trim();if(!content||/^\[\[PASS\]\]$/i.test(content))return null;
   var pm=content.match(/^\s*\[P\s*:\s*([1-5])\]\s*/i),priority=pm?Number(pm[1]):3;if(pm)content=content.slice(pm[0].length).trim();if(!content)return null;
-  var usage=result.usage||{},pt=Number(usage.prompt_tokens)||0,ct=Number(usage.completion_tokens)||0;
-  return {personId:p.id,modelId:model.id,providerId:provider.id,content:content,reasoning:result.reasoning||"",priority:priority,promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),cost:(pt*(Number(model.priceInput)||0)+ct*(Number(model.priceOutput)||0))/1e6,thinkingUsed:supports&&thinking,lastSpokeAt:member.lastSpokeAt||"",readyAt:Date.now()};
+  var usage=result.usage||{},pt=Number(usage.prompt_tokens)||0,ct=Number(usage.completion_tokens)||0,cached=Number(usage.prompt_cache_hit_tokens??usage.cached_tokens??usage.input_cached_tokens)||0;
+  return {personId:p.id,modelId:model.id,providerId:provider.id,content:content,reasoning:result.reasoning||"",priority:priority,promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),cachedTokens:cached,cost:(pt*(Number(model.priceInput)||0)+ct*(Number(model.priceOutput)||0))/1e6,thinkingUsed:supports&&thinking,lastSpokeAt:member.lastSpokeAt||"",readyAt:Date.now()};
  }finally{if(state.groupControllers.get(p.id)===controller)state.groupControllers.delete(p.id);}
 }
 async function runGroupTurn(g,userMsg,targetId){
@@ -256,7 +256,7 @@ async function runGroupTurn(g,userMsg,targetId){
   if(!candidates.length)break;
   var item=candidates[0];spoken.add(item.personId);
   if(state.groupStoppedMembers.has(item.personId))continue;
-  var msg={id:uid("gm"),groupId:g.id,role:"assistant",personId:item.personId,modelId:item.modelId,providerId:item.providerId,content:item.content,reasoning:item.reasoning,promptTokens:item.promptTokens,completionTokens:item.completionTokens,totalTokens:item.totalTokens,cost:item.cost,thinkingUsed:item.thinkingUsed,turnId:turn,createdAt:nowISO()};
+  var msg={id:uid("gm"),groupId:g.id,role:"assistant",personId:item.personId,modelId:item.modelId,providerId:item.providerId,content:item.content,reasoning:item.reasoning,promptTokens:item.promptTokens,completionTokens:item.completionTokens,totalTokens:item.totalTokens,cachedTokens:item.cachedTokens,cost:item.cost,thinkingUsed:item.thinkingUsed,turnId:turn,createdAt:nowISO()};
   await dbPut("groupMessages",msg);
   if(turn!==state.groupTurnId)return;
   state.groupMessages.push(msg);shown++;renderGroupMessages({forceBottom:true});
