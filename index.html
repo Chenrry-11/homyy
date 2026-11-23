@@ -1849,7 +1849,7 @@ async function generateSessionSummary(){
   const transcript=old.map(x=>(x.role==="user"?"用户：":"AI：")+(x.content||"")).join("\n\n").slice(-40000);
   if(status)status.textContent="正在生成摘要……";
   try{
-    const messages=[{role:"system",content:"你负责压缩一段真实聊天记录，生成可供后续对话使用的长期会话摘要。只保留明确事实、重要经历、关系变化、共同约定、持续事项、未解决问题和必要时间线。区分用户与 AI 的发言，不得补写、推测或虚构。用简洁条目表达，避免重复。"},{"role":"user",content:"请总结以下较早的会话记录：\n\n"+transcript}];
+    const messages=[{role:"system",content:"你负责压缩一段真实聊天记录，生成可供后续对话使用的长期会话摘要。只保留明确事实、重要经历、关系变化、共同约定、持续事项、未解决问题和必要时间线。区分用户与 AI 的发言，不得补写、推测或虚构。用简洁条目表达，避免重复。"},{"role":"user",content:(session.summary?"【此前摘要】\n"+session.summary+"\n\n":"")+"请将此前摘要与以下较早的会话记录合并，去重并更新：\n\n"+transcript}];
     const request=buildProviderRequest(provider,channel?.remoteModelId||model.name,messages,{stream:false,thinking:false,thinkingSupport:false});
     const response=await fetch(request.endpoint,{method:"POST",headers:request.headers,body:JSON.stringify(request.body)});
     if(!response.ok)throw new Error("HTTP "+response.status+"："+(await response.text()).slice(0,260));
