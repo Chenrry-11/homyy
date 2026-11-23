@@ -1207,7 +1207,7 @@ function modelDetail(id){
     '<div class="field"><label>官方模型名称</label><strong>'+esc(m.name)+'</strong><div class="hint">平台内部模型名称；每条调用通道可使用不同的实际模型 ID。</div></div>'+
     '<div class="field"><label>所属 AI 身份</label><select id="detailIdentity"><option value="">暂不绑定</option>'+identityOptions+'</select></div>'+
     '<div class="field"><label class="switch"><input type="checkbox" id="detailModelEnabled" '+(m.enabled!==false?'checked':'')+'> 启用此模型</label><div class="hint">停用后不能在聊天窗口新选用此型号，历史消息仍保留。</div></div>'+
-     '<div class="field"><label>型号专属记忆与口癖差异</label><textarea id="detailModelMemory" rows="4" placeholder="只写当前型号相对 AI 身份的独有差异。">'+esc(m.modelMemory||"")+"</textarea><div class="hint">同一 AI 身份下的其他型号不会自动继承这段补充。</div></div>"+
+     '<div class="field"><label>型号专属记忆与口癖差异</label><textarea id="detailModelMemory" maxlength="3000" rows="4" placeholder="只写当前型号相对 AI 身份的独有差异。">'+esc(m.modelMemory||"")+"</textarea><div class="hint">同一 AI 身份下的其他型号不会自动继承这段补充。</div></div>"+
     '<div class="field"><label>深度思考开关能力</label><select id="detailThinkingSupport"><option value="auto" '+(!m.thinkingSupport||m.thinkingSupport==="auto"?'selected':'')+'>自动识别（推荐）</option><option value="yes" '+(m.thinkingSupport==="yes"?'selected':'')+'>支持开关</option><option value="no" '+(m.thinkingSupport==="no"?'selected':'')+'>不支持</option></select><div class="hint">DeepSeek 官方模型会自动识别；其他模型可按服务商文档手动指定。未确认支持时不显示开关。</div></div>'+
     '<div class="field"><label>当前调用通道</label><select id="detailActiveChannel">'+channelOptions+'</select><div class="hint">切换通道不会改变 AI 身份、聊天记录或模型名称。</div></div>'+
     '<div class="field"><label>已配置通道（'+channels.length+'）</label>'+(channelRows||'<div class="muted small">还没有调用通道。</div>')+
@@ -1280,7 +1280,7 @@ function modelForm(providerId, id){
       <div class="field"><label>输出单价（元 / 百万 token）</label>
         <input id="fMdOut" type="number" min="0" step="0.01" value="${esc(m.priceOutput)}"></div>
       <div class="field"><label>缓存读取单价（元 / 百万 token）</label><input id="fMdCache" type="number" min="0" step="0.01" value="${m.priceCacheRead==null?"":esc(m.priceCacheRead)}" placeholder="留空则按普通输入价计算"></div>
-      <div class="field"><label>该型号专属记忆与口癖差异</label><textarea id="fMdMemory" rows="4" placeholder="只写这个型号相对所属 AI 身份的差异，例如表达习惯、已知经历差异或需要保留的细节。">${esc(m.modelMemory||"")}</textarea><div class="hint">AI 身份的核心设定与长期记忆仍然共享；这里只补充当前型号的独有差异。</div></div>
+      <div class="field"><label>该型号专属记忆与口癖差异</label><textarea id="fMdMemory" maxlength="3000" rows="4" placeholder="只写这个型号相对所属 AI 身份的差异，例如表达习惯、已知经历差异或需要保留的细节。">${esc(m.modelMemory||"")}</textarea><div class="hint">AI 身份的核心设定与长期记忆仍然共享；这里只补充当前型号的独有差异。</div></div>
       ${!id?`<div class="field"><label>归属 AI 身份</label><select id="fMdIdentity"><option value="new">创建一个新的 AI 身份</option>${cache.persons.map(person=>`<option value="${person.id}">${esc(person.name)}（${modelsOfPerson(person).length} 个模型）</option>`).join("")}</select><div class="hint">选择已有身份后，新模型会成为该身份的另一个型号，共用身份设定与破限文档。</div></div><div class="field"><label>新 AI 身份名称</label><input id="fMdIdentityName" placeholder="例如：DeepSeek" value=""></div>`:""}
       <div class="hint">单价以厂商官方价格页为准；保存时自动记录更新日期。
         当前记录日期：${m.priceUpdatedAt ? esc(m.priceUpdatedAt) : "未填写"}</div>`,
