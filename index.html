@@ -741,6 +741,7 @@ async function quickStart(){
   document.getElementById("chatInput").value=text; refreshEstimate(); sendMessage();
 }
 async function render(){
+  closeMessageActionMenu();
   if (state.view === "chat" && !findById(cache.sessions, state.sessionId)) state.view = "tree";
   if ((state.view === "groupChat" || state.view === "groupDetail") && !findById(cache.groups,state.groupId)) state.view="groups";
   const app = document.getElementById("app");
