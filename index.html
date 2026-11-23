@@ -263,7 +263,7 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 @media(max-width:420px){.home-page{padding:0 18px 18px}.home-hero h2{font-size:27px}.home-hero p{font-size:12px}.identity-grid{grid-template-columns:1fr 1fr}.identity-card{padding:13px 12px}.identity-meta{font-size:10px}.home-footer{font-size:8px}}
 @media(prefers-reduced-motion:reduce){.identity-card,.side{transition:none}}
 
-</style>
+.service-hub{padding:0;overflow:hidden}.service-hub-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.service-row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.service-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:var(--accent-soft);color:var(--accent);flex:none}.service-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}.service-copy strong{font-size:14px}.service-copy span{font-size:12px;color:var(--sub)}.service-hub>.hint{padding:12px 16px}.badge.green{background:#e5f5eb;color:#23824a}.msg-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.msg-tools .btn{height:30px;font-size:12px}.code-preview-mask{position:fixed;inset:0;z-index:100;background:rgba(35,24,30,.48);display:flex;align-items:stretch;justify-content:center;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.code-preview-panel{width:100%;height:100%;background:var(--bg);display:flex;flex-direction:column}.code-preview-panel header{height:56px;flex:none;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--card)}.code-preview-panel iframe{border:0;display:block;flex:1;width:100%;background:#fff}@media(min-width:760px){.code-preview-mask{padding:4vh 5vw}.code-preview-panel{max-width:1100px;border-radius:18px;overflow:hidden;box-shadow:0 20px 80px rgba(40,20,30,.2)}}@media(max-width:520px){.service-row{gap:8px;padding:12px}.service-icon{width:36px;height:36px}.service-row .badge{display:none}.service-copy span{font-size:11px}}</style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
@@ -276,11 +276,13 @@ const DB_VERSION = 3;
 const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages"];
 const MEM_LEVELS = ["L0","L1","L2","L3"];
 const DEFAULT_SETTINGS = {
-  id: "app",
-  monthlyCap: 50,          // 月费用上限（元）
-  personaCharCap: 1500,    // 人设注入字符上限
-  memoryCharCap: 2000,     // 长期记忆注入字符上限
-  recentCharCap: 6000      // 最近聊天注入字符上限
+  id:"app",monthlyCap:50,personaCharCap:1500,memoryCharCap:2000,recentCharCap:6000,
+  globalServices:{
+    vision:{enabled:false,provider:"",baseUrl:"",apiKey:"",model:"",endpoint:"/chat/completions",protocol:"openai-chat"},
+    tts:{enabled:false,provider:"MiniMax",baseUrl:"https://api.minimaxi.com/v1/t2a_v2",apiKey:"",model:"speech-2.6-hd",voiceId:"",protocol:"minimax-tts"},
+    stt:{enabled:true,provider:"Browser Speech Recognition",protocol:"browser"},
+    image:{enabled:false,provider:"OpenAI-compatible",baseUrl:"",apiKey:"",model:"",endpoint:"/images/generations",protocol:"openai-images"}
+  }
 };
 
 let dbPromise = null;
@@ -423,6 +425,10 @@ async function loadCache(){
     settings: settings || Object.assign({}, DEFAULT_SETTINGS),
     providers, models, channels, personas, persons, memories, sessions
   };
+  cache.settings.globalServices=Object.assign({},DEFAULT_SETTINGS.globalServices,cache.settings.globalServices||{});
+  for(const key of ["vision","tts","stt","image"]){
+    cache.settings.globalServices[key]=Object.assign({},DEFAULT_SETTINGS.globalServices[key],cache.settings.globalServices[key]||{});
+  }
   // 旧版本中一个 person 只绑定一个 model。迁移为 AI 身份可绑定多个模型的结构，旧数据原样保留。
   const personUpdates=[];
   for(const person of cache.persons){
@@ -789,6 +795,13 @@ function viewSettings(){
     <div class="row"><h2 class="sec" style="margin:0">接口与模型</h2><span class="spacer"></span>
       <button class="btn btn-primary" onclick="providerForm()">${icon("plus")}添加厂商</button></div>
     <div style="margin:8px 0 16px">${cache.providers.map(providerNode).join("")||`<p class="muted">还没有厂商。</p>`}</div>
+    <h2 class="sec">多模态服务中心</h2>
+    <div class="card service-hub">
+      <div class="service-hub-head"><div><strong>全局共享能力</strong><div class="muted small">所有 AI 身份共用服务连接；每项能力独立配置。</div></div><span class="badge">全局配置</span></div>
+      <div class="service-row"><div class="service-icon">${icon(ic)}</div><div class="service-copy"><strong>${n}</strong><span>${d}</span></div><span class="badge ${cache.settings.globalServices[k].enabled?"green":""}">${cache.settings.globalServices[k].enabled?"已启用":(k==="stt"?"浏览器模式":"待配置")}</span><button class="btn" onclick="globalServiceForm('${k}')">配置</button></div><div class="service-row"><div class="service-icon">${icon(ic)}</div><div class="service-copy"><strong>${n}</strong><span>${d}</span></div><span class="badge ${cache.settings.globalServices[k].enabled?"green":""}">${cache.settings.globalServices[k].enabled?"已启用":(k==="stt"?"浏览器模式":"待配置")}</span><button class="btn" onclick="globalServiceForm('${k}')">配置</button></div><div class="service-row"><div class="service-icon">${icon(ic)}</div><div class="service-copy"><strong>${n}</strong><span>${d}</span></div><span class="badge ${cache.settings.globalServices[k].enabled?"green":""}">${cache.settings.globalServices[k].enabled?"已启用":(k==="stt"?"浏览器模式":"待配置")}</span><button class="btn" onclick="globalServiceForm('${k}')">配置</button></div><div class="service-row"><div class="service-icon">${icon(ic)}</div><div class="service-copy"><strong>${n}</strong><span>${d}</span></div><span class="badge ${cache.settings.globalServices[k].enabled?"green":""}">${cache.settings.globalServices[k].enabled?"已启用":(k==="stt"?"浏览器模式":"待配置")}</span><button class="btn" onclick="globalServiceForm('${k}')">配置</button></div>
+      <div class="hint">服务 Key 保存在当前浏览器的 IndexedDB，不会写入 GitHub 源码。当前是单设备本地配置，换浏览器或清理网站数据后需要重新配置。</div>
+    </div>
+
     <h2 class="sec">用量与上限</h2>
     <div class="card">
       <div class="field">
@@ -1293,6 +1306,50 @@ function renderMessages(){
   if(stop) stop.disabled = !state.sending;
   if(send) send.disabled = state.sending;
 }
+function htmlCodeFromMessage(content){
+  const match=String(content||"").match(/```(?:html|htm)\s*([\s\S]*?)```/i);
+  return match?match[1].trim():null;
+}
+function downloadTextFile(filename,content,mime="text/plain;charset=utf-8"){
+  const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function openCodePreview(id){
+  const msg=state.chatMessages.find(x=>x.id===id);if(!msg)return;
+  const code=htmlCodeFromMessage(msg.content);if(!code){toast("这条回复没有可预览的 HTML 代码");return;}
+  const mask=document.createElement("div");mask.className="code-preview-mask";
+  mask.innerHTML=`<section class="code-preview-panel"><header><strong>网页预览</strong><span class="spacer"></span><button class="btn" id="codeDownload">下载 HTML</button><button class="btn icon-btn" id="codeClose" aria-label="关闭">×</button></header><iframe title="生成网页预览" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>`;
+  document.body.appendChild(mask);mask.querySelector("iframe").srcdoc=code;
+  mask.querySelector("#codeClose").onclick=()=>mask.remove();
+  mask.querySelector("#codeDownload").onclick=()=>downloadTextFile("homy-generated-page.html",code,"text/html;charset=utf-8");
+  mask.addEventListener("click",e=>{if(e.target===mask)mask.remove();});
+}
+function exportMessageText(id,format){
+  const msg=state.chatMessages.find(x=>x.id===id);if(!msg)return;
+  downloadTextFile("homy-message."+(format==="md"?"md":"txt"),msg.content||"",format==="md"?"text/markdown;charset=utf-8":"text/plain;charset=utf-8");
+}
+function globalServiceForm(key){
+  const names={vision:"图片视觉服务",tts:"语音合成服务",stt:"语音识别服务",image:"图片生成服务"},current=cache.settings.globalServices[key]||{},tts=key==="tts";
+  if(key==="stt"){
+    modal({title:names[key],body:`<div class="field"><label class="switch"><input type="checkbox" id="gsEnabled" ${current.enabled!==false?"checked":""}> 启用浏览器语音识别</label><div class="hint">使用浏览器 SpeechRecognition / webkitSpeechRecognition。iPhone Safari 是否支持取决于系统和浏览器版本。</div></div><div class="muted small">后续可增加 Whisper 等云端识别服务，不影响当前浏览器方案。</div>`,actions:[{label:"取消",onClick:closeModal},{label:"保存",primary:true,onClick:async()=>saveGlobalService(key,{enabled:document.getElementById("gsEnabled").checked})}]});return;
+  }
+  const fields=tts
+    ? `<div class="field"><label>MiniMax API 地址</label><input id="gsBase" value="${esc(current.baseUrl||"https://api.minimaxi.com/v1/t2a_v2")}"></div><div class="field"><label>API Key</label><input id="gsKey" type="password" value="${esc(current.apiKey||"")}" placeholder="输入 MiniMax API Key"></div><div class="field"><label>语音模型</label><input id="gsModel" value="${esc(current.model||"speech-2.6-hd")}"></div><div class="field"><label>默认音色 ID</label><input id="gsVoice" value="${esc(current.voiceId||"")}"></div>`
+    : `<div class="field"><label>服务商名称</label><input id="gsProvider" value="${esc(current.provider||"")}" placeholder="${key==="vision"?"公益站 / 视觉中转":"OpenAI 兼容公益站"}"></div><div class="field"><label>API 基础地址</label><input id="gsBase" value="${esc(current.baseUrl||"")}" placeholder="https://..."></div><div class="field"><label>API Key</label><input id="gsKey" type="password" value="${esc(current.apiKey||"")}"></div><div class="field"><label>模型 ID</label><input id="gsModel" value="${esc(current.model||"")}" placeholder="${key==="vision"?"视觉模型 ID":"图片生成模型 ID"}"></div><div class="field"><label>接口路径</label><input id="gsEndpoint" value="${esc(current.endpoint||(key==="vision"?"/chat/completions":"/images/generations"))}"></div><div class="hint">${key==="vision"?"需要支持 OpenAI Chat Completions 图片输入格式。":"需要支持 OpenAI Images API 格式；仅支持文字聊天的公益站不能直接生图。"}</div>`;
+  modal({title:names[key],body:`<div class="field"><label class="switch"><input type="checkbox" id="gsEnabled" ${current.enabled?"checked":""}> 启用此服务</label></div>${fields}<div class="hint">密钥保存在本机 IndexedDB，不会写入仓库源码。请勿把密钥发到聊天里。</div>`,actions:[{label:"取消",onClick:closeModal},{label:"保存配置",primary:true,onClick:async()=>{
+    const value={enabled:document.getElementById("gsEnabled").checked};
+    if(tts){value.baseUrl=document.getElementById("gsBase").value.trim();value.apiKey=document.getElementById("gsKey").value.trim();value.model=document.getElementById("gsModel").value.trim();value.voiceId=document.getElementById("gsVoice").value.trim();}
+    else{value.provider=document.getElementById("gsProvider").value.trim();value.baseUrl=document.getElementById("gsBase").value.trim();value.apiKey=document.getElementById("gsKey").value.trim();value.model=document.getElementById("gsModel").value.trim();value.endpoint=document.getElementById("gsEndpoint").value.trim();}
+    await saveGlobalService(key,value);
+  }}]});
+}
+async function saveGlobalService(key,value){
+  const settings=Object.assign({},cache.settings);
+  settings.globalServices=Object.assign({},settings.globalServices||{});
+  settings.globalServices[key]=Object.assign({},settings.globalServices[key]||{},value,{updatedAt:nowISO()});
+  await dbPut("settings",settings);closeModal();await loadCache();render();toast("全局服务配置已保存");
+}
+
 function msgHTML(msg){
   if(msg.role==="user"){
     return `<div class="msg user" data-msg-id="${msg.id}" data-role="user"><div>${esc(msg.content)}</div><div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div>`;
@@ -1309,9 +1366,11 @@ function msgHTML(msg){
       <summary>思考摘要（模型提供）</summary>
       <pre>${esc(msg.reasoning)}</pre>
     </details>` : "";
+  const hasHtml=!!htmlCodeFromMessage(msg.content);
   return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">
     ${reason}
     <div>${esc(msg.content)}</div>
+    <div class="msg-tools">${hasHtml?`<button class="btn" onclick="openCodePreview('${msg.id}')">网页预览</button>`:""}<button class="btn" onclick="exportMessageText('${msg.id}','md')">导出 MD</button><button class="btn" onclick="exportMessageText('${msg.id}','txt')">导出 TXT</button></div>
     <div class="msg-meta">
       <span>模型：${esc(m?m.name:msg.modelId)}</span>
       <span>输入 ${msg.promptTokens||0} / 输出 ${msg.completionTokens||0} tokens</span>
