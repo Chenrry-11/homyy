@@ -2016,8 +2016,8 @@ function buildProviderRequest(provider,modelId,messages,options={}){
     if(model.startsWith("gemini-2.5-flash")&&options.thinkingSupport)body.generationConfig.thinkingConfig={thinkingBudget:options.thinking===false?0:1024,includeThoughts:true};
     if(model.startsWith("gemini-3.")&&options.thinkingSupport)body.generationConfig.thinkingConfig={thinkingLevel:options.thinking===false?"low":"high",includeThoughts:true};
     if(system)body.systemInstruction={parts:[{text:system}]};
-    const stream=options.stream!==false,action=stream?":streamGenerateContent?alt=sse&key=":":generateContent?key=";
-    return {protocol,stream,endpoint:base+"/models/"+encodeURIComponent(model)+action+encodeURIComponent(provider.apiKey),headers:{"Content-Type":"application/json"},body};
+    const stream=options.stream!==false,action=stream?":streamGenerateContent?alt=sse":":generateContent";
+    return {protocol,stream,endpoint:base+"/models/"+encodeURIComponent(model)+action,headers:{"Content-Type":"application/json","x-goog-api-key":provider.apiKey},body};
   }
   const body={model:modelId,messages,stream:options.stream!==false};
   if(body.stream&&provider.includeUsage!==false)body.stream_options={include_usage:true};
