@@ -490,13 +490,24 @@ function icon(n){return `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="
 function avatar(n,img){return img?`<span class="avatar"><img src="${esc(img)}" alt=""></span>`:`<span class="avatar">${esc([...String(n)][0]||"?")}</span>`;}
 function latestSession(){ return [...cache.sessions].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]; }
 function toggleDrawer(){ state.drawer=!state.drawer; render(); }
-async function renameSession(id){
-  const w=findById(cache.sessions,id); if(!w) return;
-  const t=prompt("窗口名称",w.title);
-  if(!t||!t.trim()) return;
-  await dbPut("sessions",Object.assign({},w,{title:t.trim().slice(0,40)}));
-  await loadCache(); render();
+function openSessionActions(id){
+  const session=findById(cache.sessions,id);if(!session)return;
+  modal({title:"聊天窗口",body:`<div class="field"><label>窗口名称</label><input id="sessionTitleEdit" maxlength="40" value="${esc(session.title||"新窗口")}"></div><div class="muted small">长按窗口可再次打开此菜单。</div>`,actions:[
+    {label:"取消",onClick:closeModal},
+    {label:"删除窗口",danger:true,onClick:async()=>{closeModal();await deleteSession(id);}},
+    {label:"保存名称",primary:true,onClick:async()=>{const title=document.getElementById("sessionTitleEdit").value.trim();if(!title){toast("窗口名称不能为空");return;}await dbPut("sessions",Object.assign({},session,{title:title.slice(0,40),updatedAt:nowISO()}));closeModal();await loadCache();render();}}
+  ]});
 }
+function bindDrawerSessionEvents(){
+  const drawer=document.querySelector(".drawer-shell");if(!drawer||drawer.dataset.sessionEvents==="1")return;
+  drawer.dataset.sessionEvents="1";let timer=null,target=null,moved=false;
+  const clear=()=>{if(timer)clearTimeout(timer);timer=null;target=null;};
+  drawer.addEventListener("contextmenu",e=>{const row=e.target.closest("[data-session-id]");if(!row)return;e.preventDefault();openSessionActions(row.dataset.sessionId);});
+  drawer.addEventListener("pointerdown",e=>{const row=e.target.closest("[data-session-id]");if(!row)return;target=row.dataset.sessionId;moved=false;timer=setTimeout(()=>{if(!moved&&target)openSessionActions(target);clear();},560);});
+  drawer.addEventListener("pointermove",()=>{moved=true;if(timer)clearTimeout(timer);timer=null;});
+  ["pointerup","pointercancel","pointerleave"].forEach(type=>drawer.addEventListener(type,clear));
+}
+async function renameSession(id){openSessionActions(id);}
 function pickAvatar(who){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
   inp.onchange=()=>{
@@ -614,6 +625,7 @@ async function render(){
   if (state.view === "tree") main = "";
   if (!main) main = viewWelcome();
   app.innerHTML = `<div class="shell${state.drawer?" drawer":""}"><div class="mask" onclick="toggleDrawer()"></div><aside class="side">${viewTree()}</aside><main class="main">${main}</main></div>`;
+  bindDrawerSessionEvents();
   if (state.view === "chat"){
     await loadChatMessages();
     bindChatInput();
@@ -636,9 +648,8 @@ function viewTree(){
         </button>
         <button class="icon-btn drawer-add" title="为 ${esc(pn.name)} 新建聊天" onclick="newWindow('${pn.id}')">${icon("plus")}</button>
       </div>
-      ${open?`<div class="drawer-sessions">${wins.map(w=>`<div class="drawer-session-line">
+      ${open?`<div class="drawer-sessions">${wins.map(w=>`<div class="drawer-session-line" data-session-id="${w.id}">
         <button class="drawer-session${state.view==="chat"&&state.sessionId===w.id?" active":""}" onclick="openChat('${w.id}')"><span class="session-mark"></span><span>${esc(w.title||"新窗口")}</span></button>
-        <button class="icon-btn session-edit" title="重命名" onclick="renameSession('${w.id}')">${icon("edit")}</button>
       </div>`).join("")||`<div class="drawer-no-session">还没有对话</div>`}</div>`:""}
     </section>`;
   }).join("");
