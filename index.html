@@ -1929,14 +1929,16 @@ async function sendMessage(existingUserId=null){
     modelId:m.id,providerId:pv.id,promptTokens:0,completionTokens:0,totalTokens:0,
     cachedTokens:0,cost:0,createdAt:nowISO(),streaming:true};
   state.chatMessages.push(aiMsg); renderMessages();
-  const endpoint=pv.baseUrl.replace(/\/+$/,"")+"/chat/completions";
+  const request=buildProviderRequest(pv,remoteModelId,built.messages,{
+    stream:pv.protocol==="openai-chat"&&pv.streamEnabled!==false,
+    thinking:session.thinkingEnabled!==false,
+    thinkingSupport:modelSupportsThinking(m,channel,pv)
+  });
   let saved=false;
   try{
-    const requestBody={model:remoteModelId,messages:built.messages,stream:pv.streamEnabled!==false};
-    if(modelSupportsThinking(m,channel,pv))requestBody.thinking={type:session.thinkingEnabled===false?"disabled":"enabled"};
-    const resp=await fetch(endpoint,{
-      method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+pv.apiKey},
-      body:JSON.stringify(requestBody),signal:controller.signal
+    const resp=await fetch(request.endpoint,{
+      method:"POST",headers:request.headers,
+      body:JSON.stringify(request.body),signal:controller.signal
     });
     if(!resp.ok){
       let detail=""; try{detail=await resp.text();}catch(e){}
@@ -1945,7 +1947,7 @@ async function sendMessage(existingUserId=null){
       addErrorNote(`接口返回错误（HTTP ${resp.status}）。${detail}\n若状态码为 401，通常是 API Key 无效；若出现 CORS 字样，说明浏览器拦截了跨域请求。`);
       return;
     }
-    const result=await readStreamingCompletion(resp,parts=>{
+    const result=await readProviderCompletion(resp,request.protocol,parts=>{
       aiMsg.content=parts.allContent; aiMsg.reasoning=parts.allReasoning;
       scheduleStreamingPaint(aiMsg);
     });
