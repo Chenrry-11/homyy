@@ -212,8 +212,8 @@ function handleGroupInput(){
 function groupFindPerson(text,g){var key=String(text||"").replace(/^@/,"").trim().toLowerCase();return (g.members||[]).map(m=>findById(cache.persons,m.personId)).find(p=>p&&(p.name.toLowerCase()===key||p.id===key||p.name.toLowerCase().includes(key)));}
 function extractGroupMention(text,g){
  var people=(g.members||[]).map(m=>findById(cache.persons,m.personId)).filter(Boolean).sort((a,b)=>b.name.length-a.name.length);
- for(var p of people){var needle="@"+p.name,index=text.toLowerCase().indexOf(needle.toLowerCase());if(index<0)continue;var end=index+needle.length,next=text[end]||"";if(next&&!/[\\s，。！？,.!?;:：、]/.test(next))continue;
-  var before=text.slice(0,index),after=text.slice(end),cleaned=(before+after).replace(/[ \\t]+([，。！？,.!?;:：、])/g,"$1").replace(/[ \\t]{2,}/g," ").trim();
+ for(var p of people){var needle="@"+p.name,index=text.toLowerCase().indexOf(needle.toLowerCase());if(index<0)continue;var end=index+needle.length,next=text[end]||"";if(next&&!/[\s，。！？,.!?;:：、]/.test(next))continue;
+  var before=text.slice(0,index),after=text.slice(end),cleaned=(before+after).replace(/[ \t]+([，。！？,.!?;:：、])/g,"$1").replace(/[ \t]{2,}/g," ").trim();
   return {personId:p.id,text:cleaned};
  }
  return null;
