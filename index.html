@@ -418,7 +418,8 @@ const state = {
   pendingAttachments: [],
   recognition: null,
   groupId:null, groupMessages:[], groupControllers:new Map(), groupTurnId:0,
-  groupRunning:false, groupStatus:"", groupComposerMode:"message", groupThinkingOverride:null, groupStoppedMembers:new Set()
+  groupRunning:false, groupStatus:"", groupComposerMode:"message", groupThinkingOverride:null, groupStoppedMembers:new Set(),
+  personReturnView:"home",settingsReturnView:"home"
 };
 let cache = { settings:null, providers:[], models:[], personas:[], persons:[], memories:[], sessions:[], groups:[] };
 
@@ -905,7 +906,7 @@ function viewPerson(){
   const wins = sessionsOf(pn.id);
   return `
   <div class="topbar">
-    <button class="btn icon-btn" onclick="goTree()">${icon("back")}</button>
+    <button class="btn icon-btn" onclick="goBackFromPerson()">${icon("back")}</button>
     <button class="avatar-btn" title="更换头像" onclick="pickAvatar('${pn.id}')">${avatar(pn.name,pn.avatar)}</button>
     <h1>${esc(pn.name)} <span class="muted small">${esc(pv?pv.name+" · ":"")}${esc(m?m.name:"")}</span></h1>
   </div>
@@ -992,10 +993,12 @@ function memItem(mem){
   </div>`;
 }
 function switchTab(t){ state.tab=t; render(); }
-function openPerson(id){ state.drawer=false; state.personId=id; state.view="person"; state.tab="persona"; render(); }
+function openPerson(id){state.personReturnView=state.view;state.drawer=false;state.personId=id;state.view="person";state.tab="persona";render();}
+function goBackFromPerson(){state.view=state.personReturnView||"home";state.drawer=false;render();}
 function goTree(){ state.view="home"; state.homeTab="home"; state.drawer=false; render(); }
 function goSingleChatHome(){state.view="home";state.homeTab="single";state.drawer=false;render();document.getElementById("singleChatSection")?.scrollIntoView({behavior:"smooth",block:"start"});}
-function goSettings(section="models"){state.drawer=false;state.settingsSection=section;state.view="settings";render();}
+function goSettings(section="models"){if(state.view!=="settings")state.settingsReturnView=state.view;state.drawer=false;state.settingsSection=section;state.view="settings";render();}
+function goBackFromSettings(){state.view=state.settingsReturnView||"home";state.drawer=false;render();}
 function goMyPage(){state.drawer=false;state.view="profile";render();}
 function goThemes(){state.drawer=false;state.view="themes";render();}
 function bottomNavigation(){
@@ -1038,7 +1041,7 @@ function viewSettings(){
   }else{
     body=`<h2 class="sec">图片与视觉</h2><p class="muted small">图片识别和图片生成是两项独立服务，所有 AI 身份共享配置。</p><div class="card service-hub">${serviceRow("vision","图片视觉理解","Vision API · 读取图片并转换为上下文","eye")}${serviceRow("image","图片生成","OpenAI Images 兼容接口","image")}<div class="hint">公益站必须明确支持对应接口协议。仅支持文字聊天的站点不能自动获得视觉或生图能力。</div></div>`;
   }
-  return `<div class="topbar"><button class="btn icon-btn" onclick="goTree()">${icon("back")}</button><h1>设置</h1><span class="spacer"></span><button class="btn btn-ghost" onclick="goMyPage()">我的</button></div><div class="content settings-page"><div class="settings-tabs">${nav("models","语言模型")}${nav("voice","语音回复")}${nav("visual","图片视觉")}${nav("appearance","聊天美化")}</div>${body}</div>`;
+  return `<div class="topbar"><button class="btn icon-btn" onclick="goBackFromSettings()">${icon("back")}</button><h1>设置</h1><span class="spacer"></span><button class="btn btn-ghost" onclick="goMyPage()">我的</button></div><div class="content settings-page"><div class="settings-tabs">${nav("models","语言模型")}${nav("voice","语音回复")}${nav("visual","图片视觉")}${nav("appearance","聊天美化")}</div>${body}</div>`;
 }
 
 async function saveBubbleStyle(style){
