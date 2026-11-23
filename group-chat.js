@@ -210,12 +210,19 @@ function handleGroupInput(){
  menu.querySelectorAll("[data-command]").forEach(btn=>btn.addEventListener("click",()=>{input.value=btn.dataset.command+" ";menu.classList.add("hidden");menu.innerHTML="";input.focus();}));
 }
 function groupFindPerson(text,g){var key=String(text||"").replace(/^@/,"").trim().toLowerCase();return (g.members||[]).map(m=>findById(cache.persons,m.personId)).find(p=>p&&(p.name.toLowerCase()===key||p.id===key||p.name.toLowerCase().includes(key)));}
+function extractGroupMention(text,g){
+ var people=(g.members||[]).map(m=>findById(cache.persons,m.personId)).filter(Boolean).sort((a,b)=>b.name.length-a.name.length);
+ for(var p of people){var needle="@"+p.name,index=text.toLowerCase().indexOf(needle.toLowerCase());if(index<0)continue;var end=index+needle.length,next=text[end]||"";if(next&&!/[\\s，。！？,.!?;:：、]/.test(next))continue;
+  var before=text.slice(0,index),after=text.slice(end),cleaned=(before+after).replace(/[ \\t]+([，。！？,.!?;:：、])/g,"$1").replace(/[ \\t]{2,}/g," ").trim();
+  return {personId:p.id,text:cleaned};
+ }
+ return null;
+}
 async function sendGroupMessage(){
  var input=document.getElementById("groupChatInput"),g=groupById(state.groupId);if(!input||!g)return;var text=input.value.trim();if(!text)return;
  if(g.stopCommand&&text===g.stopCommand){input.value="";stopGroupTurn();return;}
  if(text.startsWith("/")){input.value="";document.getElementById("groupCommandMenu").classList.add("hidden");await executeGroupCommand(text);return;}
- var target=null,mention=text.match(/(^|[^A-Za-z0-9_])@([^\s@，。！？,.!?;:：、]+)\s*/);if(mention){var p=groupFindPerson(mention[2],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;var before=text.slice(0,mention.index),after=text.slice(mention.index+mention[0].length),join=mention[1];if(/^[，。！？,.!?;:：、]/.test(after))join=join.trimEnd();text=(before+join+after).replace(/[ \t]{2,}/g," ").trim();}
- var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
+ var target=null,mention=extractGroupMention(text,g);if(mention){target=mention.personId;text=mention.text;}else if(/(^|[^A-Za-z0-9_])@([^\\s@，。！？,.!?;:：、]+)/.test(text)){toast("没有找到这个群成员");return;}var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
  var msg={id:uid("gm"),groupId:g.id,role:narrator?"narrator":"user",includeInContext:narrator?g.narratorInContext!==false:true,content:text,createdAt:nowISO(),turnId:state.groupTurnId+1};
  await dbPut("groupMessages",msg);state.groupMessages.push(msg);input.value="";state.groupComposerMode="message";
  var mode=document.getElementById("groupComposerMode");if(mode)mode.textContent="";input.placeholder="发消息给群聊……";renderGroupMessages({forceBottom:true});
