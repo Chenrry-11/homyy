@@ -1581,6 +1581,7 @@ function buildOutgoing(draft){
   }
 
   const systemParts=[];
+  if(s.userBio?.trim())systemParts.push("【用户个人资料】\n"+s.userBio.trim());
   if(pn.breakLimitEnabled && pn.breakLimitDoc?.trim()) systemParts.push("【用户提供的独立上下文文档】\n"+pn.breakLimitDoc);
   if(personaText) systemParts.push("【AI 身份设定】\n"+personaText);
   if(memLines.length) systemParts.push("【长期记忆】\n"+memLines.join("\n"));
@@ -1602,7 +1603,7 @@ function refreshEstimate(){
 }
 async function getMonthSpend(){
   const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),1).toISOString(),end=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString();
-  return new Promise((resolve,reject)=>{const request=tx("messages").index("createdAt").openCursor(IDBKeyRange.bound(start,end));let total=0;
+  return new Promise((resolve,reject)=>{const request=tx("messages").index("createdAt").openCursor(IDBKeyRange.bound(start,end,false,true));let total=0;
     request.onsuccess=()=>{const cursor=request.result;if(!cursor){resolve(total);return;}total+=Number(cursor.value.cost)||0;cursor.continue();};
     request.onerror=()=>reject(request.error||new Error("费用统计读取失败"));
   });
