@@ -41,9 +41,14 @@
 .group-message-stack{display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:calc(100% - 43px)}
 .group-user-row .group-message-stack{align-items:flex-end}
 .group-ai-name{margin:0 0 5px 3px;color:#917b87;font-size:11px;line-height:1.2}
-.group-bubble{width:fit-content;max-width:100%;padding:10px 14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
-.group-ai-bubble{background:rgba(255,255,255,.86);border:1px solid rgba(232,218,225,.72);border-radius:18px 18px 18px 5px;color:#493943}
-.group-user-bubble{background:rgba(246,232,238,.96);border:1px solid rgba(226,202,215,.62);border-radius:18px 18px 5px 18px;color:#493943}
+.group-bubble{width:fit-content;max-width:100%;padding:10px 14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:13.5px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
+.group-ai-bubble{background:rgba(255,255,255,.86);border:1px solid rgba(232,218,225,.72);border-radius:16px 16px 16px 5px;color:#493943}
+.group-user-bubble{background:rgba(246,232,238,.96);border:1px solid rgba(226,202,215,.62);border-radius:16px 16px 5px 16px;color:#493943}
+#app[data-bubble-style="glass"] .group-ai-bubble{background:rgba(255,255,255,.52);backdrop-filter:blur(14px);border-color:rgba(255,255,255,.9);box-shadow:0 5px 18px rgba(110,75,93,.06)}
+#app[data-bubble-style="glass"] .group-user-bubble{background:rgba(255,255,255,.48);backdrop-filter:blur(14px);border-color:rgba(255,255,255,.82);box-shadow:0 5px 18px rgba(110,75,93,.06)}
+#app[data-bubble-style="minimal"] .group-ai-bubble{background:transparent;border-color:transparent;box-shadow:none;padding:5px 2px}
+#app[data-bubble-style="minimal"] .group-user-bubble{background:#f8eef2;border-color:transparent;box-shadow:none}
+
 .group-msg-meta{font-size:10px;margin-top:4px;opacity:.9}
 .group-message-row[data-group-msg-id]{-webkit-touch-callout:none;user-select:text}
 .group-msg-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;padding:0 3px;color:#a3939c;font-size:10px}
