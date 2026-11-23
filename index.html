@@ -301,7 +301,16 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .bubble-preview.glass{background:linear-gradient(130deg,#f8edf2,#eee3eb)}.bubble-preview.glass i,.bubble-preview.glass b{background:rgba(255,255,255,.65)}
 .bubble-preview.minimal{background:transparent}.bubble-preview.minimal i{background:#f0e0e8}.bubble-preview.minimal b{background:transparent;border-color:transparent}
 .theme-import-reserved{display:flex;align-items:flex-start;gap:13px;margin-top:18px;padding:15px}.theme-reserved-mark{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:12px;background:#f7edf2;color:#b17f96}.theme-import-reserved p{margin:5px 0 8px}
-.msg-actions{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-top:5px;padding:0 3px}.msg-actions button{font-size:11px;color:#9a8791;padding:3px 0}.msg-actions button.danger{color:#b77d91}
+.msg-actions{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-top:5px;padding:0 3px}.msg-actions button{font-size:11px;color:#9a8791;padding:3px 0}
+.msg-actions button{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;padding:0;border-radius:9px;background:rgba(255,255,255,.42);color:var(--sub)}
+.msg-actions button .i{width:14px;height:14px}
+.message-action-menu{position:fixed;z-index:130;max-height:60vh;overflow-y:auto;overscroll-behavior:contain;padding:6px;border:1px solid rgba(225,208,218,.9);border-radius:15px;background:rgba(255,252,254,.96);backdrop-filter:blur(22px);box-shadow:0 12px 36px rgba(64,35,50,.18)}
+.message-action-menu button{width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;text-align:left;font-size:13px;color:var(--ink)}
+.message-action-menu button .i{width:16px;height:16px;color:var(--sub);flex:none}
+.message-action-menu button:active{background:rgba(232,213,223,.55)}
+.message-action-menu button.danger{color:var(--danger)}
+.message-action-menu button.danger .i{color:var(--danger)}
+.msg-actions button.danger{color:#b77d91}
 .msg.user{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}.drawer-session{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
 .modal-mask{align-items:center;justify-content:center;padding:18px;overflow:auto}.modal{width:min(100%,520px);max-height:min(84dvh,760px);border-radius:20px;box-shadow:0 20px 70px rgba(60,37,49,.2)}.modal-head{padding:16px 18px}.modal-body{padding:18px;overflow:auto}.modal-foot{padding:13px 18px calc(13px + env(safe-area-inset-bottom))}
 @media(max-width:640px){.bubble-style-grid{gap:7px}.bubble-style-option{padding:8px}.bubble-style-option strong{font-size:12px}.bubble-style-option small{font-size:9px}.modal-mask{padding:16px}.modal{border-radius:18px;max-height:82dvh}}
@@ -590,7 +599,7 @@ const memoriesOf = (personId)=>cache.memories.filter(m=>m.personId===personId);
 const sessionsOf = (personId)=>cache.sessions.filter(s=>s.personId===personId)
   .sort((a,b)=> (b.updatedAt||"").localeCompare(a.updatedAt||""));
 
-const ICONS={user:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>',eye:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',audio:'<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>',mic:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>' ,menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'};
+const ICONS={user:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>',eye:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',audio:'<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>',mic:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>' ,menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',refresh:'<path d="M20 7v5h-5"/><path d="M4 12a8 8 0 0 1 14-5l2 5M4 12v5h5"/>',volume:'<path d="M4 10v4h4l5 4V6l-5 4z"/><path d="M17 9a5 5 0 0 1 0 6M19 5a10 10 0 0 1 0 14"/>',undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-2"/>',trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"/>'};
 function icon(n){return `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;}
 function avatar(n,img){return img?`<span class="avatar"><img src="${esc(img)}" alt=""></span>`:`<span class="avatar">${esc([...String(n)][0]||"?")}</span>`;}
 function latestSession(){ return [...cache.sessions].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]; }
@@ -1010,6 +1019,41 @@ async function saveSettings(){
   s.updatedAt = nowISO();
   await dbPut("settings", s);
   await loadCache(); toast("设置已保存"); render();
+}
+
+let messageActionMenuCleanup=null;
+function closeMessageActionMenu(){
+  const menu=document.getElementById("messageActionMenu");if(menu)menu.remove();
+  if(messageActionMenuCleanup){messageActionMenuCleanup();messageActionMenuCleanup=null;}
+}
+function showMessageActionMenu(anchor,items){
+  closeMessageActionMenu();if(!anchor||!items?.length)return;
+  const menu=document.createElement("div");menu.id="messageActionMenu";menu.className="message-action-menu";
+  menu.innerHTML=items.map((item,index)=>'<button type="button" data-action-index="'+index+'" class="'+(item.danger?"danger":"")+'">'+icon(item.icon||"edit")+'<span>'+esc(item.label)+'</span></button>').join("");
+  document.body.appendChild(menu);
+  const rect=anchor.getBoundingClientRect(),height=window.visualViewport?.height||window.innerHeight,width=Math.min(224,window.innerWidth-24);
+  menu.style.width=width+"px";
+  const size=menu.getBoundingClientRect(),below=height-rect.bottom-10;
+  let top=below>=size.height?rect.bottom+8:rect.top-size.height-8;
+  top=Math.max(8,Math.min(top,height-size.height-8));
+  const left=Math.max(12,Math.min(rect.right-width,window.innerWidth-width-12));
+  menu.style.top=top+"px";menu.style.left=left+"px";
+  menu.addEventListener("click",event=>{
+    const button=event.target.closest("button[data-action-index]");if(!button)return;
+    const item=items[Number(button.dataset.actionIndex)];closeMessageActionMenu();if(item?.onClick)item.onClick();
+  });
+  const outside=event=>{if(!menu.contains(event.target))closeMessageActionMenu();};
+  const closeOnScroll=()=>closeMessageActionMenu();
+  document.addEventListener("pointerdown",outside,true);
+  document.addEventListener("scroll",closeOnScroll,true);
+  window.addEventListener("resize",closeOnScroll);
+  if(window.visualViewport)window.visualViewport.addEventListener("resize",closeOnScroll);
+  messageActionMenuCleanup=()=>{
+    document.removeEventListener("pointerdown",outside,true);
+    document.removeEventListener("scroll",closeOnScroll,true);
+    window.removeEventListener("resize",closeOnScroll);
+    if(window.visualViewport)window.visualViewport.removeEventListener("resize",closeOnScroll);
+  };
 }
 
 function modal({title, body, actions}){
@@ -1659,7 +1703,7 @@ function msgHTML(msg){
   if(msg.role==="user"){
     const files=(msg.attachments||[]).map(a=>a.type?.startsWith("image/")?`<img class="message-image" src="${a.dataUrl}" alt="${esc(a.name)}">`:`<div class="message-file">${icon("file")} ${esc(a.name)}</div>`).join("");
     return `<div class="single-message-row single-user-row"><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}
-      ${!state.sending?`<div class="msg-actions"><button onclick="editUserMessage('${msg.id}')">编辑并重新回答</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回</button></div>`:""}
+      ${!state.sending?`<div class="msg-actions"><button title="编辑并重新回答" aria-label="编辑并重新回答" onclick="editUserMessage('${msg.id}')">${icon("edit")}</button><button class="danger" title="撤回消息" aria-label="撤回消息" onclick="deleteOneMessage('${msg.id}')">${icon("undo")}</button></div>`:""}
       <div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div><span class="single-message-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span></div>`;
   }
   if(msg.role==="error")return `<div class="msg err">${esc(msg.content)}</div>`;
@@ -1671,7 +1715,7 @@ function msgHTML(msg){
     <div class="msg-body">${esc(msg.content)}</div>
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
-    ${!state.sending&&!msg.streaming?`<div class="msg-actions"><button onclick="regenerateFromMessage('${msg.id}')">重新生成</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回回复</button><button onclick="copyMessageText('${msg.id}')">复制</button>${speakOn?`<button data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}</div>`:""}
+    ${!state.sending&&!msg.streaming?`<div class="msg-actions"><button title="重新生成" aria-label="重新生成" onclick="regenerateFromMessage('${msg.id}')">${icon("refresh")}</button><button class="danger" title="撤回回复" aria-label="撤回回复" onclick="deleteOneMessage('${msg.id}')">${icon("trash")}</button><button title="复制" aria-label="复制" onclick="copyMessageText('${msg.id}')">${icon("copy")}</button>${speakOn?`<button data-speak-id="${msg.id}" title="朗读" aria-label="朗读" onclick="speakMessage('${msg.id}')">${icon("volume")}</button>`:""}</div>`:""}
     <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${msg.totalTokens?msg.totalTokens+" tokens":""}</span><span>${msg.cachedTokens?"缓存 "+msg.cachedTokens:""}</span><span>${fmtTime(msg.createdAt)}</span></div>
   </div></div>`;
 }
@@ -1689,15 +1733,16 @@ async function copyMessageText(id){
 }
 function openMessageActions(id){
   const msg=state.chatMessages.find(x=>x.id===id);if(!msg||state.sending)return;
-  const isUser=msg.role==="user",actions=[];
-  if(isUser)actions.push({label:"编辑并重新发送",onClick:()=>editUserMessage(id)});
+  const isUser=msg.role==="user",anchor=Array.from(document.querySelectorAll(".msg[data-msg-id]")).find(x=>x.dataset.msgId===id);
+  const actions=[];
+  if(isUser)actions.push({label:"编辑并重新回答",icon:"edit",onClick:()=>editUserMessage(id)});
   else{
-    if(htmlCodeFromMessage(msg.content))actions.push({label:"网页预览",onClick:()=>{closeModal();openCodePreview(id);}});
-    if(cache.settings.globalServices?.tts?.enabled)actions.push({label:"朗读",onClick:()=>{closeModal();speakMessage(id);}});
-    actions.push({label:"重新生成",onClick:()=>regenerateFromMessage(id)});
+    if(htmlCodeFromMessage(msg.content))actions.push({label:"网页预览",icon:"eye",onClick:()=>openCodePreview(id)});
+    if(cache.settings.globalServices?.tts?.enabled)actions.push({label:"朗读",icon:"volume",onClick:()=>speakMessage(id)});
+    actions.push({label:"重新生成",icon:"refresh",onClick:()=>regenerateFromMessage(id)});
   }
-  actions.push({label:"复制",onClick:()=>copyMessageText(id)},{label:isUser?"撤回消息":"撤回回复",danger:true,onClick:()=>deleteOneMessage(id)},{label:"关闭",onClick:closeModal});
-  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="muted">${isUser?"编辑后会清除旧回复，并根据修改后的内容重新回答。":"撤回后，这条回复将不再进入后续聊天上下文。"}</div>`,actions});
+  actions.push({label:"复制",icon:"copy",onClick:()=>copyMessageText(id)},{label:isUser?"撤回消息":"撤回回复",icon:"trash",danger:true,onClick:()=>deleteOneMessage(id)});
+  showMessageActionMenu(anchor,actions);
 }
 async function deleteOneMessage(id){
   const index=state.chatMessages.findIndex(x=>x.id===id);if(index<0)return;
