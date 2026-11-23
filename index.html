@@ -1783,7 +1783,7 @@ async function refreshMonthPill(){
 }
 
 async function buildProviderRequest(provider,modelId,messages,options={}){
-  const protocol=provider.protocol||"openai-chat",base=String(provider.baseUrl||"").replace(/\\/+$/,"");
+  const protocol=provider.protocol||"openai-chat";let base=String(provider.baseUrl||"");while(base.endsWith("/"))base=base.slice(0,-1);
   const system=messages.filter(x=>x.role==="system").map(x=>String(x.content||"")).join("\n\n");
   const turns=messages.filter(x=>x.role!=="system").map(x=>({role:x.role==="assistant"?"assistant":"user",content:String(x.content||"")}));
   if(protocol==="anthropic-messages"){
@@ -1793,7 +1793,7 @@ async function buildProviderRequest(provider,modelId,messages,options={}){
     return {protocol,stream:false,endpoint:base+"/messages",headers:{"Content-Type":"application/json","x-api-key":provider.apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body};
   }
   if(protocol==="gemini-generate"){
-    const model=String(modelId||"").replace(/^models\\//,"");
+    let model=String(modelId||"");if(model.startsWith("models/"))model=model.slice(7);
     const contents=turns.map(x=>({role:x.role==="assistant"?"model":"user",parts:[{text:x.content}]}));
     const body={contents,generationConfig:{maxOutputTokens:4096}};
     if(system)body.systemInstruction={parts:[{text:system}]};
