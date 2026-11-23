@@ -368,7 +368,39 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 .modal-mask{align-items:center;justify-content:center;padding:18px;overflow:auto}.modal{width:min(100%,520px);max-height:min(84dvh,760px);border-radius:20px;box-shadow:0 20px 70px rgba(60,37,49,.2)}
 .modal-head{padding:16px 18px}.modal-body{padding:18px;overflow:auto}.modal-foot{padding:13px 18px calc(13px + env(safe-area-inset-bottom))}
 @media(max-width:640px){.chat-topbar{height:58px;gap:6px;padding:0 9px}.chat-model-select{max-width:38vw;font-size:11px;padding:7px 6px}.chat-identity{max-width:82px;gap:5px;padding:4px}.chat-identity .avatar{width:25px;height:25px}.chat-identity span:last-child{font-size:10px}.thinking-toggle{padding:6px 7px;gap:4px;font-size:10px}.thinking-toggle strong{font-size:9px}.msg-list{padding:13px 14px;gap:17px}.msg.user{max-width:90%}.msg.ai{max-width:96%}.msg-actions{gap:12px}.msg-actions button{font-size:10px}.modal-mask{padding:16px}.modal{border-radius:18px;max-height:82dvh}}
-</style>
+
+.home-page{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+.home-hero{padding:clamp(42px,7vh,76px) 0 28px}
+.home-hero h2{font-size:clamp(27px,6vw,38px);letter-spacing:.02em}
+.home-hero p{max-width:34em}
+.home-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:8px 0 42px}
+.home-shortcut{display:flex;min-width:0;min-height:104px;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px 8px;border:1px solid rgba(231,214,223,.55);border-radius:20px;background:rgba(255,252,253,.55);color:var(--ink);font-size:13px}
+.home-shortcut-icon{display:grid;width:36px;height:36px;place-items:center;color:var(--accent)}
+.home-shortcut-icon .i{width:25px;height:25px;stroke-width:1.65}
+.recent-section .section-heading{margin-bottom:14px}
+.recent-section .section-heading h3{margin-bottom:0}
+.recent-section .section-eyebrow{display:none}
+.recent-list{overflow:hidden;border-top:1px solid rgba(231,214,223,.72)}
+.recent-item{display:flex;align-items:center;gap:14px;width:100%;min-width:0;padding:16px 4px;border:0;border-bottom:1px solid rgba(231,214,223,.62);border-radius:0;background:transparent;text-align:left;color:var(--ink)}
+.recent-avatar{width:48px;height:48px;flex:none;display:grid;place-items:center;border-radius:50%;background:rgba(246,235,241,.9);overflow:hidden}
+.recent-avatar .avatar{width:100%;height:100%;font-size:18px}
+.recent-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:5px}
+.recent-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:600}
+.recent-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sub);font-size:12px}
+.recent-item::after{content:none}
+.home-nav-symbol{display:grid;place-items:center}
+.home-nav-symbol .i{width:23px;height:23px;stroke-width:1.65}
+.home-nav-item.active .home-nav-symbol .i{stroke-width:2}
+.home-bottom-nav{bottom:calc(6px + env(safe-area-inset-bottom));padding:6px}
+.home-nav-item{min-height:52px}
+@media(max-width:520px){
+ .home-page{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+ .home-hero{padding:clamp(34px,6vh,52px) 0 24px}
+ .home-shortcuts{gap:8px;margin-bottom:32px}
+ .home-shortcut{min-height:88px;padding:12px 4px;border-radius:16px;font-size:12px}
+ .recent-item{gap:12px;padding:14px 2px}
+ .recent-avatar{width:42px;height:42px}
+}</style>
   <link rel="stylesheet" href="./group-chat.css">
 </head>
 <body>
@@ -598,7 +630,7 @@ const memoriesOf = (personId)=>cache.memories.filter(m=>m.personId===personId);
 const sessionsOf = (personId)=>cache.sessions.filter(s=>s.personId===personId)
   .sort((a,b)=> (b.updatedAt||"").localeCompare(a.updatedAt||""));
 
-const ICONS={user:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>',eye:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',audio:'<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>',mic:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>' ,menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'};
+const ICONS={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',message:'<path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H7l-4 2v-6A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/>',grid:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',user:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>',eye:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',audio:'<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>',mic:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>' ,menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'};
 function icon(n){return `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;}
 function avatar(n,img){return img?`<span class="avatar"><img src="${esc(img)}" alt=""></span>`:`<span class="avatar">${esc([...String(n)][0]||"?")}</span>`;}
 function latestSession(){ return [...cache.sessions].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]; }
@@ -643,72 +675,38 @@ function pickAvatar(who){
 }
 function newWindow(id){state.personId=id;createSession();}
 function viewWelcome(){
-  const recent=[...cache.sessions].sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||"")).slice(0,6);
+  const recent=[...cache.sessions].sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||"")).slice(0,3);
   const noIdentity=!cache.persons.length;
-  const noKey=cache.providers.length&&!cache.providers.some(p=>p.apiKey);
   return `
   <div class="home-page">
     <header class="home-topbar">
-      <button class="icon-btn home-menu" aria-label="打开导航" onclick="toggleDrawer()">${icon("menu")}</button>
+      <button class="icon-btn home-menu" aria-label="打开聊天列表" onclick="toggleDrawer()">${icon("menu")}</button>
       <div class="home-brand"><span class="brand-mark">H</span><span>HOMY<span class="brand-dot">.</span></span></div>
       <span class="spacer"></span>
     </header>
     <section class="home-hero">
       <div class="hero-kicker">YOUR AI WORKSPACE</div>
       <h2>把想法，交给对话。</h2>
-      <p>选择一个 AI 身份，继续已有对话，或开启新的思路。</p>
+      <p>继续已有对话，或开启新的思路。</p>
       <div class="hero-rule"><span></span><i></i><span></span></div>
     </section>
-    <section class="home-section setup-grid-section">
-      <div class="section-heading"><div><span class="section-eyebrow">WORKSPACE SETUP</span><h3>工作空间配置</h3></div></div>
-      <div class="setup-grid">
-        <button class="setup-card" onclick="goSettings('models')"><span class="setup-card-icon">${icon("gear")}</span><strong>语言模型</strong><small>API 连接、模型绑定与调用通道</small><span class="setup-card-link">管理模型　›</span></button>
-        <button class="setup-card" onclick="goSettings('voice')"><span class="setup-card-icon">${icon("audio")}</span><strong>语音回复</strong><small>MiniMax 语音合成与语音输入</small><span class="setup-card-link">配置语音　›</span></button>
-        <button class="setup-card" onclick="goSettings('visual')"><span class="setup-card-icon">${icon("eye")}</span><strong>图片与视觉</strong><small>图片识别与图片生成接口</small><span class="setup-card-link">配置图像　›</span></button>
-        <button class="setup-card" onclick="goMyPage()"><span class="setup-card-icon">${icon("user")}</span><strong>我的</strong><small>头像、昵称与个人资料</small><span class="setup-card-link">编辑资料　›</span></button>
-      </div>
+    <section class="home-section home-shortcuts">
+      <button class="home-shortcut" onclick="${noIdentity?"goSettings()":"toggleDrawer()"}"><span class="home-shortcut-icon">${icon("message")}</span><span>开始聊天</span></button>
+      <button class="home-shortcut" onclick="goSettings('models')"><span class="home-shortcut-icon">${icon("grid")}</span><span>模型管理</span></button>
+      <button class="home-shortcut" onclick="goMyPage()"><span class="home-shortcut-icon">${icon("user")}</span><span>我的资料</span></button>
     </section>
-    ${noIdentity?`
-      <section class="empty-setup">
-        <div class="empty-symbol">${icon("plus")}</div>
-        <h3>先建立你的 AI 工作空间</h3>
-        <p>添加 API 连接、模型和 AI 身份后，就可以开始聊天。</p>
-        <button class="btn btn-primary" onclick="goSettings()">配置 API 与模型</button>
-      </section>`:`
-      <section class="home-section">
-        <div class="section-heading"><div><span class="section-eyebrow">IDENTITIES</span><h3>选择 AI 身份</h3></div><span class="section-note">${cache.persons.length} 个身份</span></div>
-        <div class="identity-grid">
-          ${cache.persons.map((pn,i)=>{
-            const models=modelsOfPerson(pn).filter(modelReady);
-            const count=sessionsOf(pn.id).length;
-            return `<article class="identity-card">
-              <div class="identity-card-top"><span class="identity-avatar">${avatar(pn.name,pn.avatar)}</span><span class="identity-index">0${i+1}</span></div>
-              <div class="identity-name">${esc(pn.name)}</div>
-              <div class="identity-meta">${models.length?esc(models[0].name):"尚无可用模型"} · ${count} 个对话</div>
-              <button class="identity-start" onclick="newWindow('${pn.id}')">开启新对话 <span>↗</span></button>
-              <button class="identity-manage" onclick="openPerson('${pn.id}')">身份资料与长期记忆</button>
-            </article>`;
-          }).join("")}
-        </div>
-      </section>
-      <section class="home-section recent-section">
-        <div class="section-heading"><div><span class="section-eyebrow">RECENT ACTIVITY</span><h3>最近对话</h3></div><span class="section-note">${recent.length? "最近 "+recent.length+" 条":"暂无记录"}</span></div>
-        ${recent.length?`<div class="recent-list">${recent.map(w=>{
-          const pn=findById(cache.persons,w.personId);
-          return `<button class="recent-item" onclick="openChat('${w.id}')">
-            <span class="recent-avatar">${pn?avatar(pn.name,pn.avatar):"·"}</span>
-            <span class="recent-copy"><strong>${esc(w.title||"新窗口")}</strong><small>${esc(pn?pn.name:"AI 身份")} · ${fmtTime(w.updatedAt||w.createdAt)}</small></span>
-            <span class="recent-arrow">↗</span>
-          </button>`;
-        }).join("")}</div>`:`<div class="recent-empty">还没有聊天记录。选择上方的 AI 身份开始第一次对话。</div>`}
-      </section>`}
-    ${noKey?`<button class="setup-hint" onclick="goSettings()">检测到 API 连接尚未填写密钥，前往设置完成配置 <span>→</span></button>`:""}
-    <footer class="home-footer"><span>HOMY · AI WORKSPACE</span><span>PRIVATE BY DESIGN</span></footer>
+    <section class="home-section recent-section">
+      <div class="section-heading"><div><h3>最近对话</h3></div></div>
+      ${recent.length?`<div class="recent-list">${recent.map(w=>{
+        const pn=findById(cache.persons,w.personId);
+        return `<button class="recent-item" onclick="openChat('${w.id}')"><span class="recent-avatar">${pn?avatar(pn.name,pn.avatar):avatar("AI","")}</span><span class="recent-copy"><strong>${esc(w.title||"新窗口")}</strong><small>${esc(pn?pn.name:"AI 身份")} · ${fmtTime(w.updatedAt||w.createdAt)}</small></span></button>`;
+      }).join("")}</div>`:`<div class="recent-empty">还没有聊天记录。开始一段新对话吧。</div>`}
+    </section>
     <nav class="home-bottom-nav" aria-label="主导航">
-      <button class="home-nav-item active" aria-current="page" onclick="goTree()"><span class="home-nav-symbol">⌂</span><small>首页</small></button>
-      <button class="home-nav-item" onclick="openGroups()"><span class="home-nav-symbol">▦</span><small>群聊</small></button>
-      <button class="home-nav-item" onclick="goSettings('models')"><span class="home-nav-symbol">⚙</span><small>设置</small></button>
-      <button class="home-nav-item" onclick="goMyPage()"><span class="home-nav-symbol">○</span><small>我的</small></button>
+      <button class="home-nav-item active" aria-current="page" onclick="goTree()"><span class="home-nav-symbol">${icon("home")}</span><small>首页</small></button>
+      <button class="home-nav-item" onclick="toggleDrawer()"><span class="home-nav-symbol">${icon("message")}</span><small>聊天</small></button>
+      <button class="home-nav-item" onclick="goSettings('models')"><span class="home-nav-symbol">${icon("grid")}</span><small>工具</small></button>
+      <button class="home-nav-item" onclick="goMyPage()"><span class="home-nav-symbol">${icon("user")}</span><small>我的</small></button>
     </nav>
   </div>`;
 }
