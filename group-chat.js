@@ -186,27 +186,33 @@ function bindGroupChatInput(){
 }
 function handleGroupInput(){
  var input=document.getElementById("groupChatInput"),menu=document.getElementById("groupCommandMenu");if(!input||!menu)return;
- var value=input.value.trimStart(),token=value.split(/\s/)[0];
- if(value.startsWith("@")&&!value.includes(" ")){
-  var g=groupById(state.groupId),query=value.slice(1).toLowerCase();
+ var raw=input.value,at=raw.match(/(^|\\s)@([^\\s@]*)$/);
+ if(at){
+  var query=at[2].toLowerCase(),start=at.index+at[1].length,g=groupById(state.groupId);
   var people=(g?.members||[]).map(m=>findById(cache.persons,m.personId)).filter(p=>p&&(!query||p.name.toLowerCase().includes(query)));
-  if(!people.length){menu.classList.add("hidden");menu.innerHTML="";return;}
-  menu.innerHTML=people.map(p=>'<button type="button" data-mention="'+esc(p.id)+'">'+avatar(p.name,p.avatar)+'<span>'+esc(p.name)+'</span></button>').join("");
-  menu.classList.remove("hidden");
-  menu.querySelectorAll("[data-mention]").forEach(btn=>btn.addEventListener("click",()=>{var p=findById(cache.persons,btn.dataset.mention);if(!p)return;input.value="@"+p.name+" ";menu.classList.add("hidden");input.focus();}));
-  return;
+  if(people.length){
+   menu.innerHTML=people.map(p=>'<button type="button" data-mention="'+esc(p.id)+'">'+avatar(p.name,p.avatar)+'<span>'+esc(p.name)+'</span></button>').join("");
+   menu.classList.remove("hidden");
+   menu.querySelectorAll("[data-mention]").forEach(btn=>btn.addEventListener("click",()=>{
+    var p=findById(cache.persons,btn.dataset.mention);if(!p)return;
+    input.value=raw.slice(0,start)+"@"+p.name+" ";menu.classList.add("hidden");menu.innerHTML="";input.focus();
+    input.setSelectionRange(input.value.length,input.value.length);
+   }));
+   return;
+  }
  }
+ var value=raw.trimStart(),token=value.split(/\\s/)[0];
  if(!value.startsWith("/")||value.includes(" ")){menu.classList.add("hidden");menu.innerHTML="";return;}
- var matches=groupCommands().filter(x=>x[0].startsWith(token.toLowerCase()));if(!matches.length){menu.classList.add("hidden");return;}
+ var matches=groupCommands().filter(x=>x[0].startsWith(token.toLowerCase()));if(!matches.length){menu.classList.add("hidden");menu.innerHTML="";return;}
  menu.innerHTML=matches.map(x=>'<button type="button" data-command="'+x[0]+'"><code>'+x[0]+'</code><span>'+x[1]+'</span></button>').join("");menu.classList.remove("hidden");
- menu.querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{input.value=btn.dataset.command+" ";menu.classList.add("hidden");input.focus();}));
+ menu.querySelectorAll("[data-command]").forEach(btn=>btn.addEventListener("click",()=>{input.value=btn.dataset.command+" ";menu.classList.add("hidden");menu.innerHTML="";input.focus();}));
 }
 function groupFindPerson(text,g){var key=String(text||"").replace(/^@/,"").trim().toLowerCase();return (g.members||[]).map(m=>findById(cache.persons,m.personId)).find(p=>p&&(p.name.toLowerCase()===key||p.id===key||p.name.toLowerCase().includes(key)));}
 async function sendGroupMessage(){
  var input=document.getElementById("groupChatInput"),g=groupById(state.groupId);if(!input||!g)return;var text=input.value.trim();if(!text)return;
  if(g.stopCommand&&text===g.stopCommand){input.value="";stopGroupTurn();return;}
  if(text.startsWith("/")){input.value="";document.getElementById("groupCommandMenu").classList.add("hidden");await executeGroupCommand(text);return;}
- var target=null,mention=text.match(/^@([^\s]+)\s*/);if(mention){var p=groupFindPerson(mention[1],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;text=text.slice(mention[0].length).trim();}
+ var target=null,mention=text.match(/(^|\\s)@([^\\s@]+)\\s*/);if(mention){var p=groupFindPerson(mention[2],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;text=(text.slice(0,mention.index)+mention[1]+text.slice(mention.index+mention[0].length)).trim();}
  var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
  var msg={id:uid("gm"),groupId:g.id,role:narrator?"narrator":"user",includeInContext:narrator?g.narratorInContext!==false:true,content:text,createdAt:nowISO(),turnId:state.groupTurnId+1};
  await dbPut("groupMessages",msg);state.groupMessages.push(msg);input.value="";state.groupComposerMode="message";
