@@ -1833,7 +1833,8 @@ async function generateSessionSummary(){
   const session=findById(cache.sessions,state.sessionId),person=session&&findById(cache.persons,session.personId);
   const model=session&&sessionModel(session,person),channel=activeChannelOf(model),provider=findById(cache.providers,channel?channel.providerId:model?.providerId);
   const status=document.getElementById("summaryStatus"),field=document.getElementById("sessionSummaryText");
-  if(!session||!model||!provider?.apiKey||!provider?.baseUrl){toast("当前会话模型或 API 通道未配置完整");return;}
+  if(!session||!model||!modelReady(model)||!provider?.apiKey||!provider?.baseUrl){toast("当前会话模型或 API 通道未配置完整");return;}
+  if(await getMonthSpend()>=(Number(cache.settings.monthlyCap)||0)){toast("本月费用已达到上限，暂不生成摘要");return;}
   const count=Math.max(1,Math.min(50,Number(cache.settings.recentMessageCount)||20));
   const old=(state.chatMessages||[]).filter(x=>x.role==="user"||x.role==="assistant").slice(0,-count);
   if(!old.length){toast("当前还没有超出最近消息窗口的旧记录");return;}
@@ -1846,6 +1847,11 @@ async function generateSessionSummary(){
     if(!response.ok)throw new Error("HTTP "+response.status+"："+(await response.text()).slice(0,260));
     const result=await readProviderCompletion(response,request.protocol);
     if(!result.content?.trim())throw new Error("模型没有返回摘要文本");
+    const usage=result.usage||{},promptTokens=Number(usage.prompt_tokens)||0,completionTokens=Number(usage.completion_tokens)||0,cachedTokens=Number(usage.prompt_cache_hit_tokens)||0;
+    const cost=(promptTokens*(Number(model.priceInput)||0)+completionTokens*(Number(model.priceOutput)||0))/1e6;
+    const fresh=await dbGet("sessions",session.id),events=Array.isArray(fresh.summaryEvents)?fresh.summaryEvents.slice():[];
+    events.push({id:uid("ue"),createdAt:nowISO(),promptTokens,completionTokens,totalTokens:Number(usage.total_tokens)||(promptTokens+completionTokens),cachedTokens,cost,modelId:model.id,providerId:provider.id});
+    await dbPut("sessions",Object.assign({},fresh,{summaryEvents:events,updatedAt:nowISO()}));await loadCache();
     field.value=result.content.trim();if(status)status.textContent="摘要已生成，保存后才会用于后续对话";
   }catch(error){if(status)status.textContent="生成失败："+(error.message||String(error)).slice(0,160);}
 }
@@ -1909,7 +1915,7 @@ async function getMonthSpend(){
     request.onsuccess=()=>{const cursor=request.result;if(!cursor){resolve(total);return;}total+=Number(cursor.value.cost)||0;cursor.continue();};
     request.onerror=()=>reject(request.error||new Error("费用统计读取失败"));
   });
-  const sums=await Promise.all([sumStore("messages"),sumStore("groupMessages")]);return sums[0]+sums[1];
+  const sums=await Promise.all([sumStore("messages"),sumStore("groupMessages")]);const sessions=await idbReq(tx("sessions").getAll());const summarySpend=sessions.flatMap(x=>x.summaryEvents||[]).filter(x=>x.createdAt>=start&&x.createdAt<end).reduce((n,x)=>n+(Number(x.cost)||0),0);return sums[0]+sums[1]+summarySpend;
 }
 async function getMonthTokenUsage(){
   const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),1).toISOString(),end=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString();
@@ -1922,7 +1928,8 @@ async function getMonthTokenUsage(){
     };request.onerror=()=>reject(request.error);
   });
   const parts=await Promise.all([readStore("messages"),readStore("groupMessages")]);
-  return parts.reduce((sum,item)=>({input:sum.input+item.input,output:sum.output+item.output,tokens:sum.tokens+item.tokens,cached:sum.cached+item.cached}),{input:0,output:0,tokens:0,cached:0});
+  const sessions=await idbReq(tx("sessions").getAll());const summary=sessions.flatMap(x=>x.summaryEvents||[]).filter(x=>x.createdAt>=start&&x.createdAt<end).reduce((sum,x)=>({input:sum.input+(Number(x.promptTokens)||0),output:sum.output+(Number(x.completionTokens)||0),tokens:sum.tokens+(Number(x.totalTokens)||0),cached:sum.cached+(Number(x.cachedTokens)||0)}),{input:0,output:0,tokens:0,cached:0});
+  return parts.concat([summary]).reduce((sum,item)=>({input:sum.input+item.input,output:sum.output+item.output,tokens:sum.tokens+item.tokens,cached:sum.cached+item.cached}),{input:0,output:0,tokens:0,cached:0});
 }
 async function refreshMonthPill(){
   const pill=document.getElementById("monthPill");
