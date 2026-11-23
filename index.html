@@ -796,7 +796,7 @@ function providerNode(p){
     <div class="node-row">
       <button class="caret ${open?"open":""}" onclick="toggleNode('${p.id}')">${icon("chev")}</button>
       <strong>${esc(p.name)}</strong>
-      <span class="badge gray">${models.length} 个模型</span>
+      <span class="badge gray">${models.length} 个模型</span><span class="badge">${p.protocol==="anthropic-messages"?"Anthropic":p.protocol==="gemini-generate"?"Gemini":"OpenAI 兼容"}</span>
       <span class="spacer"></span>
       <span class="tree-actions">
         <button class="btn" onclick="modelForm('${p.id}')">添加模型</button>
@@ -1070,7 +1070,7 @@ function providerForm(id){
       <div class="hint" id="fPvTestStatus">保存前可以先测试连接。</div>`,
     actions:[
       {label:"取消",onClick:closeModal},
-      {label:"测试连接",onClick:testProviderConnection},
+      {label:"测试普通请求",onClick:()=>testProviderConnection(false)},{label:"测试流式请求",onClick:()=>testProviderConnection(true)},
       {label:"保存",primary:true,onClick:async()=>{
         const name=document.getElementById("fPvName").value.trim(),baseUrl=document.getElementById("fPvUrl").value.trim();
         const keyInput=document.getElementById("fPvKey").value.trim(),apiKey=keyInput||p.apiKey||"";
@@ -1111,7 +1111,7 @@ function modelDetail(id){
   const owner=personOfModel(id),channels=channelsOfModel(m),active=activeChannelOf(m);
   const identityOptions=cache.persons.map(p=>'<option value="'+esc(p.id)+'" '+(owner&&owner.id===p.id?'selected':'')+'>'+esc(p.name)+'</option>').join('');
   const channelOptions=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId);return '<option value="'+esc(ch.id)+'" '+(active&&active.id===ch.id?'selected':'')+' '+(ch.enabled===false?'disabled':'')+'>'+esc(pv?pv.name:'连接已不存在')+' · '+esc(ch.remoteModelId||m.name)+(ch.enabled===false?'（已停用）':'')+'</option>';}).join('');
-  const channelRows=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId);return '<div class="mem-item"><div class="mem-head"><strong>'+esc(pv?pv.name:'连接已不存在')+'</strong><span class="spacer"></span><label class="switch"><input type="checkbox" id="channelEnabled_'+esc(ch.id)+'" '+(ch.enabled!==false?'checked':'')+'> 启用</label></div><div class="muted small">实际模型 ID：'+esc(ch.remoteModelId||m.name)+'</div></div>';}).join('');
+  const channelRows=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId),protocol=pv?.protocol==="anthropic-messages"?"Anthropic Messages":pv?.protocol==="gemini-generate"?"Gemini generateContent":"OpenAI Chat Completions";return '<div class="mem-item"><div class="mem-head"><strong>'+esc(pv?pv.name:'连接已不存在')+'</strong><span class="spacer"></span><label class="switch"><input type="checkbox" id="channelEnabled_'+esc(ch.id)+'" '+(ch.enabled!==false?'checked':'')+'> 启用</label></div><div class="muted small">协议：'+protocol+' · 实际模型 ID：'+esc(ch.remoteModelId||m.name)+'</div><div class="muted small">地址：'+esc(pv?.baseUrl||"连接已不存在")+'</div></div>';}).join('');
   modal({title:"模型详情",body:
     '<div class="field"><label>官方模型名称</label><strong>'+esc(m.name)+'</strong><div class="hint">平台内部模型名称；每条调用通道可使用不同的实际模型 ID。</div></div>'+
     '<div class="field"><label>所属 AI 身份</label><select id="detailIdentity"><option value="">暂不绑定</option>'+identityOptions+'</select></div>'+
@@ -1843,16 +1843,17 @@ async function readProviderCompletion(resp,protocol,onDelta=()=>{}){
   }
   throw new Error("不支持的 API 协议："+protocol);
 }
-async function testProviderConnection(){
+async function testProviderConnection(streamMode=false){
   const name=document.getElementById("fPvName").value.trim(),baseUrl=document.getElementById("fPvUrl").value.trim();
   const apiKey=document.getElementById("fPvKey").value.trim()||document.getElementById("fPvKey").dataset.existing||"";
   const protocol=document.getElementById("fPvProtocol").value,modelId=document.getElementById("fPvTestModel").value.trim();
   const status=document.getElementById("fPvTestStatus");
+  if(streamMode&&protocol!=="openai-chat"){status.textContent="当前协议暂不支持流式测试，请使用普通请求测试。";return;}
   if(!baseUrl||!apiKey||!modelId){toast("请填写接口地址、API Key 和测试模型 ID");return;}
   status.textContent="正在测试连接……";
   const provider={name,baseUrl,apiKey,protocol};
   try{
-    const req=buildProviderRequest(provider,modelId,[{role:"user",content:"Reply with only OK."}],{stream:false});
+    const req=buildProviderRequest(provider,modelId,[{role:"user",content:"Reply with only OK."}],{stream:!!streamMode});
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
     let resp;
     try{resp=await fetch(req.endpoint,{method:"POST",headers:req.headers,body:JSON.stringify(req.body),signal:controller.signal});}
@@ -1860,8 +1861,8 @@ async function testProviderConnection(){
     if(!resp.ok){const detail=(await resp.text()).slice(0,320);throw new Error("HTTP "+resp.status+"："+detail);}
     const result=await readProviderCompletion(resp,req.protocol);
     if(!result.content&&!result.reasoning)throw new Error("接口有响应，但没有返回可识别的文本内容。");
-    status.textContent="连接成功 · 已收到模型回复";
-    toast("连接测试成功："+String(result.content||result.reasoning).slice(0,50));
+    status.textContent=(streamMode?"流式请求成功":"普通请求成功")+" · 已收到模型回复";
+    toast((streamMode?"流式":"普通")+"连接测试成功："+String(result.content||result.reasoning).slice(0,50));
   }catch(err){
     status.textContent="测试失败 · "+(err.name==="AbortError"?"请求超时":(err.message||String(err))).slice(0,180);
   }
