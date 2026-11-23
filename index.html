@@ -514,7 +514,7 @@ async function recordUsageEvent(meta){
   const cachedTokens=Number(usage.prompt_cache_hit_tokens??usage.cached_tokens??usage.input_cached_tokens)||0;
   const model=findById(cache.models,meta.modelId);
   const rec={id:uid("ue"),createdAt:nowISO(),sessionId:meta.sessionId||null,groupId:meta.groupId||null,personId:meta.personId||null,modelId:meta.modelId||null,providerId:meta.providerId||null,channelId:meta.channelId||null,remoteModelId:meta.remoteModelId||null,promptTokens,completionTokens,totalTokens:Number(usage.total_tokens)||(promptTokens+completionTokens),cachedTokens,cost:model?calculateRequestCost(model,usage):0};
-  await dbPut("usageEvents",rec);return rec;
+  try{await dbPut("usageEvents",rec);return rec;}catch(error){return Object.assign({},rec,{id:null,recordError:true});}
 }
 async function dbAll(store){ return idbReq(tx(store).getAll()); }
 async function dbBulkPut(store,records){
