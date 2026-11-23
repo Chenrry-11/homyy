@@ -1877,11 +1877,9 @@ async function generateSessionSummary(){
     if(!response.ok)throw new Error("HTTP "+response.status+"："+(await response.text()).slice(0,260));
     const result=await readProviderCompletion(response,request.protocol);
     if(!result.content?.trim())throw new Error("模型没有返回摘要文本");
-    const usage=result.usage||{},promptTokens=Number(usage.prompt_tokens)||0,completionTokens=Number(usage.completion_tokens)||0,cachedTokens=Number(usage.prompt_cache_hit_tokens)||0;
-    const cost=calculateRequestCost(model,usage);
-    const fresh=await dbGet("sessions",session.id),events=Array.isArray(fresh.summaryEvents)?fresh.summaryEvents.slice():[];
-    events.push({id:uid("ue"),createdAt:nowISO(),promptTokens,completionTokens,totalTokens:Number(usage.total_tokens)||(promptTokens+completionTokens),cachedTokens,cost,modelId:model.id,providerId:provider.id});
-    await dbPut("sessions",Object.assign({},fresh,{summaryEvents:events,updatedAt:nowISO()}));await loadCache();
+    const usage=result.usage||{};
+    await recordUsageEvent({sessionId:session.id,personId:person.id,modelId:model.id,providerId:provider.id,usage});
+    await loadCache();
     field.value=result.content.trim();if(status)status.textContent="摘要已生成，保存后才会用于后续对话";
   }catch(error){if(status)status.textContent="生成失败："+(error.message||String(error)).slice(0,160);}
 }
@@ -2222,13 +2220,14 @@ async function sendMessage(existingUserId=null){
     const ct=Number(usage.completion_tokens)||0;
     const cached=Number(usage.prompt_cache_hit_tokens ?? usage.cached_tokens ?? usage.input_cached_tokens)||0;
     const cost=calculateRequestCost(m,usage);
+    const usageEvent=await recordUsageEvent({sessionId:session.id,personId:pn.id,modelId:m.id,providerId:pv.id,usage});
     if(!aiMsg.content && !aiMsg.reasoning){
       state.chatMessages=state.chatMessages.filter(x=>x.id!==aiMsg.id);
       addErrorNote("接口连接成功，但没有返回可显示的正文或思考摘要。请确认该模型支持 OpenAI 兼容的流式聊天接口。");
       return;
     }
     Object.assign(aiMsg,{promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),
-      cachedTokens:cached,cost,streaming:false});
+      cachedTokens:cached,cost,usageEventId:usageEvent.id,streaming:false});
     await dbPut("messages",aiMsg); saved=true;
     session.updatedAt=nowISO(); await dbPut("sessions",session);
   }catch(err){
