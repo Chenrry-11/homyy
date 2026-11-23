@@ -110,7 +110,7 @@ function bindGroupMessageEvents(list){
 function openGroupMessageActions(id){
  var m=(state.groupMessages||[]).find(x=>x.id===id);if(!m||state.groupRunning)return;
  var actions=[];
- if(m.role==="user")actions.push({label:"编辑并重新回答",onClick:()=>editGroupUserMessage(id)});
+ if(m.role==="user"){actions.push({label:"重新发送",onClick:()=>resendGroupUserMessage(id)});actions.push({label:"编辑并重新回答",onClick:()=>editGroupUserMessage(id)});}
  if(m.role==="assistant")actions.push({label:"重新生成",onClick:()=>regenerateGroupMessage(id)});
  actions.push({label:"复制",onClick:async()=>{closeModal();try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(m.content||"");else{var box=document.createElement("textarea");box.value=m.content||"";document.body.appendChild(box);box.select();document.execCommand("copy");box.remove();}toast("已复制");}catch(e){toast("复制失败，请手动选择文字");}}});
  actions.push({label:"删除消息",danger:true,onClick:()=>deleteGroupMessage(id)},{label:"关闭",onClick:closeModal});
@@ -119,6 +119,13 @@ function openGroupMessageActions(id){
 async function deleteGroupMessage(id){
  var m=(state.groupMessages||[]).find(x=>x.id===id);if(!m)return;
  await dbDelete("groupMessages",id);state.groupMessages=state.groupMessages.filter(x=>x.id!==id);closeModal();renderGroupMessages();toast("已删除这条群聊消息");
+}
+async function resendGroupUserMessage(id){
+ var index=state.groupMessages.findIndex(x=>x.id===id),m=state.groupMessages[index];if(!m||m.role!=="user")return;
+ var tail=state.groupMessages.slice(index+1);
+ for(var item of tail)await dbDelete("groupMessages",item.id);
+ state.groupMessages=state.groupMessages.slice(0,index+1);closeModal();renderGroupMessages({forceBottom:true});
+ await runGroupTurn(groupById(state.groupId),m);
 }
 function editGroupUserMessage(id){
  var m=(state.groupMessages||[]).find(x=>x.id===id);if(!m||m.role!=="user")return;
