@@ -259,7 +259,7 @@ async function requestGroupCandidate(g,member,turn){
  var messages=[{role:"system",content:system},{role:"user",content:"【群聊公共记录】\n"+groupTranscript()+"\n\n请判断是否值得参与并按规则回复。"}];
  var controller=new AbortController();state.groupControllers.set(p.id,controller);
  var supports=modelSupportsThinking(model,channel,provider),thinking=state.groupThinkingOverride===null?member.thinkingEnabled!==false:state.groupThinkingOverride;
- var request=buildProviderRequest(provider,channel?.remoteModelId||model.name,messages,{stream:(provider.protocol==="openai-chat"||provider.protocol==="openai-responses")&&provider.streamEnabled!==false,thinking:thinking,thinkingSupport:supports});
+ var request=buildProviderRequest(provider,channel?.remoteModelId||model.name,messages,{stream:["openai-chat","openai-responses","anthropic-messages","gemini-generate","gemini-interactions"].includes(provider.protocol)&&provider.streamEnabled!==false,thinking:thinking,thinkingSupport:supports});
  try{
   var resp=await fetch(request.endpoint,{method:"POST",headers:request.headers,body:JSON.stringify(request.body),signal:controller.signal});
   if(!resp.ok)throw new Error(p.name+" 接口错误 HTTP "+resp.status+"："+(await resp.text()).slice(0,240));
