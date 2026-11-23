@@ -2067,8 +2067,12 @@ async function readResponsesCompletion(resp,onDelta=()=>{}){
 }
 
 async function readProviderCompletion(resp,protocol,onDelta=()=>{}){
+  const contentType=(resp.headers.get("content-type")||"").toLowerCase();
   if(protocol==="openai-chat")return readStreamingCompletion(resp,onDelta);
   if(protocol==="openai-responses")return readResponsesCompletion(resp,onDelta);
+  if(contentType.includes("text/event-stream")&&protocol==="anthropic-messages")return readAnthropicStreamCompletion(resp,onDelta);
+  if(contentType.includes("text/event-stream")&&protocol==="gemini-generate")return readGeminiStreamCompletion(resp,onDelta);
+  if(contentType.includes("text/event-stream")&&protocol==="gemini-interactions")return readGeminiInteractionsStreamCompletion(resp,onDelta);
   const data=await resp.json();
   if(protocol==="anthropic-messages"){
     const blocks=Array.isArray(data.content)?data.content:[];
@@ -2156,6 +2160,53 @@ async function readStreamingCompletion(resp, onDelta){
   buffer+=decoder.decode();
   if(buffer.trim()) consumeLine(buffer);
   return {content,reasoning,usage,raw:null};
+}
+
+async function readSSEEvents(resp,onData){
+  const reader=resp.body.getReader(),decoder=new TextDecoder();let buffer="",dataLines=[];
+  const flush=()=>{if(!dataLines.length)return;const raw=dataLines.join("\n");dataLines=[];if(!raw||raw==="[DONE]")return;try{onData(JSON.parse(raw));}catch(error){if(error instanceof SyntaxError)return;throw error;}};
+  while(true){const part=await reader.read();if(part.done)break;buffer+=decoder.decode(part.value,{stream:true});const lines=buffer.split(/\r?\n/);buffer=lines.pop()||"";for(const line of lines){if(line.startsWith("data:"))dataLines.push(line.slice(5).replace(/^\s/,""));else if(line==="")flush();}}
+  buffer+=decoder.decode();if(buffer.trim().startsWith("data:"))dataLines.push(buffer.trim().slice(5).replace(/^\s/,""));flush();
+}
+async function readAnthropicStreamCompletion(resp,onDelta=()=>{}){
+  let content="",reasoning="",inputTokens=0,outputTokens=0,cachedTokens=0;
+  await readSSEEvents(resp,data=>{
+    if(data.type==="error")throw new Error(data.error?.message||"Anthropic 流式请求返回错误");
+    if(data.type==="message_start"){const usage=data.message?.usage||{};inputTokens=Number(usage.input_tokens)||inputTokens;cachedTokens=Number(usage.cache_read_input_tokens)||cachedTokens;}
+    if(data.type==="message_delta"){const usage=data.usage||{};outputTokens=Number(usage.output_tokens)||outputTokens;}
+    if(data.type==="content_block_delta"){const delta=data.delta||{},text=delta.text||"",think=delta.thinking||"";if(delta.type==="text_delta"&&text){content+=text;onDelta({content:text,reasoning:"",allContent:content,allReasoning:reasoning});}if(delta.type==="thinking_delta"&&think){reasoning+=think;onDelta({content:"",reasoning:think,allContent:content,allReasoning:reasoning});}}
+  });
+  const prompt=inputTokens+cachedTokens;return {content,reasoning,usage:{prompt_tokens:prompt,completion_tokens:outputTokens,total_tokens:prompt+outputTokens,prompt_cache_hit_tokens:cachedTokens},raw:null};
+}
+async function readGeminiStreamCompletion(resp,onDelta=()=>{}){
+  let content="",reasoning="",usage={};
+  await readSSEEvents(resp,data=>{
+    const metadata=data.usageMetadata||data.usage_metadata;if(metadata)usage=metadata;
+    const parts=data.candidates?.[0]?.content?.parts||[];
+    for(const part of parts){const text=typeof part.text==="string"?part.text:"";if(!text)continue;if(part.thought){reasoning+=text;onDelta({content:"",reasoning:text,allContent:content,allReasoning:reasoning});}else{content+=text;onDelta({content:text,reasoning:"",allContent:content,allReasoning:reasoning});}}
+  });
+  const pt=Number(usage.promptTokenCount)||0,ct=Number(usage.candidatesTokenCount)||0,cached=Number(usage.cachedContentTokenCount)||0;
+  return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:Number(usage.totalTokenCount)||(pt+ct),prompt_cache_hit_tokens:cached},raw:null};
+}
+async function readGeminiInteractionsStreamCompletion(resp,onDelta=()=>{}){
+  let content="",reasoning="",usage={},activeStepType="";
+  await readSSEEvents(resp,data=>{
+    const eventType=data.event_type||data.type||"";
+    if(eventType==="error")throw new Error(data.error?.message||"Gemini Interactions 流式请求返回错误");
+    if(eventType==="step.start")activeStepType=data.step?.type||data.step_type||"";
+    if(eventType==="step.delta"){
+      const delta=data.delta||{},text=typeof delta.text==="string"?delta.text:"";
+      const isThought=activeStepType==="thought"||delta.type==="thought"||delta.type==="thinking";
+      if(text&&isThought){reasoning+=text;onDelta({content:"",reasoning:text,allContent:content,allReasoning:reasoning});}
+      else if(text){content+=text;onDelta({content:text,reasoning:"",allContent:content,allReasoning:reasoning});}
+    }
+    if(eventType==="interaction.completed"){
+      const interaction=data.interaction||data,rawUsage=interaction.usage||data.usage||{};usage=rawUsage;
+      if(!content&&Array.isArray(interaction.steps)){for(const step of interaction.steps){const text=Array.isArray(step.content)?step.content.map(x=>x.text||"").join(""):String(step.content||"");if(step.type==="thought")reasoning+=text;else if(step.type==="model_output")content+=text;}}
+    }
+  });
+  const pt=Number(usage.total_input_tokens||usage.input_tokens||usage.prompt_tokens)||0,ct=Number(usage.total_output_tokens||usage.output_tokens||usage.completion_tokens)||0,cached=Number(usage.cached_input_tokens||usage.cached_tokens)||0;
+  return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:Number(usage.total_tokens)||(pt+ct),prompt_cache_hit_tokens:cached},raw:null};
 }
 
 async function sendMessage(existingUserId=null){
