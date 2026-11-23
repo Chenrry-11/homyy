@@ -167,8 +167,9 @@ function viewGroupChat(){
 async function changeGroupMode(mode){var g=groupById(state.groupId);if(!g)return;await dbPut("groups",Object.assign({},g,{mode:mode,updatedAt:nowISO()}));await loadCache();render();}
 function cycleGroupThinkingOverride(){state.groupThinkingOverride=state.groupThinkingOverride===null?true:state.groupThinkingOverride===true?false:null;toast(state.groupThinkingOverride===null?"本轮思考：跟随成员默认设置":state.groupThinkingOverride?"本轮思考：强制开启（仅支持模型）":"本轮思考：强制关闭");}
 async function toggleGroupPause(){var g=groupById(state.groupId);if(!g)return;var pause=!g.autoReplyPaused;await dbPut("groups",Object.assign({},g,{autoReplyPaused:pause,updatedAt:nowISO()}));await loadCache();if(pause)stopGroupTurn(true);render();}
-function openGroupComposerMenu(){modal({title:"群聊输入",body:'<p class="muted small">选择这条消息的发送形式。</p>',actions:[
+function openGroupComposerMenu(){var g=groupById(state.groupId);modal({title:"群聊输入",body:'<p class="muted small">选择这条消息的发送形式。</p><p class="muted small">旁白当前'+(g?.narratorInContext===false?"不会":"会")+'进入 AI 后续上下文。</p>',actions:[
  {label:state.groupComposerMode==="narrator"?"切回普通消息":"发布旁白",primary:true,onClick:()=>{state.groupComposerMode=state.groupComposerMode==="narrator"?"message":"narrator";closeModal();render();document.getElementById("groupChatInput")?.focus();}},
+ {label:g?.narratorInContext===false?"让旁白进入上下文":"旁白不进入上下文",onClick:async()=>{await dbPut("groups",Object.assign({},g,{narratorInContext:g?.narratorInContext===false,updatedAt:nowISO()}));closeModal();await loadCache();render();}},
  {label:"添加群成员",onClick:()=>{closeModal();addGroupMembersDialogFromChat();}},{label:"取消",onClick:closeModal}
 ]});}
 function groupCommands(){return [["/chat","切换闲聊模式"],["/task","切换协作讨论模式"],["/solo","只与指定 AI 交流"],["/to","指定某个 AI 回答"],["/think","设置本轮深度思考"],["/stop","停止全体或指定 AI"],["/pause","暂停自动接话"],["/continue","恢复自动接话"],["/add","添加群成员"],["/remove","移除群成员"],["/help","查看群聊命令"]];}
@@ -199,7 +200,7 @@ async function sendGroupMessage(){
  if(text.startsWith("/")){input.value="";document.getElementById("groupCommandMenu").classList.add("hidden");await executeGroupCommand(text);return;}
  var target=null,mention=text.match(/^@([^\s]+)\s*/);if(mention){var p=groupFindPerson(mention[1],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;text=text.slice(mention[0].length).trim();}
  var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
- var msg={id:uid("gm"),groupId:g.id,role:narrator?"narrator":"user",content:text,createdAt:nowISO(),turnId:state.groupTurnId+1};
+ var msg={id:uid("gm"),groupId:g.id,role:narrator?"narrator":"user",includeInContext:narrator?g.narratorInContext!==false:true,content:text,createdAt:nowISO(),turnId:state.groupTurnId+1};
  await dbPut("groupMessages",msg);state.groupMessages.push(msg);input.value="";state.groupComposerMode="message";
  var mode=document.getElementById("groupComposerMode");if(mode)mode.textContent="";input.placeholder="发消息给群聊……";renderGroupMessages({forceBottom:true});
  await dbPut("groups",Object.assign({},g,{updatedAt:nowISO()}));await loadCache();if(!narrator)await runGroupTurn(groupById(g.id),msg,target);
@@ -222,7 +223,7 @@ function stopGroupMember(id){state.groupStoppedMembers.add(id);var c=state.group
 function stopGroupTurn(silent){
  state.groupTurnId++;for(var c of state.groupControllers.values())try{c.abort();}catch(e){}state.groupControllers.clear();state.groupStoppedMembers.clear();state.groupRunning=false;state.groupStatus="已停止本轮发言";if(!silent)toast("已停止群聊中的全部 AI");renderGroupStatus();
 }
-function groupTranscript(){return (state.groupMessages||[]).filter(m=>["user","narrator","assistant"].includes(m.role)).slice(-30).map(m=>{if(m.role==="user")return "用户："+m.content;if(m.role==="narrator")return "旁白（用户发布的第三方叙述/指令）："+m.content;var p=findById(cache.persons,m.personId);return (p?p.name:"AI")+"："+m.content;}).join("\n");}
+function groupTranscript(){return (state.groupMessages||[]).filter(m=>m.role==="user"||m.role==="assistant"||(m.role==="narrator"&&m.includeInContext!==false)).slice(-30).map(m=>{if(m.role==="user")return "用户："+m.content;if(m.role==="narrator")return "旁白（用户发布的第三方叙述/指令）："+m.content;var p=findById(cache.persons,m.personId);return (p?p.name:"AI")+"："+m.content;}).join("\n");}
 async function requestGroupCandidate(g,member,turn){
  var p=findById(cache.persons,member.personId);if(!p)return null;var model=findById(cache.models,member.modelId||p.modelId||(p.modelIds||[])[0]);if(!model||!modelReady(model))throw new Error((p.name||"成员")+"没有可用模型");
  var channel=activeChannelOf(model),provider=findById(cache.providers,channel?channel.providerId:model.providerId);if(!provider?.apiKey||!provider?.baseUrl)throw new Error((p.name||"成员")+"的 API 连接尚未配置完整");
