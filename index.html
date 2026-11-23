@@ -178,6 +178,91 @@ input,textarea,select,button{caret-color:#bd829b}
 .win-line{display:flex;align-items:center}
 .win-line .win-row{flex:1;min-width:0}
 .sec{padding:0 8px}
+
+/* HOMY workspace redesign: responsive home + identity drawer */
+:root{--bg:#fbf5f7;--card:rgba(255,255,255,.78);--ink:#493943;--sub:#897781;--line:#eee1e7;--hover:#f6eaf0;--accent:#bd829b;--accent-soft:#f6e8ee;--r:18px;--r-in:12px}
+html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
+.shell{min-height:100dvh;height:100dvh;background:radial-gradient(ellipse at 72% 4%,rgba(237,211,224,.38),transparent 36%),linear-gradient(160deg,#fffdfd 0%,#fbf5f7 62%,#f7edf2 100%)}
+.side{background:rgba(255,255,255,.78);backdrop-filter:blur(24px);border-right:1px solid rgba(222,199,211,.55)}
+.drawer-shell{height:100%;display:flex;flex-direction:column;padding:18px 14px 12px}
+.drawer-brand,.home-brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:750;letter-spacing:.14em;color:#493943}
+.brand-mark{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;background:linear-gradient(145deg,#f4e0e9,#e7cbd9);font-family:Georgia,serif;font-size:17px;letter-spacing:0;color:#684a5a}
+.side-head{padding:4px 2px 18px}
+.drawer-close{margin-left:auto}
+.drawer-new{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;height:46px;border-radius:14px;background:#bd829b;color:#fff;font-size:14px;font-weight:600;box-shadow:0 7px 18px rgba(189,130,155,.18)}
+.drawer-new .i{width:18px;height:18px}
+.side-list{padding:20px 0;overflow:auto}
+.drawer-label{padding:0 10px 10px;color:#a18d97;font-size:10px;font-weight:700;letter-spacing:.16em}
+.drawer-identity{margin-bottom:8px}
+.drawer-identity-head{display:flex;align-items:center;gap:4px;padding:4px;border-radius:14px}
+.drawer-identity-head:has(+.drawer-sessions .active){background:#fbf2f6}
+.drawer-identity-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-align:left;padding:6px}
+.drawer-avatar .avatar{width:34px;height:34px}
+.drawer-identity-copy{display:flex;flex-direction:column;min-width:0;gap:2px}
+.drawer-identity-copy strong{font-size:14px;font-weight:650}
+.drawer-identity-copy small{font-size:11px;color:#9a8791;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-count{margin-left:auto;color:#a18d97;font-size:11px;font-variant-numeric:tabular-nums}
+.drawer-add{width:30px;height:30px}
+.drawer-sessions{margin:2px 0 10px 49px;padding-left:11px;border-left:1px solid #eadbe2}
+.drawer-session-line{display:flex;align-items:center;gap:2px}
+.drawer-session{display:flex;align-items:center;gap:8px;min-width:0;flex:1;padding:8px 6px;text-align:left;border-radius:9px;color:#87747f;font-size:12px}
+.drawer-session span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-session.active{background:#f7eaf0;color:#694b5b;font-weight:600}
+.session-mark{width:5px;height:5px;border-radius:50%;background:#d9c4cf;flex:none}
+.drawer-session.active .session-mark{background:#bd829b}
+.session-edit{width:26px;height:26px;opacity:.6}
+.drawer-no-session{padding:6px;color:#b09da7;font-size:11px}
+.side-foot{padding:12px 2px 4px;border-top:1px solid #eee1e7}
+.drawer-user-label{flex:1;color:#8d7b85;font-size:12px}
+.home-page{width:100%;max-width:1120px;min-height:100%;margin:0 auto;padding:0 clamp(20px,5vw,64px) 22px;display:flex;flex-direction:column}
+.home-topbar{height:72px;display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(226,208,217,.5)}
+.home-menu{display:none}
+.home-brand{font-size:15px}
+.brand-dot{color:#bd829b}
+.home-settings{display:flex;align-items:center;gap:7px;color:#88747f;font-size:13px;padding:8px 10px;border-radius:10px}
+.home-settings .i{width:17px;height:17px}
+.home-settings:hover{background:#f7edf2}
+.home-hero{padding:clamp(34px,7vh,76px) 0 38px;text-align:center}
+.hero-kicker,.section-eyebrow{font-size:10px;font-weight:750;letter-spacing:.2em;color:#b18b9d}
+.home-hero h2{margin:12px 0 10px;font-family:var(--serif);font-size:clamp(27px,4vw,40px);font-weight:650;letter-spacing:.035em;color:#493943}
+.home-hero p{margin:0;color:#98858f;font-size:14px}
+.hero-rule{display:flex;align-items:center;justify-content:center;gap:8px;margin:23px auto 0;width:112px}
+.hero-rule span{height:1px;width:38px;background:#e6d3dc}.hero-rule i{width:5px;height:5px;border-radius:50%;background:#bd829b}
+.home-section{margin:0 0 34px}
+.section-heading{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:15px}
+.section-heading h3{margin-top:4px;font-size:19px;font-weight:650;letter-spacing:.02em}
+.section-note{font-size:11px;color:#a28f99;padding-bottom:3px}
+.identity-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.identity-card{position:relative;min-width:0;padding:18px 18px 15px;border:1px solid rgba(231,214,223,.85);border-radius:18px;background:rgba(255,255,255,.66);box-shadow:0 8px 28px rgba(105,70,88,.035);backdrop-filter:blur(12px);transition:transform .18s,box-shadow .18s}
+.identity-card:active{transform:scale(.99)}
+.identity-card-top{display:flex;align-items:center;justify-content:space-between}
+.identity-avatar .avatar{width:46px;height:46px;font-size:18px}
+.identity-index{font-family:Georgia,serif;font-size:12px;color:#c7aab8;letter-spacing:.08em}
+.identity-name{margin-top:17px;font-size:17px;font-weight:650}
+.identity-meta{margin-top:4px;color:#9a8791;font-size:11px;min-height:18px}
+.identity-start{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:15px;padding-top:12px;border-top:1px solid #f0e5eb;color:#936c80;font-size:12px;text-align:left}
+.identity-start span{font-size:16px}
+.recent-section{margin-top:2px}
+.recent-list{border-top:1px solid #eadde4}
+.recent-item{display:flex;align-items:center;gap:12px;width:100%;padding:13px 8px;border-bottom:1px solid #efe5ea;text-align:left}
+.recent-item:hover{background:rgba(255,255,255,.5)}
+.recent-avatar .avatar{width:34px;height:34px;font-size:14px}
+.recent-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.recent-copy strong{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recent-copy small{font-size:11px;color:#a08d97}
+.recent-arrow{color:#b999a8;font-size:16px;padding:0 8px}
+.recent-empty{padding:22px 10px;color:#a18e98;font-size:13px;text-align:center;border-bottom:1px solid #efe5ea}
+.empty-setup{max-width:460px;margin:0 auto 50px;padding:34px 24px;text-align:center;border:1px solid #ecdee5;border-radius:20px;background:rgba(255,255,255,.65)}
+.empty-symbol{width:44px;height:44px;display:grid;place-items:center;margin:0 auto 14px;border-radius:14px;background:#f6e8ee;color:#a36f88}
+.empty-setup h3{font-size:17px}.empty-setup p{margin:8px 0 18px;color:#9a8791;font-size:13px}
+.setup-hint{align-self:center;margin:0 0 20px;color:#9a7c8c;font-size:12px}
+.setup-hint span{padding-left:6px}
+.home-footer{display:flex;justify-content:space-between;margin-top:auto;padding-top:18px;border-top:1px solid rgba(226,208,217,.5);color:#b39eaa;font-size:9px;letter-spacing:.13em}
+@media(min-width:900px){.side{position:relative;inset:auto;transform:none;width:278px;flex:none;z-index:1;border-right:1px solid rgba(222,199,211,.55)}.shell.drawer .side{transform:none}.mask{display:none!important}.home-menu{display:none}}
+@media(max-width:899px){.side{position:fixed;top:0;bottom:0;left:0;width:min(330px,88vw);z-index:40;transform:translateX(-105%);transition:transform .22s;background:rgba(255,252,253,.97)}.shell.drawer .side{transform:translateX(0)}.mask{position:fixed;inset:0;z-index:30;background:rgba(63,43,54,.28);display:none}.shell.drawer .mask{display:block}.home-menu{display:inline-flex}.home-topbar{height:62px}.home-hero{padding:42px 0 30px}.identity-grid{grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}.identity-card{padding:15px 14px 13px}.identity-avatar .avatar{width:40px;height:40px}.identity-name{margin-top:13px;font-size:16px}}
+@media(max-width:420px){.home-page{padding:0 18px 18px}.home-hero h2{font-size:27px}.home-hero p{font-size:12px}.identity-grid{grid-template-columns:1fr 1fr}.identity-card{padding:13px 12px}.identity-meta{font-size:10px}.home-footer{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.identity-card,.side{transition:none}}
+
 </style>
 </head>
 <body>
@@ -422,14 +507,66 @@ function pickAvatar(who){
 }
 function newWindow(id){state.personId=id;createSession();}
 function viewWelcome(){
-  if(!cache.persons.length) return `<div class="welcome"><div class="w-box"><h2>开始聊天</h2><p class="muted">先在设置里添加厂商和模型。</p><div><button class="btn btn-primary" onclick="goSettings()">打开设置</button></div></div></div>`;
-  const nokey=cache.providers.find(p=>!p.apiKey);
-  if(nokey&&!cache.providers.some(p=>p.apiKey)) return `<div class="welcome"><div class="w-box"><h2>先连接 ${esc(nokey.name)}</h2><p class="muted">粘贴 API Key，只保存在这台设备的浏览器里。在 ${esc(nokey.name)} 开放平台的 API Keys 页面可以创建。</p>
-    <div class="input-row"><input id="wKey" type="password" placeholder="sk-..."><button class="btn btn-primary" onclick="saveWelcomeKey()">保存</button></div></div></div>`;
-  const pick=cache.persons.length>1?`<select id="wPerson">${cache.persons.map(pn=>`<option value="${pn.id}"${pn.id===state.personId?" selected":""}>${esc(pn.name)}</option>`).join("")}</select>`:`<input id="wPerson" type="hidden" value="${cache.persons[0].id}"><span>${esc(cache.persons[0].name)}</span>`;
-  return `<div class="welcome"><div class="w-box"><h2>开始聊天</h2>
-    <div class="input-row"><textarea id="wInput" rows="3" placeholder="输入第一句话"></textarea><button class="btn btn-primary" onclick="quickStart()">发送</button></div>
-    <div class="row muted w-pick"><span>对话对象</span>${pick}</div></div></div>`;
+  const recent=[...cache.sessions].sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||"")).slice(0,6);
+  const noIdentity=!cache.persons.length;
+  const noKey=cache.providers.length&&!cache.providers.some(p=>p.apiKey);
+  return `
+  <div class="home-page">
+    <header class="home-topbar">
+      <button class="icon-btn home-menu" aria-label="打开导航" onclick="toggleDrawer()">${icon("menu")}</button>
+      <div class="home-brand"><span class="brand-mark">H</span><span>HOMY<span class="brand-dot">.</span></span></div>
+      <span class="spacer"></span>
+      <button class="home-settings" onclick="goSettings()">${icon("gear")}<span>设置</span></button>
+    </header>
+    <section class="home-hero">
+      <div class="hero-kicker">YOUR AI WORKSPACE</div>
+      <h2>把想法，交给对话。</h2>
+      <p>选择一个 AI 身份，继续已有对话，或开启新的思路。</p>
+      <div class="hero-rule"><span></span><i></i><span></span></div>
+    </section>
+    ${noIdentity?`
+      <section class="empty-setup">
+        <div class="empty-symbol">${icon("plus")}</div>
+        <h3>先建立你的 AI 工作空间</h3>
+        <p>添加 API 连接、模型和 AI 身份后，就可以开始聊天。</p>
+        <button class="btn btn-primary" onclick="goSettings()">配置 API 与模型</button>
+      </section>`:`
+      <section class="home-section">
+        <div class="section-heading"><div><span class="section-eyebrow">IDENTITIES</span><h3>选择 AI 身份</h3></div><span class="section-note">${cache.persons.length} 个身份</span></div>
+        <div class="identity-grid">
+          ${cache.persons.map((pn,i)=>{
+            const models=modelsOfPerson(pn).filter(modelReady);
+            const count=sessionsOf(pn.id).length;
+            return `<article class="identity-card">
+              <div class="identity-card-top"><span class="identity-avatar">${avatar(pn.name,pn.avatar)}</span><span class="identity-index">0${i+1}</span></div>
+              <div class="identity-name">${esc(pn.name)}</div>
+              <div class="identity-meta">${models.length?esc(models[0].name):"尚无可用模型"} · ${count} 个对话</div>
+              <button class="identity-start" onclick="newWindow('${pn.id}')">开启新对话 <span>↗</span></button>
+            </article>`;
+          }).join("")}
+        </div>
+      </section>
+      <section class="home-section recent-section">
+        <div class="section-heading"><div><span class="section-eyebrow">RECENT ACTIVITY</span><h3>最近对话</h3></div><span class="section-note">${recent.length? "最近 "+recent.length+" 条":"暂无记录"}</span></div>
+        ${recent.length?`<div class="recent-list">${recent.map(w=>{
+          const pn=findById(cache.persons,w.personId);
+          return `<button class="recent-item" onclick="openChat('${w.id}')">
+            <span class="recent-avatar">${pn?avatar(pn.name,pn.avatar):"·"}</span>
+            <span class="recent-copy"><strong>${esc(w.title||"新窗口")}</strong><small>${esc(pn?pn.name:"AI 身份")} · ${fmtTime(w.updatedAt||w.createdAt)}</small></span>
+            <span class="recent-arrow">↗</span>
+          </button>`;
+        }).join("")}</div>`:`<div class="recent-empty">还没有聊天记录。选择上方的 AI 身份开始第一次对话。</div>`}
+      </section>`}
+    ${noKey?`<button class="setup-hint" onclick="goSettings()">检测到 API 连接尚未填写密钥，前往设置完成配置 <span>→</span></button>`:""}
+    <footer class="home-footer"><span>HOMY · AI WORKSPACE</span><span>PRIVATE BY DESIGN</span></footer>
+  </div>`;
+}
+async function saveWelcomeKey(){
+  const k=document.getElementById("wKey")?.value.trim();
+  if(!k){ toast("请先粘贴 API Key"); return; }
+  const p=cache.providers.find(x=>!x.apiKey);
+  await dbPut("providers",Object.assign({},p,{apiKey:k,updatedAt:nowISO()}));
+  await loadCache(); render();
 }
 async function saveWelcomeKey(){
   const k=document.getElementById("wKey").value.trim();
@@ -470,22 +607,32 @@ async function render(){
 }
 
 function viewTree(){
-  const rows=cache.persons.map(pn=>{
+  const rows=cache.persons.map((pn,i)=>{
     const open=state.expanded[pn.id]!==false;
-    const m=findById(cache.models,pn.modelId);
     const cur=state.view==="person"&&state.personId===pn.id;
-    return `<div class="tree-node">
-      <div class="node-row${cur?" current":""}">
-        <button class="caret${open?" open":""}" onclick="state.expanded['${pn.id}']=${!open};render()">${icon("chev")}</button>
-        <button class="node-name" onclick="openPerson('${pn.id}')">${avatar(pn.name,pn.avatar)}<span class="who">${esc(pn.name)}${m&&m.name!==pn.name?`<small>${esc(m.name)}</small>`:""}</span></button>
-        <button class="icon-btn" title="新窗口" onclick="newWindow('${pn.id}')">${icon("plus")}</button>
+    const wins=sessionsOf(pn.id);
+    const m=findById(cache.models,pn.modelId);
+    return `<section class="drawer-identity">
+      <div class="drawer-identity-head">
+        <button class="drawer-identity-main" onclick="state.expanded['${pn.id}']=!${open};render()">
+          <span class="drawer-avatar">${avatar(pn.name,pn.avatar)}</span>
+          <span class="drawer-identity-copy"><strong>${esc(pn.name)}</strong><small>${esc(m?m.name:"AI 身份")}</small></span>
+          <span class="drawer-count">${wins.length}</span>
+        </button>
+        <button class="icon-btn drawer-add" title="为 ${esc(pn.name)} 新建聊天" onclick="newWindow('${pn.id}')">${icon("plus")}</button>
       </div>
-      ${open?`<div class="node-children">${sessionsOf(pn.id).map(w=>`<div class="win-line"><button class="win-row${state.view==="chat"&&state.sessionId===w.id?" current":""}" onclick="openChat('${w.id}')">${esc(w.title)}</button><button class="icon-btn" title="改名" onclick="renameSession('${w.id}')">${icon("edit")}</button></div>`).join("")}</div>`:""}
-    </div>`;
+      ${open?`<div class="drawer-sessions">${wins.map(w=>`<div class="drawer-session-line">
+        <button class="drawer-session${state.view==="chat"&&state.sessionId===w.id?" active":""}" onclick="openChat('${w.id}')"><span class="session-mark"></span><span>${esc(w.title||"新窗口")}</span></button>
+        <button class="icon-btn session-edit" title="重命名" onclick="renameSession('${w.id}')">${icon("edit")}</button>
+      </div>`).join("")||`<div class="drawer-no-session">还没有对话</div>`}</div>`:""}
+    </section>`;
   }).join("");
-  return `<div class="side-head"><h1>AI 中控台</h1><button class="icon-btn" title="关闭" onclick="toggleDrawer()">${icon("x")}</button></div>
-  <div class="side-list"><div class="sec">单聊</div>${rows||`<p class="muted pad">还没有 AI 身份，请先在设置里添加厂商和模型。</p>`}</div>
-  <div class="side-foot"><button class="avatar-btn" title="更换我的头像" onclick="pickAvatar('user')">${avatar("我",cache.settings.userAvatar)}</button><span class="muted" id="monthPill" style="flex:1">本月费用计算中…</span><button class="btn btn-ghost" onclick="goSettings()">${icon("gear")}设置</button></div>`;
+  return `<div class="drawer-shell">
+    <div class="side-head"><div class="drawer-brand"><span class="brand-mark">H</span><span>HOMY</span></div><button class="icon-btn drawer-close" title="关闭导航" onclick="toggleDrawer()">${icon("x")}</button></div>
+    <button class="drawer-new" onclick="${cache.persons.length?"newWindow('"+(cache.persons[0]?.id||"")+"')":"goSettings()"}">${icon("plus")}<span>新建聊天</span></button>
+    <div class="side-list"><div class="drawer-label">AI 身份</div>${rows||`<p class="muted pad">还没有 AI 身份。</p>`}</div>
+    <div class="side-foot"><button class="avatar-btn" title="更换我的头像" onclick="pickAvatar('user')">${avatar("我",cache.settings.userAvatar)}</button><span class="drawer-user-label">个人空间</span><button class="btn btn-ghost" onclick="goSettings()">${icon("gear")}设置</button></div>
+  </div>`;
 }
 function providerNode(p){
   const open = !!state.expanded[p.id];
@@ -628,7 +775,7 @@ function memItem(mem){
 }
 function switchTab(t){ state.tab=t; render(); }
 function openPerson(id){ state.drawer=false; state.personId=id; state.view="person"; state.tab="persona"; render(); }
-function goTree(){ const l=latestSession(); if(l){ state.view="chat"; state.sessionId=l.id; state.personId=l.personId; } else state.view="tree"; state.drawer=false; render(); }
+function goTree(){ state.view="home"; state.drawer=false; render(); }
 function goSettings(){ state.drawer=false; state.view="settings"; render(); }
 
 function viewSettings(){
@@ -1582,7 +1729,8 @@ function showImportPreview(parsed){
     await seedIfNeeded();
     await loadCache();
     const last=latestSession();
-    if(last){ state.view="chat"; state.sessionId=last.id; state.personId=last.personId; }
+    if(last){ state.sessionId=last.id; state.personId=last.personId; }
+    state.view="home";
     await render();
     refreshMonthPill();
   }catch(err){
