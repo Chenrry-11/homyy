@@ -750,6 +750,7 @@ async function render(){
   const noBottomNav=["chat","groupChat","person","settings","groupDetail"].includes(state.view);
   app.innerHTML = `<div class="shell${state.drawer?" drawer":""}${noBottomNav?" no-bottom-nav":""}"><div class="mask" onclick="toggleDrawer()"></div><aside class="side">${viewTree()}</aside><main class="main">${main}</main>${noBottomNav?"":bottomNavigation()}</div>`;
   bindDrawerSessionEvents();
+  if(document.getElementById("monthPill"))refreshMonthPill();
   if (state.view === "chat"){
     await loadChatMessages();
     bindChatInput();
