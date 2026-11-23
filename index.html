@@ -1870,7 +1870,7 @@ async function generateSessionSummary(){
   const session=findById(cache.sessions,state.sessionId),person=session&&findById(cache.persons,session.personId);
   const model=session&&sessionModel(session,person),channel=activeChannelOf(model),provider=findById(cache.providers,channel?channel.providerId:model?.providerId);
   const status=document.getElementById("summaryStatus"),field=document.getElementById("sessionSummaryText");
-  if(!session||!model||!modelReady(model)||!provider?.apiKey||!provider?.baseUrl){toast("当前会话模型或 API 通道未配置完整");return;}
+  if(!session||!person||!model||!modelReady(model)||!provider?.apiKey||!provider?.baseUrl){toast("当前会话模型或 API 通道未配置完整");return;}
   if(await getMonthSpend()>=(Number(cache.settings.monthlyCap)||0)){toast("本月费用已达到上限，暂不生成摘要");return;}
   const count=Math.max(1,Math.min(50,Number(cache.settings.recentMessageCount)||20));
   const old=(state.chatMessages||[]).filter(x=>x.role==="user"||x.role==="assistant").slice(0,-count);
