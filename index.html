@@ -322,6 +322,18 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .conversation-entry-arrow{font-size:22px;color:#b999a8}
 #singleChatSection{scroll-margin-top:18px}
 @media(max-width:520px){.conversation-hub{gap:9px;margin-top:22px}.conversation-entry{gap:9px;padding:13px 10px;border-radius:15px}.conversation-entry-icon{width:34px;height:34px;border-radius:11px}.conversation-entry-copy strong{font-size:14px}.conversation-entry-copy small{font-size:10px}}
+
+/* Single and group chat share the same avatar-to-bubble rhythm */
+.single-message-row{display:flex;align-items:flex-start;gap:9px;width:100%;min-width:0}
+.single-ai-row{align-self:flex-start}
+.single-user-row{align-self:flex-end;justify-content:flex-end}
+.single-message-avatar{display:block;flex:none;width:34px;height:34px;margin-top:2px}
+.single-message-avatar .avatar{width:34px;height:34px;font-size:14px;box-shadow:0 2px 8px rgba(105,70,88,.08)}
+.single-message-row .msg.ai{min-width:0;max-width:calc(100% - 43px);padding:0;background:none;box-shadow:none}
+.single-message-row .msg.user{max-width:calc(100% - 43px)}
+.single-message-row .msg.ai .msg-body{padding:10px 14px;background:rgba(255,255,255,.86);border:1px solid rgba(232,218,225,.72);border-radius:18px 18px 18px 5px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
+.single-message-row .msg.user{background:rgba(246,232,238,.96);border:1px solid rgba(226,202,215,.62);border-radius:18px 18px 5px 18px;padding:10px 14px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
+@media(max-width:520px){.single-message-row{gap:8px}.single-message-avatar,.single-message-avatar .avatar{width:32px;height:32px}}
 </style>
   <link rel="stylesheet" href="./group-chat.css">
 </head>
@@ -1564,21 +1576,22 @@ async function saveGlobalService(key,value){
 function msgHTML(msg){
   if(msg.role==="user"){
     const files=(msg.attachments||[]).map(a=>a.type?.startsWith("image/")?`<img class="message-image" src="${a.dataUrl}" alt="${esc(a.name)}">`:`<div class="message-file">${icon("file")} ${esc(a.name)}</div>`).join("");
-    return `<div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}
+    return `<div class="single-message-row single-user-row"><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}
       ${!state.sending?`<div class="msg-actions"><button onclick="editUserMessage('${msg.id}')">编辑并重新回答</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回</button></div>`:""}
-      <div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div>`;
+      <div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div><span class="single-message-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span></div>`;
   }
   if(msg.role==="error")return `<div class="msg err">${esc(msg.content)}</div>`;
   if(msg.role==="system-note")return `<div class="msg sysnote">${esc(msg.content)}</div>`;
   const m=findById(cache.models,msg.modelId),reason=msg.reasoning?`<details class="reason-box"><summary><span>深度思考</span><span class="reason-hint">模型提供 · 点击展开</span></summary><pre>${esc(msg.reasoning)}</pre></details>`:"";
   const speakOn=!!cache.settings.globalServices?.tts?.enabled;
-  return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
+  const currentPerson=findById(cache.persons,findById(cache.sessions,state.sessionId)?.personId);
+  return `<div class="single-message-row single-ai-row"><span class="single-message-avatar">${avatar(currentPerson?.name||"AI",currentPerson?.avatar)}</span><div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
     <div class="msg-body">${esc(msg.content)}</div>
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
     ${!state.sending&&!msg.streaming?`<div class="msg-actions"><button onclick="regenerateFromMessage('${msg.id}')">重新生成</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回回复</button><button onclick="copyMessageText('${msg.id}')">复制</button>${speakOn?`<button data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}</div>`:""}
     <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${fmtTime(msg.createdAt)}</span></div>
-  </div>`;
+  </div></div>`;
 }
 async function copyMessageText(id){
   const msg=state.chatMessages.find(x=>x.id===id); if(!msg) return;
