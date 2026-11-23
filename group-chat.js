@@ -222,7 +222,7 @@ async function sendGroupMessage(){
  var input=document.getElementById("groupChatInput"),g=groupById(state.groupId);if(!input||!g)return;var text=input.value.trim();if(!text)return;
  if(g.stopCommand&&text===g.stopCommand){input.value="";stopGroupTurn();return;}
  if(text.startsWith("/")){input.value="";document.getElementById("groupCommandMenu").classList.add("hidden");await executeGroupCommand(text);return;}
- var target=null,mention=extractGroupMention(text,g);if(mention){target=mention.personId;text=mention.text;}else if(/(^|[^A-Za-z0-9_])@([^\\s@，。！？,.!?;:：、]+)/.test(text)){toast("没有找到这个群成员");return;}var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
+ var target=null,mention=extractGroupMention(text,g);if(mention){target=mention.personId;text=mention.text;}else if(/(^|[^A-Za-z0-9_])@([^\s@，。！？,.!?;:：、]+)/.test(text)){toast("没有找到这个群成员");return;}var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
  var msg={id:uid("gm"),groupId:g.id,role:narrator?"narrator":"user",includeInContext:narrator?g.narratorInContext!==false:true,content:text,createdAt:nowISO(),turnId:state.groupTurnId+1};
  await dbPut("groupMessages",msg);state.groupMessages.push(msg);input.value="";state.groupComposerMode="message";
  var mode=document.getElementById("groupComposerMode");if(mode)mode.textContent="";input.placeholder="发消息给群聊……";renderGroupMessages({forceBottom:true});
