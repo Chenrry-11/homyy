@@ -1775,7 +1775,7 @@ function openMessageActions(id){
   const msg=state.chatMessages.find(x=>x.id===id);if(!msg||state.sending)return;
   const isUser=msg.role==="user",anchor=Array.from(document.querySelectorAll(".msg[data-msg-id]")).find(x=>x.dataset.msgId===id);
   const actions=[];
-  if(isUser)actions.push({label:"编辑并重新回答",icon:"edit",onClick:()=>editUserMessage(id)});
+  if(isUser){actions.push({label:"重新发送",icon:"refresh",onClick:()=>sendMessage(id)});actions.push({label:"编辑并重新回答",icon:"edit",onClick:()=>editUserMessage(id)});}
   else{
     if(htmlCodeFromMessage(msg.content))actions.push({label:"网页预览",icon:"eye",onClick:()=>openCodePreview(id)});
     if(cache.settings.globalServices?.tts?.enabled)actions.push({label:"朗读",icon:"volume",onClick:()=>speakMessage(id)});
@@ -2150,6 +2150,7 @@ async function sendMessage(existingUserId=null){
   }
   const existingIndex=existingUser?state.chatMessages.findIndex(x=>x.id===existingUser.id):-1;
   const historyForRequest=existingUser?state.chatMessages.slice(0,existingIndex):state.chatMessages;
+  if(existingUser&&existingIndex>=0){const stale=state.chatMessages.slice(existingIndex+1);for(const oldMessage of stale)await dbDelete("messages",oldMessage.id);state.chatMessages=state.chatMessages.slice(0,existingIndex+1);}
   const built=buildOutgoing(outgoingDraft,historyForRequest);
   const userMsg=existingUser||{id:uid("mg"),sessionId:session.id,role:"user",content:draft,attachments:attachments.map(({id,name,type,size,dataUrl,textContent})=>({id,name,type,size,dataUrl,textContent})),modelId:m.id,providerId:pv.id,promptTokens:0,completionTokens:0,totalTokens:0,cost:0,reasoning:"",createdAt:nowISO()};
   if(existingUser){userMsg.modelId=m.id;userMsg.providerId=pv.id;await dbPut("messages",userMsg);}
