@@ -1878,7 +1878,7 @@ async function generateSessionSummary(){
     const result=await readProviderCompletion(response,request.protocol);
     if(!result.content?.trim())throw new Error("模型没有返回摘要文本");
     const usage=result.usage||{};
-    await recordUsageEvent({sessionId:session.id,personId:person.id,modelId:model.id,providerId:provider.id,usage});
+    await recordUsageEvent({sessionId:session.id,personId:person.id,modelId:model.id,providerId:provider.id,channelId:channel?.id,remoteModelId:channel?.remoteModelId||model.name,usage});
     await loadCache();
     field.value=result.content.trim();if(status)status.textContent="摘要已生成，保存后才会用于后续对话";
   }catch(error){if(status)status.textContent="生成失败："+(error.message||String(error)).slice(0,160);}
