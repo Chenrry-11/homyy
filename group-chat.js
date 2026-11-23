@@ -101,11 +101,11 @@ function bindGroupMessageEvents(list){
  if(!list||list.dataset.messageEvents==="1")return;list.dataset.messageEvents="1";
  var timer=null,target=null,startX=0,startY=0,pointerId=null,opened=false;
  var clear=()=>{if(timer)clearTimeout(timer);timer=null;target=null;pointerId=null;};
- list.addEventListener("contextmenu",e=>{var row=e.target.closest("[data-group-msg-id]");if(!row)return;e.preventDefault();openGroupMessageActions(row.dataset.groupMsgId);});
+ list.addEventListener("contextmenu",e=>{var row=e.target.closest("[data-group-msg-id]");if(!row)return;e.preventDefault();if(opened)return;opened=true;clear();openGroupMessageActions(row.dataset.groupMsgId);});
  list.addEventListener("pointerdown",e=>{
   var row=e.target.closest("[data-group-msg-id]");if(!row||e.button!==0)return;
   target=row.dataset.groupMsgId;pointerId=e.pointerId;startX=e.clientX;startY=e.clientY;opened=false;
-  timer=setTimeout(()=>{if(target){opened=true;openGroupMessageActions(target);}clear();},560);
+  timer=setTimeout(()=>{if(target&&!opened){opened=true;openGroupMessageActions(target);}clear();},560);
  });
  list.addEventListener("pointermove",e=>{
   if(pointerId===null||e.pointerId!==pointerId||!timer)return;
