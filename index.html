@@ -129,22 +129,24 @@ textarea{resize:vertical}
 @media(min-width:641px){.modal-mask{align-items:center}.modal{border-radius:16px;max-width:520px;max-height:82vh}}
 @media(prefers-reduced-motion:reduce){*{transition:none !important}}
 
-:root{--bg:hsl(214 45% 97%);--card:hsl(0 0% 100% / .78);--ink:hsl(216 28% 18%);--sub:hsl(216 12% 48%);--line:hsl(214 30% 90%);
-  --hover:hsl(214 40% 94%);--accent:hsl(212 62% 52%);--accent-soft:hsl(212 80% 94%);--serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong",serif}
-html,body{background:linear-gradient(180deg,hsl(210 40% 99%) 0%,hsl(214 55% 95%) 100%) fixed}
-.side{background:hsl(0 0% 100% / .55);backdrop-filter:blur(16px);border-right:1px solid hsl(214 30% 92%)}
+:root{--bg:#fbf5f7;--card:hsl(0 0% 100% / .78);--ink:#493943;--sub:#897781;--line:#eee1e7;
+  --hover:#f6eaf0;--accent:#bd829b;--accent-soft:#f6e8ee;--danger:#a94e67;--serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong",serif}
+html,body{background:linear-gradient(180deg,#fffdfd 0%,#f8edf2 100%) fixed}
+::selection{background:#efd5e1;color:#493943}
+input,textarea,select,button{caret-color:#bd829b}
+.side{background:hsl(0 0% 100% / .62);backdrop-filter:blur(18px);border-right:1px solid #eee1e7}
 .side-head h1,.welcome h2,.w-box h2{font-family:var(--serif);font-weight:700;letter-spacing:.02em}
 .w-box h2{font-size:28px}
 .avatar{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:50%;
-  background:linear-gradient(145deg,hsl(214 60% 92%),hsl(216 40% 86%));color:var(--ink);font-family:var(--serif);font-weight:700;font-size:16px}
+  background:linear-gradient(145deg,#f4e2ea,#e8cfdb);color:var(--ink);font-family:var(--serif);font-weight:700;font-size:16px}
 .who{display:flex;flex-direction:column;min-width:0;line-height:1.3;text-align:left}
 .who small{font-size:12px;font-weight:400;color:var(--sub)}
 .node-name{align-items:center;gap:12px;padding:4px 0}
 .node-row{min-height:52px;border-radius:var(--r)}
-.node-row.current,.win-row.current{background:hsl(0 0% 100% / .9);color:var(--ink);box-shadow:0 1px 6px hsl(214 40% 40% / .08)}
+.node-row.current,.win-row.current{background:hsl(0 0% 100% / .9);color:var(--ink);box-shadow:0 1px 6px #8d6477 / .08}
 .topbar{border-bottom:none;background:none;height:64px}
 .topbar h1{display:inline-flex;align-items:center;gap:12px;padding:4px 16px 4px 4px;border-radius:999px;background:hsl(0 0% 100% / .8);
-  backdrop-filter:blur(12px);box-shadow:0 1px 8px hsl(214 40% 40% / .1);font-size:16px}
+  backdrop-filter:blur(12px);box-shadow:0 1px 8px #8d6477 / .10;font-size:16px}
 .topbar h1 .avatar{width:32px;height:32px;font-size:14px}
 .msg.user{background:var(--accent-soft);color:var(--ink);border-radius:18px 18px 4px 18px;padding:10px 14px}
 .msg.ai{background:hsl(0 0% 100% / .85);border-radius:18px 18px 18px 4px;padding:10px 14px;box-shadow:0 1px 4px hsl(214 40% 40% / .07)}
@@ -185,8 +187,8 @@ html,body{background:linear-gradient(180deg,hsl(210 40% 99%) 0%,hsl(214 55% 95%)
 "use strict";
 
 const DB_NAME = "multi_ai_chat_v1";
-const DB_VERSION = 1;
-const STORES = ["settings","providers","models","personas","persons","memories","sessions","messages"];
+const DB_VERSION = 2;
+const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages"];
 const MEM_LEVELS = ["L0","L1","L2","L3"];
 const DEFAULT_SETTINGS = {
   id: "app",
@@ -322,13 +324,13 @@ async function seedIfNeeded(){
 }
 
 async function loadCache(){
-  const [settings,providers,models,personas,persons,memories,sessions] = await Promise.all([
-    dbGet("settings","app"), dbAll("providers"), dbAll("models"), dbAll("personas"),
-    dbAll("persons"), dbAll("memories"), dbAll("sessions")
+  const [settings,providers,models,channels,personas,persons,memories,sessions] = await Promise.all([
+    dbGet("settings","app"), dbAll("providers"), dbAll("models"), dbAll("modelChannels"),
+    dbAll("personas"), dbAll("persons"), dbAll("memories"), dbAll("sessions")
   ]);
   cache = {
     settings: settings || Object.assign({}, DEFAULT_SETTINGS),
-    providers, models, personas, persons, memories, sessions
+    providers, models, channels, personas, persons, memories, sessions
   };
   // 旧版本中一个 person 只绑定一个 model。迁移为 AI 身份可绑定多个模型的结构，旧数据原样保留。
   const personUpdates=[];
@@ -341,6 +343,29 @@ async function loadCache(){
     if(person.breakLimitEnabled===undefined) person.breakLimitEnabled=false;
   }
   if(personUpdates.length) await dbBulkPut("persons",personUpdates);
+  // 将旧模型的 providerId 转成独立调用通道。原 API 连接、Key 和模型 ID 均保留。
+  const channelUpdates=[], modelUpdates=[];
+  for(const model of cache.models){
+    let ids=Array.isArray(model.channelIds)?model.channelIds.slice():[];
+    let active=model.activeChannelId;
+    if(!ids.length){
+      let channel=cache.channels.find(x=>x.modelId===model.id);
+      if(!channel){
+        channel={id:uid("ch"),modelId:model.id,providerId:model.providerId,
+          remoteModelId:model.remoteModelId||model.name,enabled:true,isDefault:true,
+          createdAt:model.createdAt||nowISO(),updatedAt:nowISO()};
+        channelUpdates.push(channel); cache.channels.push(channel);
+      }
+      ids=[channel.id]; active=active||channel.id;
+      model.channelIds=ids; model.activeChannelId=active;
+      if(model.enabled===undefined) model.enabled=true;
+      modelUpdates.push(model);
+    }else if(!active || !ids.includes(active)){
+      model.activeChannelId=ids[0]; modelUpdates.push(model);
+    }
+  }
+  if(channelUpdates.length) await dbBulkPut("modelChannels",channelUpdates);
+  if(modelUpdates.length) await dbBulkPut("models",modelUpdates);
   const sessionUpdates=[];
   for(const session of cache.sessions){
     const person=findById(cache.persons,session.personId);
