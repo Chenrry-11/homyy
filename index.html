@@ -972,6 +972,7 @@ function viewSettings(){
   if(section==="models"){
     body=`<div class="row"><h2 class="sec" style="margin:0">API 连接与语言模型</h2><span class="spacer"></span><button class="btn btn-primary" onclick="providerForm()">${icon("plus")}添加连接</button></div>
       <div style="margin:8px 0 16px">${cache.providers.map(providerNode).join("")||`<p class="muted">还没有 API 连接，先添加一个服务商。</p>`}</div>
+      <div class="card"><strong>本月实际用量</strong><div id="monthPill" class="cost-pill">统计中……</div><div id="monthTokenPill" class="muted small" style="margin-top:7px">等待服务商返回 Token 统计</div><div class="hint">仅统计 API 实际返回的用量字段；不把本地估算值冒充真实 Token。</div></div>
       <div class="card"><strong>模型与用量设置</strong>
         <div class="field"><label>月费用上限（元）</label><input id="setCap" type="number" min="0" step="1" value="${esc(cache.settings.monthlyCap)}"></div>
         <div class="field"><label>人设注入字符上限</label><input id="setPersonaCap" type="number" min="100" step="100" value="${esc(cache.settings.personaCharCap)}"></div>
@@ -1446,7 +1447,9 @@ function modelSupportsThinking(model,channel,pv){
   if(model.thinkingSupport==="no"||model.thinkingSupport===false)return false;
   const remote=(String(channel?.remoteModelId||"")+" "+String(model.name||"")).toLowerCase();
   const provider=String(pv?.name||"").toLowerCase(),base=String(pv?.baseUrl||"").toLowerCase();
-  return /deepseek-(flash|v4-pro)/.test(remote)||/deepseek/.test(provider)||/api\.deepseek\.com/.test(base);
+  if(pv?.protocol==="gemini-generate"&&remote.includes("gemini-2.5"))return true;
+  if(pv?.protocol==="anthropic-messages")return false;
+  return /deepseek-(flash|v4-pro)/.test(remote)||/deepseek/.test(provider)||base.includes("api.deepseek.com");
 }
 function viewChatShell(){
   const session=findById(cache.sessions,state.sessionId),pn=findById(cache.persons,session.personId);
@@ -1794,13 +1797,28 @@ async function getMonthSpend(){
   });
   const sums=await Promise.all([sumStore("messages"),sumStore("groupMessages")]);return sums[0]+sums[1];
 }
+async function getMonthTokenUsage(){
+  const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),1).toISOString(),end=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString();
+  const readStore=name=>new Promise((resolve,reject)=>{
+    const request=tx(name).index("createdAt").openCursor(IDBKeyRange.bound(start,end,false,true));
+    const total={input:0,output:0,tokens:0,cached:0};
+    request.onsuccess=()=>{const cursor=request.result;if(!cursor){resolve(total);return;}const row=cursor.value;
+      if(row.role==="assistant"){total.input+=Number(row.promptTokens)||0;total.output+=Number(row.completionTokens)||0;total.tokens+=Number(row.totalTokens)||0;total.cached+=Number(row.cachedTokens)||0;}
+      cursor.continue();
+    };request.onerror=()=>reject(request.error);
+  });
+  const parts=await Promise.all([readStore("messages"),readStore("groupMessages")]);
+  return parts.reduce((sum,item)=>({input:sum.input+item.input,output:sum.output+item.output,tokens:sum.tokens+item.tokens,cached:sum.cached+item.cached}),{input:0,output:0,tokens:0,cached:0});
+}
 async function refreshMonthPill(){
   const pill=document.getElementById("monthPill");
   if(!pill) return;
-  const spend=await getMonthSpend();
+  const [spend,usage]=await Promise.all([getMonthSpend(),getMonthTokenUsage()]);
   const cap=Number(cache.settings.monthlyCap)||0;
   pill.textContent=`本月 ${money2(spend)} / 上限 ${money2(cap)}`;
   pill.className="cost-pill"+(spend>=cap?" over":"");
+  const tokenPill=document.getElementById("monthTokenPill");
+  if(tokenPill)tokenPill.textContent=usage.tokens?`输入 ${usage.input} · 输出 ${usage.output} · 合计 ${usage.tokens} tokens · 缓存命中 ${usage.cached}`:"服务商尚未返回可统计的 Token 用量";
 }
 
 async function buildProviderRequest(provider,modelId,messages,options={}){
@@ -1817,6 +1835,7 @@ async function buildProviderRequest(provider,modelId,messages,options={}){
     let model=String(modelId||"");if(model.startsWith("models/"))model=model.slice(7);
     const contents=turns.map(x=>({role:x.role==="assistant"?"model":"user",parts:[{text:x.content}]}));
     const body={contents,generationConfig:{maxOutputTokens:4096}};
+    if(model.startsWith("gemini-2.5")&&options.thinkingSupport)body.generationConfig.thinkingConfig={thinkingBudget:options.thinking===false?0:1024};
     if(system)body.systemInstruction={parts:[{text:system}]};
     return {protocol,stream:false,endpoint:base+"/models/"+encodeURIComponent(model)+":generateContent?key="+encodeURIComponent(provider.apiKey),headers:{"Content-Type":"application/json"},body};
   }
