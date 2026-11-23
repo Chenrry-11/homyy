@@ -177,7 +177,17 @@ function bindGroupChatInput(){
  input.addEventListener("input",handleGroupInput);input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!("ontouchstart" in window)){e.preventDefault();sendGroupMessage();}});input.focus();
 }
 function handleGroupInput(){
- var input=document.getElementById("groupChatInput"),menu=document.getElementById("groupCommandMenu");if(!input||!menu)return;var value=input.value.trimStart(),token=value.split(/\s/)[0];
+ var input=document.getElementById("groupChatInput"),menu=document.getElementById("groupCommandMenu");if(!input||!menu)return;
+ var value=input.value.trimStart(),token=value.split(/\s/)[0];
+ if(value.startsWith("@")&&!value.includes(" ")){
+  var g=groupById(state.groupId),query=value.slice(1).toLowerCase();
+  var people=(g?.members||[]).map(m=>findById(cache.persons,m.personId)).filter(p=>p&&(!query||p.name.toLowerCase().includes(query)));
+  if(!people.length){menu.classList.add("hidden");menu.innerHTML="";return;}
+  menu.innerHTML=people.map(p=>'<button type="button" data-mention="'+esc(p.id)+'">'+avatar(p.name,p.avatar)+'<span>'+esc(p.name)+'</span></button>').join("");
+  menu.classList.remove("hidden");
+  menu.querySelectorAll("[data-mention]").forEach(btn=>btn.addEventListener("click",()=>{var p=findById(cache.persons,btn.dataset.mention);if(!p)return;input.value="@"+p.name+" ";menu.classList.add("hidden");input.focus();}));
+  return;
+ }
  if(!value.startsWith("/")||value.includes(" ")){menu.classList.add("hidden");menu.innerHTML="";return;}
  var matches=groupCommands().filter(x=>x[0].startsWith(token.toLowerCase()));if(!matches.length){menu.classList.add("hidden");return;}
  menu.innerHTML=matches.map(x=>'<button type="button" data-command="'+x[0]+'"><code>'+x[0]+'</code><span>'+x[1]+'</span></button>').join("");menu.classList.remove("hidden");
