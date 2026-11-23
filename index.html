@@ -224,6 +224,14 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .shell.no-bottom-nav .content{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
 .theme-page{max-width:820px;margin:0 auto;width:100%}
 .theme-page-intro{padding:12px 2px 22px}
+.theme-live-preview{padding:16px;background:rgba(255,255,255,.56)}
+.theme-live-preview-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
+.theme-preview-messages{display:flex;flex-direction:column;gap:12px;min-width:0}
+.theme-preview-messages .msg{max-width:78%;min-width:0}
+.theme-preview-messages .msg-body{padding:10px 13px;font-size:13px}
+.theme-preview-input{margin-top:18px;pointer-events:none}
+.theme-preview-input textarea{min-height:36px;max-height:36px;resize:none;font-size:12px}
+
 .theme-page-intro h2{font-family:var(--serif);font-size:24px;margin:8px 0}
 .theme-page-intro p{margin:0}
 .theme-choice-list{display:grid;gap:12px}
@@ -989,7 +997,7 @@ function bottomNavigation(){
 function viewThemes(){
   const current=cache.settings.appearance?.bubbleStyle||"soft";
   const styles=[{id:"soft",name:"柔和玻璃",desc:"浅粉底色，圆润柔和"},{id:"glass",name:"通透玻璃",desc:"半透明磨砂与轻微模糊"},{id:"minimal",name:"简洁留白",desc:"弱化边框，突出文字"}];
-  return '<div class="topbar"><button class="btn icon-btn" onclick="goTree()">'+icon("back")+'</button><h1>主题</h1></div><div class="content theme-page"><div class="theme-page-intro"><span class="section-eyebrow">HOMY APPEARANCE</span><h2>让对话保持舒服的样子。</h2><p class="muted small">选择后立即应用到单聊与群聊，不会修改聊天记录。</p></div><div class="theme-choice-list">'+styles.map(x=>'<button class="theme-choice '+(current===x.id?'selected':'')+'" onclick="saveBubbleStyle(\''+x.id+'\')"><span class="theme-choice-preview '+x.id+'"><i></i><b></b></span><span class="theme-choice-copy"><strong>'+x.name+'</strong><small>'+x.desc+'</small></span><span class="theme-choice-state">'+(current===x.id?'正在使用':'应用主题')+'</span></button>').join("")+'</div><div class="card theme-import-reserved"><strong>更多主题</strong><p class="muted small">主题包导入与自定义颜色接口保留为后续扩展，不影响当前主题。</p></div></div>';
+  return '<div class="topbar"><button class="btn icon-btn" onclick="goTree()">'+icon("back")+'</button><h1>主题</h1></div><div class="content theme-page"><div class="theme-page-intro"><span class="section-eyebrow">HOMY APPEARANCE</span><h2>让对话保持舒服的样子。</h2><p class="muted small">选择后立即应用到单聊与群聊，不会修改聊天记录。</p></div><div class="card theme-live-preview"><div class="theme-live-preview-head"><strong>当前效果预览</strong><span class="muted small">使用真实聊天气泡样式</span></div><div class="theme-preview-messages"><div class="single-message-row single-ai-row"><span class="single-message-avatar">'+avatar("HOMY","")+'</span><div class="msg ai"><div class="msg-body">今天想先从哪件事开始？</div></div></div><div class="single-message-row single-user-row"><div class="msg user"><div class="msg-body">我想先把工作台整理清楚。</div></div><span class="single-message-avatar">'+avatar("我",cache.settings.userAvatar)+'</span></div></div><div class="input-row theme-preview-input"><textarea rows="1" readonly>输入消息……</textarea><button class="btn btn-primary" type="button">发送</button></div></div><div class="theme-choice-list">'+styles.map(x=>'<button class="theme-choice '+(current===x.id?'selected':'')+'" onclick="saveBubbleStyle(\''+x.id+'\')"><span class="theme-choice-preview '+x.id+'"><i></i><b></b></span><span class="theme-choice-copy"><strong>'+x.name+'</strong><small>'+x.desc+'</small></span><span class="theme-choice-state">'+(current===x.id?'正在使用':'应用主题')+'</span></button>').join("")+'</div><div class="card theme-import-reserved"><strong>更多主题</strong><p class="muted small">主题包导入与自定义颜色接口保留为后续扩展，不影响当前主题。</p></div></div>';
 }
 function viewSettings(){
   const section=state.settingsSection||"models";
