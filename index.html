@@ -1125,7 +1125,7 @@ function confirmDialog(title, text, onOk){
 function providerForm(id){
   const p=id?findById(cache.providers,id):{name:"",baseUrl:"",apiKey:"",protocol:"openai-chat"};
   const protocol=p.protocol||"openai-chat";
-  const defaultTestModel=protocol==="anthropic-messages"?"claude-3-5-haiku-latest":protocol==="gemini-generate"?"gemini-2.0-flash":protocol==="gemini-interactions"?"gemini-3.8-flash":"gpt-4o-mini";
+  const defaultTestModel=p.testModel||(id&&modelsOf(id)[0]?.name)||(protocol==="anthropic-messages"?"claude-3-5-haiku-latest":protocol==="gemini-generate"?"gemini-2.0-flash":protocol==="gemini-interactions"?"gemini-3.8-flash":/deepseek/i.test(p.name||"")?"deepseek-chat":"gpt-4o-mini");
   modal({
     title:id?"编辑 API 连接":"添加 API 连接",
     body:`
