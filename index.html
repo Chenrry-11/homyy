@@ -375,7 +375,12 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .single-message-row .msg.ai{min-width:0;max-width:calc(100% - 43px);padding:0;background:none;box-shadow:none}
 .single-message-row .msg.user{max-width:calc(100% - 43px)}
 .single-message-row .msg.ai .msg-body{padding:10px 14px;font-size:13.5px;background:rgba(255,255,255,.86);border:1px solid rgba(232,218,225,.72);border-radius:16px 16px 16px 5px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
-.single-message-row .msg.user{background:rgba(246,232,238,.96);border:1px solid rgba(226,202,215,.62);border-radius:18px 18px 5px 18px;padding:10px 14px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
+.single-message-row .msg.user{max-width:calc(100% - 43px);min-width:0;padding:0;background:none;border:0;box-shadow:none}
+.single-message-row .msg.user .msg-bubble{display:inline-block;max-width:100%;padding:10px 14px;background:rgba(246,232,238,.96);border:1px solid rgba(226,202,215,.62);border-radius:16px 16px 5px 16px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
+.single-message-row .msg.user .msg-body{display:block;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;font-size:13.5px}
+#app[data-bubble-style="glass"] .single-message-row .msg.user .msg-bubble{background:rgba(255,255,255,.48);backdrop-filter:blur(14px);border-color:rgba(255,255,255,.82);box-shadow:0 5px 18px rgba(110,75,93,.06)}
+#app[data-bubble-style="minimal"] .single-message-row .msg.user .msg-bubble{background:#f8eef2;border-color:transparent;box-shadow:none}
+.single-message-row .msg.user .message-image{max-width:100%;margin-top:8px;border-radius:12px}
 @media(max-width:520px){.single-message-row{gap:8px}.single-message-avatar,.single-message-avatar .avatar{width:32px;height:32px}}
 </style>
   <link rel="stylesheet" href="./group-chat.css">
@@ -1770,7 +1775,7 @@ async function saveGlobalService(key,value){
 function msgHTML(msg){
   if(msg.role==="user"){
     const files=(msg.attachments||[]).map(a=>a.type?.startsWith("image/")?`<img class="message-image" src="${a.dataUrl}" alt="${esc(a.name)}">`:`<div class="message-file">${icon("file")} ${esc(a.name)}</div>`).join("");
-    return `<div class="single-message-row single-user-row"><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}
+    return `<div class="single-message-row single-user-row"><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-bubble"><div class="msg-body">${esc(msg.content)}</div>${files}</div>
       ${!state.sending?`<div class="msg-actions"><button title="编辑并重新回答" aria-label="编辑并重新回答" onclick="editUserMessage('${msg.id}')">${icon("edit")}</button><button class="danger" title="撤回消息" aria-label="撤回消息" onclick="deleteOneMessage('${msg.id}')">${icon("undo")}</button></div>`:""}
       <div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div><span class="single-message-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span></div>`;
   }
