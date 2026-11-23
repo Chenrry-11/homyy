@@ -419,7 +419,7 @@ const state = {
   recognition: null,
   groupId:null, groupMessages:[], groupControllers:new Map(), groupTurnId:0,
   groupRunning:false, groupStatus:"", groupComposerMode:"message", groupThinkingOverride:null, groupStoppedMembers:new Set(),
-  personReturnView:"home",settingsReturnView:"home"
+  personReturnView:"home",settingsReturnView:"home",chatReturnView:"home"
 };
 let cache = { settings:null, providers:[], models:[], personas:[], persons:[], memories:[], sessions:[], groups:[] };
 
@@ -1515,9 +1515,10 @@ async function createSession(){
   openChat(rec.id);
 }
 function openChat(id){
-  state.drawer=false; state.view="chat"; state.sessionId=id; state.sending=false;
-  render();
+  if(state.view!=="chat")state.chatReturnView=state.view;
+  state.drawer=false;state.view="chat";state.sessionId=id;state.sending=false;render();
 }
+function goBackFromChat(){state.view=state.chatReturnView||"home";state.drawer=false;render();}
 async function changeSessionModel(modelId){
   const session=findById(cache.sessions,state.sessionId);
   const person=findById(cache.persons,session?.personId);
@@ -1564,7 +1565,7 @@ function viewChatShell(){
   const canThink=modelSupportsThinking(m,channel,pv),thinkingEnabled=session.thinkingEnabled!==false;
   return `
   <div class="chat-page"><div class="topbar chat-topbar">
-    <button class="btn icon-btn chat-nav-btn" title="返回聊天列表" aria-label="返回聊天列表" onclick="state.drawer=true;render()">${icon("menu")}</button>
+    <button class="btn icon-btn chat-back-btn" title="返回上一级" aria-label="返回上一级" onclick="goBackFromChat()">${icon("back")}</button><button class="btn icon-btn chat-nav-btn" title="聊天窗口列表" aria-label="聊天窗口列表" onclick="state.drawer=true;render()">${icon("menu")}</button>
     <select aria-label="切换模型型号" title="切换此 AI 身份的模型型号" onchange="changeSessionModel(this.value)" class="chat-model-select">${identityModels.map(x=>`<option value="${x.id}" ${x.id===m.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
     <span class="spacer"></span>
     ${canThink?`<button class="thinking-toggle ${thinkingEnabled?"active":""}" id="thinkingToggle" onclick="toggleThinkingMode()" aria-pressed="${thinkingEnabled}"><span class="thinking-toggle-dot"></span><span>深度思考</span><strong>${thinkingEnabled?"开":"关"}</strong></button>`:""}
