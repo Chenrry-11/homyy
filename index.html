@@ -383,6 +383,7 @@ const DB_NAME = "multi_ai_chat_v1";
 const DB_VERSION = 4;
 const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages","groups","groupMessages"];
 const MEM_LEVELS = ["L0","L1","L2","L3"];
+const MEMORY_CATEGORIES = ["重要经历","关系变化","共同约定","持续事实"];
 const DEFAULT_SETTINGS = {
   id:"app",monthlyCap:50,personaCharCap:1500,memoryCharCap:2000,recentCharCap:6000,
   globalServices:{
@@ -956,6 +957,7 @@ function memItem(mem){
   return `
   <div class="mem-item">
     <div class="mem-head">
+      <span class="tag">${esc(mem.category||"持续事实")}</span>
       <span class="tag lvl">${esc(mem.level)}</span>
       <span class="tag">重要度 ${esc(mem.importance)}</span>
       <span class="tag">来源：${esc(mem.source||"未填")}</span>
@@ -1427,12 +1429,13 @@ async function deletePerson(){
 
 function memoryForm(id){
   const mem = id ? findById(cache.memories,id) :
-    {content:"",level:"L1",importance:3,source:"",enabled:true};
+    {content:"",category:"持续事实",level:"L1",importance:3,source:"",enabled:true};
   modal({
     title:id?"编辑长期记忆":"添加长期记忆",
     body:`
       <div class="field"><label>内容</label>
         <textarea id="fMemContent" placeholder="一条具体、可被 AI 使用的信息">${esc(mem.content)}</textarea></div>
+      <div class="field"><label>记忆类别</label><select id="fMemCategory">${MEMORY_CATEGORIES.map(c=>`<option value="${c}" ${(mem.category||"持续事实")===c?"selected":""}>${c}</option>`).join("")}</select></div>
       <div class="field"><label>层级</label>
         <select id="fMemLevel">${MEM_LEVELS.map(l=>
           `<option value="${l}" ${mem.level===l?"selected":""}>${l}</option>`).join("")}</select></div>
@@ -1451,11 +1454,14 @@ function memoryForm(id){
         const ts=nowISO();
         const rec=id?Object.assign({},mem):{id:uid("mm"),personId:state.personId,createdAt:ts};
         rec.content=content;
+        rec.category=document.getElementById("fMemCategory").value;
         rec.level=document.getElementById("fMemLevel").value;
         rec.importance=Number(document.getElementById("fMemImp").value);
         rec.source=document.getElementById("fMemSrc").value.trim();
         rec.enabled=document.getElementById("fMemEn").checked;
         rec.updatedAt=ts;
+        const duplicate=!id?cache.memories.find(x=>x.personId===state.personId&&String(x.content||"").trim().replace(/\\s+/g," ")===content.replace(/\\s+/g," ")):null;
+        if(duplicate){rec.id=duplicate.id;rec.createdAt=duplicate.createdAt;rec.personId=duplicate.personId;toast("发现重复记忆，已更新原有记录");}
         await dbPut("memories",rec); closeModal(); await loadCache(); render();
       }}
     ]
@@ -1821,8 +1827,8 @@ function buildOutgoing(draft,historyOverride=null){
       || (a.createdAt||"").localeCompare(b.createdAt||""));
   let memBudget=s.memoryCharCap; const memLines=[];
   for(const mm of mems){
-    const line=`[${mm.level}|重要度${mm.importance}] ${mm.content}`;
-    if(line.length>memBudget) break;
+    const line=`[${mm.category||"持续事实"}|${mm.level}|重要度${mm.importance}] ${mm.content}`;
+    if(line.length>memBudget) continue;
     memLines.push(line); memBudget-=line.length;
   }
   let recentBudget=s.recentCharCap; const picked=[];
