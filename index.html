@@ -1445,10 +1445,11 @@ async function deleteSession(id){
 
 function modelSupportsThinking(model,channel,pv){
   if(!model)return false;
-  if(model.thinkingSupport==="yes"||model.thinkingSupport===true)return true;
-  if(model.thinkingSupport==="no"||model.thinkingSupport===false)return false;
   const remote=(String(channel?.remoteModelId||"")+" "+String(model.name||"")).toLowerCase();
   const provider=String(pv?.name||"").toLowerCase(),base=String(pv?.baseUrl||"").toLowerCase();
+  if(pv?.protocol==="gemini-generate"&&remote.includes("gemini-2.5-pro"))return false;
+  if(model.thinkingSupport==="no"||model.thinkingSupport===false)return false;
+  if(model.thinkingSupport==="yes"||model.thinkingSupport===true)return true;
   if(pv?.protocol==="gemini-generate"&&(remote.includes("gemini-2.5-flash")||remote.includes("gemini-3.")))return true;
   if((pv?.protocol==="openai-responses"||pv?.protocol==="openai-chat")&&(/gpt-[56]/.test(remote)||remote.includes("o1")||remote.includes("o3")||remote.includes("o4")))return true;
   if(pv?.protocol==="anthropic-messages")return false;
