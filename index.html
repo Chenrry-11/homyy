@@ -309,6 +309,19 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .modal-mask{align-items:center;justify-content:center;padding:18px;overflow:auto}.modal{width:min(100%,520px);max-height:min(84dvh,760px);border-radius:20px;box-shadow:0 20px 70px rgba(60,37,49,.2)}
 .modal-head{padding:16px 18px}.modal-body{padding:18px;overflow:auto}.modal-foot{padding:13px 18px calc(13px + env(safe-area-inset-bottom))}
 @media(max-width:640px){.chat-topbar{height:58px;gap:6px;padding:0 9px}.chat-model-select{max-width:38vw;font-size:11px;padding:7px 6px}.chat-identity{max-width:82px;gap:5px;padding:4px}.chat-identity .avatar{width:25px;height:25px}.chat-identity span:last-child{font-size:10px}.thinking-toggle{padding:6px 7px;gap:4px;font-size:10px}.thinking-toggle strong{font-size:9px}.msg-list{padding:13px 14px;gap:17px}.msg.user{max-width:90%}.msg.ai{max-width:96%}.msg-actions{gap:12px}.msg-actions button{font-size:10px}.modal-mask{padding:16px}.modal{border-radius:18px;max-height:82dvh}}
+
+/* Equal-weight conversation entry points */
+.conversation-hub{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:26px auto 0;width:min(100%,760px)}
+.conversation-entry{display:flex;align-items:center;gap:12px;min-width:0;padding:17px 16px;border:1px solid rgba(231,214,223,.9);border-radius:18px;background:rgba(255,255,255,.72);box-shadow:0 7px 22px rgba(105,70,88,.045);text-align:left;backdrop-filter:blur(14px);transition:transform .16s,border-color .16s}
+.conversation-entry:active{transform:scale(.985)}
+.conversation-entry-icon{width:42px;height:42px;display:grid;place-items:center;flex:none;border-radius:14px;background:#f6e8ee;color:#a36f88}
+.conversation-entry-icon .i{width:21px;height:21px}
+.conversation-entry-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.conversation-entry-copy strong{font-size:15px;color:#604958}
+.conversation-entry-copy small{font-size:11px;color:#9a8791;line-height:1.45}
+.conversation-entry-arrow{font-size:22px;color:#b999a8}
+#singleChatSection{scroll-margin-top:18px}
+@media(max-width:520px){.conversation-hub{gap:9px;margin-top:22px}.conversation-entry{gap:9px;padding:13px 10px;border-radius:15px}.conversation-entry-icon{width:34px;height:34px;border-radius:11px}.conversation-entry-copy strong{font-size:14px}.conversation-entry-copy small{font-size:10px}}
 </style>
   <link rel="stylesheet" href="./group-chat.css">
 </head>
@@ -593,7 +606,7 @@ function viewWelcome(){
       <button class="icon-btn home-menu" aria-label="打开导航" onclick="toggleDrawer()">${icon("menu")}</button>
       <div class="home-brand"><span class="brand-mark">H</span><span>HOMY<span class="brand-dot">.</span></span></div>
       <span class="spacer"></span>
-      <button class="home-settings" onclick="openGroups()">群聊</button>
+      
       <button class="home-settings" onclick="goMyPage()">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}<span>我的</span></button>
     </header>
     <section class="home-hero">
@@ -601,6 +614,18 @@ function viewWelcome(){
       <h2>把想法，交给对话。</h2>
       <p>选择一个 AI 身份，继续已有对话，或开启新的思路。</p>
       <div class="hero-rule"><span></span><i></i><span></span></div>
+      <div class="conversation-hub" aria-label="会话类型">
+        <button class="conversation-entry" onclick="document.getElementById('singleChatSection')?.scrollIntoView({behavior:'smooth',block:'start'})">
+          <span class="conversation-entry-icon">${icon("message-circle")}</span>
+          <span class="conversation-entry-copy"><strong>单聊</strong><small>与一个 AI 身份继续交流</small></span>
+          <span class="conversation-entry-arrow">›</span>
+        </button>
+        <button class="conversation-entry" onclick="openGroups()">
+          <span class="conversation-entry-icon">${icon("messages-square")}</span>
+          <span class="conversation-entry-copy"><strong>群聊</strong><small>与多个 AI 在同一空间交流</small></span>
+          <span class="conversation-entry-arrow">›</span>
+        </button>
+      </div>
     </section>
     <section class="home-section setup-grid-section">
       <div class="section-heading"><div><span class="section-eyebrow">WORKSPACE SETUP</span><h3>工作空间配置</h3></div></div>
@@ -618,8 +643,8 @@ function viewWelcome(){
         <p>添加 API 连接、模型和 AI 身份后，就可以开始聊天。</p>
         <button class="btn btn-primary" onclick="goSettings()">配置 API 与模型</button>
       </section>`:`
-      <section class="home-section">
-        <div class="section-heading"><div><span class="section-eyebrow">IDENTITIES</span><h3>选择 AI 身份</h3></div><span class="section-note">${cache.persons.length} 个身份</span></div>
+      <section class="home-section" id="singleChatSection">
+        <div class="section-heading"><div><span class="section-eyebrow">SINGLE CHAT</span><h3>选择 AI 身份</h3></div><span class="section-note">${cache.persons.length} 个身份</span></div>
         <div class="identity-grid">
           ${cache.persons.map((pn,i)=>{
             const models=modelsOfPerson(pn).filter(modelReady);
