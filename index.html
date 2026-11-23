@@ -221,7 +221,7 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .bottom-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:46px;border-radius:13px;color:#a18e98;font-size:10px}
 .bottom-nav-item svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
 .bottom-nav-item.active{color:#a66f88;background:rgba(246,232,238,.76);font-weight:650}
-.shell.no-bottom-nav>.main{padding-bottom:env(safe-area-inset-bottom)}
+.shell.no-bottom-nav .content{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
 .theme-page{max-width:820px;margin:0 auto;width:100%}
 .theme-page-intro{padding:12px 2px 22px}
 .theme-page-intro h2{font-family:var(--serif);font-size:24px;margin:8px 0}
@@ -747,7 +747,7 @@ async function render(){
   if (state.view === "tree") main = "";
   if (!main) main = viewWelcome();
   app.dataset.bubbleStyle=cache.settings.appearance?.bubbleStyle||"soft";
-  const noBottomNav=state.view==="chat"||state.view==="groupChat";
+  const noBottomNav=["chat","groupChat","person","settings","groupDetail"].includes(state.view);
   app.innerHTML = `<div class="shell${state.drawer?" drawer":""}${noBottomNav?" no-bottom-nav":""}"><div class="mask" onclick="toggleDrawer()"></div><aside class="side">${viewTree()}</aside><main class="main">${main}</main>${noBottomNav?"":bottomNavigation()}</div>`;
   bindDrawerSessionEvents();
   if (state.view === "chat"){
@@ -946,12 +946,13 @@ function memItem(mem){
 }
 function switchTab(t){ state.tab=t; render(); }
 function openPerson(id){ state.drawer=false; state.personId=id; state.view="person"; state.tab="persona"; render(); }
-function goTree(){ state.view="home"; state.drawer=false; render(); }
+function goTree(){ state.view="home"; state.homeTab="home"; state.drawer=false; render(); }
+function goSingleChatHome(){state.view="home";state.homeTab="single";state.drawer=false;render();document.getElementById("singleChatSection")?.scrollIntoView({behavior:"smooth",block:"start"});}
 function goSettings(section="models"){state.drawer=false;state.settingsSection=section;state.view="settings";render();}
 function goMyPage(){state.drawer=false;state.view="profile";render();}
 function goThemes(){state.drawer=false;state.view="themes";render();}
 function bottomNavigation(){
-  const items=[["home","首页","state.homeTab='home';goTree()"],["single","单聊","state.homeTab='single';goTree();document.getElementById('singleChatSection')?.scrollIntoView({behavior:'smooth',block:'start'})"],["groups","群聊","openGroups()"],["themes","主题","goThemes()"],["profile","我的","goMyPage()"]];
+  const items=[["home","首页","goTree()"],["single","单聊","goSingleChatHome()"],["groups","群聊","openGroups()"],["themes","主题","goThemes()"],["profile","我的","goMyPage()"]];
   const active=state.view==="home"?(state.homeTab||"home"):state.view==="groups"||state.view==="groupDetail"?"groups":state.view==="themes"?"themes":state.view==="profile"?"profile":"";
   const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',single:'<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>',groups:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 5v1"/>',themes:'<path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-3.7 1.7 1.7 0 0 1 1-3.3h1a4 4 0 0 0 4-4c0-4-4-7-8-7z"/><circle cx="7.5" cy="10" r="1"/><circle cx="11" cy="6.5" r="1"/><circle cx="16" cy="8" r="1"/>',profile:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>'};
   return '<nav class="bottom-nav" aria-label="主导航">'+items.map(([id,label,action])=>'<button class="bottom-nav-item '+(active===id?'active':'')+'" onclick="'+action+'" '+(active===id?'aria-current="page"':'')+'><svg viewBox="0 0 24 24" aria-hidden="true">'+paths[id]+'</svg><span>'+label+'</span></button>').join("")+'</nav>';
