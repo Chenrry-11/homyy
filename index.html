@@ -514,7 +514,7 @@ function modelNode(m){
       <span class="badge gray">输入 ${esc(m.priceInput)} / 输出 ${esc(m.priceOutput)} 元每百万token</span>
       <span class="spacer"></span>
       <span class="tree-actions">
-        <button class="btn" onclick="modelForm('${m.providerId}','${m.id}')">编辑</button>
+        <button class="btn" onclick="modelDetail('${m.id}')">详情</button><button class="btn" onclick="modelForm('${m.providerId}','${m.id}')">编辑</button>
         <button class="btn btn-danger" onclick="deleteModel('${m.id}')">删除</button>
       </span>
     </div>
@@ -756,6 +756,79 @@ function providerForm(id){
     ]
   });
 }
+function channelsOfModel(model){
+  const ids=Array.isArray(model&&model.channelIds)?model.channelIds:[];
+  return cache.channels.filter(ch=>ch.modelId===model.id&&ids.includes(ch.id));
+}
+function activeChannelOf(model){
+  const rows=channelsOfModel(model);
+  return rows.find(ch=>ch.id===model.activeChannelId&&ch.enabled!==false)||rows.find(ch=>ch.enabled!==false)||rows[0]||null;
+}
+function modelReady(model){
+  const ch=activeChannelOf(model);
+  return !!model&&model.enabled!==false&&!!ch&&ch.enabled!==false&&!!findById(cache.providers,ch.providerId);
+}
+function modelDetail(id){
+  const m=findById(cache.models,id);if(!m)return;
+  const owner=personOfModel(id),channels=channelsOfModel(m),active=activeChannelOf(m);
+  const identityOptions=cache.persons.map(p=>'<option value="'+esc(p.id)+'" '+(owner&&owner.id===p.id?'selected':'')+'>'+esc(p.name)+'</option>').join('');
+  const channelOptions=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId);return '<option value="'+esc(ch.id)+'" '+(active&&active.id===ch.id?'selected':'')+' '+(ch.enabled===false?'disabled':'')+'>'+esc(pv?pv.name:'连接已不存在')+' · '+esc(ch.remoteModelId||m.name)+(ch.enabled===false?'（已停用）':'')+'</option>';}).join('');
+  const channelRows=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId);return '<div class="mem-item"><div class="mem-head"><strong>'+esc(pv?pv.name:'连接已不存在')+'</strong><span class="spacer"></span><span class="muted small">'+(ch.enabled===false?'已停用':'可用')+'</span></div><div class="muted small">实际模型 ID：'+esc(ch.remoteModelId||m.name)+'</div></div>';}).join('');
+  modal({title:"模型详情",body:
+    '<div class="field"><label>官方模型名称</label><strong>'+esc(m.name)+'</strong><div class="hint">平台内部模型名称；每条调用通道可使用不同的实际模型 ID。</div></div>'+
+    '<div class="field"><label>所属 AI 身份</label><select id="detailIdentity"><option value="">暂不绑定</option>'+identityOptions+'</select></div>'+
+    '<div class="field"><label class="switch"><input type="checkbox" id="detailModelEnabled" '+(m.enabled!==false?'checked':'')+'> 启用此模型</label><div class="hint">停用后不能在聊天窗口新选用此型号，历史消息仍保留。</div></div>'+
+    '<div class="field"><label>当前调用通道</label><select id="detailActiveChannel">'+channelOptions+'</select><div class="hint">切换通道不会改变 AI 身份、聊天记录或模型名称。</div></div>'+
+    '<div class="field"><label>已配置通道（'+channels.length+'）</label>'+(channelRows||'<div class="muted small">还没有调用通道。</div>')+
+    '<button class="btn" onclick="addModelChannel(\''+m.id+'\')">＋ 添加调用通道</button></div>',
+    actions:[
+      {label:"关闭",onClick:closeModal},
+      {label:"保存详情",primary:true,onClick:async()=>{
+        const identityId=document.getElementById("detailIdentity").value;
+        const enabled=document.getElementById("detailModelEnabled").checked;
+        const activeId=document.getElementById("detailActiveChannel").value;
+        const valid=channels.find(ch=>ch.id===activeId&&ch.enabled!==false);
+        if(enabled&&!valid){toast("启用模型前，请先配置并选择一条可用通道");return;}
+        if(identityId&&!cache.persons.some(p=>p.id===identityId))throw new Error("所选 AI 身份不存在");
+        const writes=[{store:"models",record:Object.assign({},m,{enabled,activeChannelId:valid?valid.id:m.activeChannelId,updatedAt:nowISO()})}];
+        for(const p of cache.persons){
+          const oldIds=Array.isArray(p.modelIds)?p.modelIds.slice():(p.modelId?[p.modelId]:[]);
+          const ids=oldIds.filter(x=>x!==m.id);if(p.id===identityId)ids.push(m.id);
+          if(ids.length!==oldIds.length||oldIds.includes(m.id)!==(p.id===identityId)){
+            const next=Object.assign({},p,{modelIds:ids,updatedAt:nowISO()});
+            if(p.modelId===m.id&&p.id!==identityId)next.modelId=ids[0]||null;
+            if(p.id===identityId&&!next.modelId)next.modelId=m.id;
+            writes.push({store:"persons",record:next});
+          }
+        }
+        await dbPutAtomic(writes);closeModal();await loadCache();render();
+      }}
+    ]
+  });
+}
+function addModelChannel(modelId){
+  const m=findById(cache.models,modelId);if(!m)return;
+  const options=cache.providers.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+esc(p.baseUrl)+'</option>').join('');
+  modal({title:"添加模型调用通道",body:
+    '<div class="field"><label>API 连接</label><select id="newChannelProvider">'+options+'</select></div>'+
+    '<div class="field"><label>该通道的实际模型 ID</label><input id="newChannelRemote" value="'+esc(m.name)+'" placeholder="填写服务商实际识别的模型标识"></div>'+
+    '<div class="field"><label class="switch"><input type="checkbox" id="newChannelEnabled" checked> 添加后立即启用</label></div>'+
+    '<div class="hint">API 连接保存密钥和接口地址；实际模型 ID 由通道单独保存。同一模型可以配置多条通道。</div>',
+    actions:[
+      {label:"取消",onClick:closeModal},
+      {label:"添加通道",primary:true,onClick:async()=>{
+        const providerId=document.getElementById("newChannelProvider").value;
+        const remoteModelId=document.getElementById("newChannelRemote").value.trim();
+        if(!providerId||!remoteModelId){toast("请选择 API 连接并填写实际模型 ID");return;}
+        const ts=nowISO(),ch={id:uid("ch"),modelId,providerId,remoteModelId,enabled:document.getElementById("newChannelEnabled").checked,isDefault:false,createdAt:ts,updatedAt:ts};
+        const ids=[...(Array.isArray(m.channelIds)?m.channelIds:[]),ch.id];
+        const next=Object.assign({},m,{channelIds:ids,activeChannelId:m.activeChannelId||ch.id,updatedAt:ts});
+        await dbPutAtomic([{store:"modelChannels",record:ch},{store:"models",record:next}]);
+        closeModal();await loadCache();modelDetail(modelId);
+      }}
+    ]
+  });
+}
 function modelForm(providerId, id){
   const m = id ? findById(cache.models,id) : {name:"",priceInput:0,priceOutput:0,priceUpdatedAt:null};
   modal({
@@ -981,7 +1054,7 @@ function openChat(id){
 async function changeSessionModel(modelId){
   const session=findById(cache.sessions,state.sessionId);
   const person=findById(cache.persons,session?.personId);
-  if(!session||!person||!modelsOfPerson(person).some(m=>m.id===modelId)) return;
+  if(!session||!person||!modelsOfPerson(person).some(m=>m.id===modelId&&modelReady(m))) return;
   await dbPut("sessions",Object.assign({},session,{modelId,updatedAt:nowISO()}));
   await loadCache(); render();
 }
@@ -1002,7 +1075,7 @@ function viewChatShell(){
   const pn=findById(cache.persons,session.personId);
   const m=sessionModel(session,pn)||findById(cache.models,pn.modelId);
   const pv=findById(cache.providers,m.providerId);
-  const identityModels=modelsOfPerson(pn);
+  const identityModels=modelsOfPerson(pn).filter(modelReady);
   return `
   <div class="chat-page">
     <div class="topbar">
@@ -1279,7 +1352,10 @@ async function sendMessage(){
   const session=findById(cache.sessions,state.sessionId);
   const pn=findById(cache.persons,session.personId);
   const m=sessionModel(session,pn)||findById(cache.models,pn.modelId);
-  const pv=findById(cache.providers,m.providerId);
+  const channel=activeChannelOf(m);
+  const pv=findById(cache.providers,channel?channel.providerId:m.providerId);
+  const remoteModelId=channel?channel.remoteModelId:m.name;
+  if(!modelReady(m)){ addErrorNote("当前模型已停用或没有可用调用通道，请到模型详情中启用模型并选择通道。"); return; }
   const spend=await getMonthSpend();
   if(spend >= (Number(cache.settings.monthlyCap)||0)){
     addErrorNote(`本月费用已达上限 ${money2(cache.settings.monthlyCap)}，已禁止继续发送。\n可在设置里调整上限。`);
@@ -1311,7 +1387,7 @@ async function sendMessage(){
     const resp=await fetch(endpoint,{
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+pv.apiKey},
-      body:JSON.stringify({model:m.name,messages:built.messages,stream:pv.streamEnabled!==false}),
+      body:JSON.stringify({model:remoteModelId,messages:built.messages,stream:pv.streamEnabled!==false}),
       signal:controller.signal
     });
     if(!resp.ok){
