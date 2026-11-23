@@ -797,7 +797,7 @@ function providerNode(p){
     <div class="node-row">
       <button class="caret ${open?"open":""}" onclick="toggleNode('${p.id}')">${icon("chev")}</button>
       <strong>${esc(p.name)}</strong>
-      <span class="badge gray">${models.length} 个模型</span><span class="badge">${p.protocol==="anthropic-messages"?"Anthropic":p.protocol==="gemini-generate"?"Gemini":"OpenAI 兼容"}</span>
+      <span class="badge gray">${models.length} 个模型</span><span class="badge">${p.protocol==="anthropic-messages"?"Anthropic":p.protocol==="gemini-generate"?"Gemini":p.protocol==="openai-responses"?"OpenAI Responses":"OpenAI 兼容"}</span>
       <span class="spacer"></span>
       <span class="tree-actions">
         <button class="btn" onclick="modelForm('${p.id}')">添加模型</button>
@@ -1062,6 +1062,7 @@ function providerForm(id){
       <div class="field"><label>API 基础地址</label><input id="fPvUrl" value="${esc(p.baseUrl)}" placeholder="例如 https://api.openai.com/v1"></div>
       <div class="field"><label>接口协议</label><select id="fPvProtocol" onchange="updateProviderProtocolHint()">
         <option value="openai-chat" ${protocol==="openai-chat"?"selected":""}>OpenAI Chat Completions（含兼容中转）</option>
+        <option value="openai-responses" ${protocol==="openai-responses"?"selected":""}>OpenAI Responses（新一代接口）</option>
         <option value="anthropic-messages" ${protocol==="anthropic-messages"?"selected":""}>Anthropic Messages（Claude 官方协议）</option>
         <option value="gemini-generate" ${protocol==="gemini-generate"?"selected":""}>Google Gemini generateContent</option>
       </select><div class="hint" id="fPvProtocolHint">OpenAI 兼容协议：基础地址后自动拼接 /chat/completions。</div></div>
@@ -1081,7 +1082,7 @@ function providerForm(id){
         const rec=id?Object.assign({},p):{id:uid("pv"),createdAt:nowISO()};
         rec.name=name;rec.baseUrl=baseUrl;rec.apiKey=apiKey;rec.protocol=nextProtocol;
         rec.testModel=document.getElementById("fPvTestModel").value.trim();
-        rec.streamEnabled=nextProtocol==="openai-chat"&&document.getElementById("fPvStream").checked;
+        rec.streamEnabled=(nextProtocol==="openai-chat"||nextProtocol==="openai-responses")&&document.getElementById("fPvStream").checked;
         rec.enabled=document.getElementById("fPvEnabled").checked;rec.updatedAt=nowISO();
         await dbPut("providers",rec);closeModal();await loadCache();render();
       }}
@@ -1091,8 +1092,8 @@ function providerForm(id){
 }
 function updateProviderProtocolHint(){
   const protocol=document.getElementById("fPvProtocol")?.value,hint=document.getElementById("fPvProtocolHint"),stream=document.getElementById("fPvStream");
-  if(hint)hint.textContent=protocol==="anthropic-messages"?"Claude Messages 协议：基础地址后自动拼接 /messages；浏览器跨域权限由服务商决定。":protocol==="gemini-generate"?"Gemini 协议：基础地址后自动拼接 /models/{模型}:generateContent，并通过请求参数传递 Key。":"OpenAI 兼容协议：基础地址后自动拼接 /chat/completions。";
-  if(stream){stream.disabled=protocol!=="openai-chat";if(stream.disabled)stream.checked=false;}
+  if(hint)hint.textContent=protocol==="openai-responses"?"OpenAI Responses 协议：基础地址后自动拼接 /responses，支持 Responses 类型流式事件。":protocol==="anthropic-messages"?"Claude Messages 协议：基础地址后自动拼接 /messages；浏览器跨域权限由服务商决定。":protocol==="gemini-generate"?"Gemini 协议：基础地址后自动拼接 /models/{模型}:generateContent，并通过请求参数传递 Key。":"OpenAI 兼容协议：基础地址后自动拼接 /chat/completions。";
+  if(stream){stream.disabled=protocol!=="openai-chat"&&protocol!=="openai-responses";if(stream.disabled)stream.checked=false;}
 }
 
 function channelsOfModel(model){
@@ -1449,6 +1450,7 @@ function modelSupportsThinking(model,channel,pv){
   const remote=(String(channel?.remoteModelId||"")+" "+String(model.name||"")).toLowerCase();
   const provider=String(pv?.name||"").toLowerCase(),base=String(pv?.baseUrl||"").toLowerCase();
   if(pv?.protocol==="gemini-generate"&&remote.includes("gemini-2.5"))return true;
+  if(pv?.protocol==="openai-responses"&&(/gpt-[56]/.test(remote)||/\\bo[134]\\b/.test(remote)))return true;
   if(pv?.protocol==="anthropic-messages")return false;
   return /deepseek-(flash|v4-pro)/.test(remote)||/deepseek/.test(provider)||base.includes("api.deepseek.com");
 }
@@ -1826,6 +1828,11 @@ async function buildProviderRequest(provider,modelId,messages,options={}){
   const protocol=provider.protocol||"openai-chat";let base=String(provider.baseUrl||"");while(base.endsWith("/"))base=base.slice(0,-1);
   const system=messages.filter(x=>x.role==="system").map(x=>String(x.content||"")).join("\n\n");
   const turns=messages.filter(x=>x.role!=="system").map(x=>({role:x.role==="assistant"?"assistant":"user",content:String(x.content||"")}));
+  if(protocol==="openai-responses"){
+    const body={model:modelId,instructions:system,input:turns,stream:options.stream!==false};
+    if(options.thinkingSupport)body.reasoning={effort:options.thinking===false?"low":"high",summary:"auto"};
+    return {protocol,stream:body.stream,endpoint:base+"/responses",headers:{"Content-Type":"application/json","Authorization":"Bearer "+provider.apiKey},body};
+  }
   if(protocol==="anthropic-messages"){
     const body={model:modelId,max_tokens:4096,messages:turns.map(x=>({role:x.role,content:x.content}))};
     if(system)body.system=system;
@@ -1844,8 +1851,51 @@ async function buildProviderRequest(provider,modelId,messages,options={}){
   if(options.thinkingSupport)body.thinking={type:options.thinking===false?"disabled":"enabled"};
   return {protocol:"openai-chat",stream:body.stream,endpoint:base+"/chat/completions",headers:{"Content-Type":"application/json","Authorization":"Bearer "+provider.apiKey},body};
 }
+async function readResponsesCompletion(resp,onDelta=()=>{}){
+  const contentType=(resp.headers.get("content-type")||"").toLowerCase();
+  const normalize=data=>{
+    const output=Array.isArray(data.output)?data.output:[];
+    let content="",reasoning="";
+    for(const item of output){
+      if(item.type==="message")for(const part of item.content||[])if(part.type==="output_text"||part.type==="text")content+=part.text||"";
+      if(item.type==="reasoning"){
+        const summary=Array.isArray(item.summary)?item.summary:[];
+        reasoning+=summary.map(x=>x.text||"").join("");
+      }
+    }
+    content=content||data.output_text||"";
+    const usage=data.usage||{},details=usage.input_tokens_details||{};
+    return {content,reasoning,usage:{prompt_tokens:Number(usage.input_tokens)||0,completion_tokens:Number(usage.output_tokens)||0,total_tokens:Number(usage.total_tokens)||0,prompt_cache_hit_tokens:Number(details.cached_tokens)||0},raw:data};
+  };
+  if(!contentType.includes("text/event-stream")||!resp.body?.getReader)return normalize(await resp.json());
+  const reader=resp.body.getReader(),decoder=new TextDecoder();
+  let buffer="",content="",reasoning="",usage={},finalData=null;
+  const consume=line=>{
+    const trimmed=line.trim();if(!trimmed.startsWith("data:"))return;
+    const payload=trimmed.slice(5).trim();if(!payload||payload==="[DONE]")return;
+    let event;try{event=JSON.parse(payload);}catch(e){return;}
+    if(event.type==="response.output_text.delta"){
+      content+=event.delta||"";onDelta({content:event.delta||"",reasoning:"",allContent:content,allReasoning:reasoning});
+    }else if(event.type==="response.reasoning_summary_text.delta"||event.type==="response.reasoning_text.delta"){
+      reasoning+=event.delta||"";onDelta({content:"",reasoning:event.delta||"",allContent:content,allReasoning:reasoning});
+    }else if(event.type==="response.completed"){
+      finalData=event.response||{};usage=finalData.usage||usage;
+    }else if(event.type==="error"||event.type==="response.failed"){
+      throw new Error(event.error?.message||event.response?.error?.message||"Responses API 请求失败");
+    }
+  };
+  while(true){
+    const part=await reader.read();if(part.done)break;
+    buffer+=decoder.decode(part.value,{stream:true});const lines=buffer.split(/\r?\n/);buffer=lines.pop()||"";lines.forEach(consume);
+  }
+  buffer+=decoder.decode();if(buffer.trim())consume(buffer);
+  const normalized=normalize(Object.assign({},finalData||{},{usage:usage}));
+  return {content:content||normalized.content,reasoning:reasoning||normalized.reasoning,usage:normalized.usage,raw:finalData};
+}
+
 async function readProviderCompletion(resp,protocol,onDelta=()=>{}){
   if(protocol==="openai-chat")return readStreamingCompletion(resp,onDelta);
+  if(protocol==="openai-responses")return readResponsesCompletion(resp,onDelta);
   const data=await resp.json();
   if(protocol==="anthropic-messages"){
     const blocks=Array.isArray(data.content)?data.content:[];
@@ -1868,7 +1918,7 @@ async function testProviderConnection(streamMode=false){
   const apiKey=document.getElementById("fPvKey").value.trim()||document.getElementById("fPvKey").dataset.existing||"";
   const protocol=document.getElementById("fPvProtocol").value,modelId=document.getElementById("fPvTestModel").value.trim();
   const status=document.getElementById("fPvTestStatus");
-  if(streamMode&&protocol!=="openai-chat"){status.textContent="当前协议暂不支持流式测试，请使用普通请求测试。";return;}
+  if(streamMode&&protocol!=="openai-chat"&&protocol!=="openai-responses"){status.textContent="当前协议暂不支持流式测试，请使用普通请求测试。";return;}
   if(!baseUrl||!apiKey||!modelId){toast("请填写接口地址、API Key 和测试模型 ID");return;}
   status.textContent="正在测试连接……";
   const provider={name,baseUrl,apiKey,protocol};
