@@ -748,7 +748,8 @@ function providerForm(id){
         const name = document.getElementById("fPvName").value.trim();
         const baseUrl = document.getElementById("fPvUrl").value.trim();
         const apiKey = document.getElementById("fPvKey").value.trim();
-        const streamEnabled = document.getElementById("fPvStream").checked;\n        const enabled = document.getElementById("fPvEnabled").checked;
+        const streamEnabled = document.getElementById("fPvStream").checked;
+        const enabled = document.getElementById("fPvEnabled").checked;
         if(!name || !baseUrl){ toast("厂商名和接口地址必填"); return; }
         const rec = id ? Object.assign({}, p) : {id:uid("pv"),createdAt:nowISO()};
         rec.name=name; rec.baseUrl=baseUrl; rec.apiKey=apiKey; rec.streamEnabled=streamEnabled; rec.enabled=enabled; rec.updatedAt=nowISO();
@@ -767,7 +768,8 @@ function activeChannelOf(model){
 }
 function modelReady(model){
   const ch=activeChannelOf(model);
-  const pv=ch&&findById(cache.providers,ch.providerId);\n  return !!model&&model.enabled!==false&&!!ch&&ch.enabled!==false&&!!pv&&pv.enabled!==false;
+  const pv=ch&&findById(cache.providers,ch.providerId);
+  return !!model&&model.enabled!==false&&!!ch&&ch.enabled!==false&&!!pv&&pv.enabled!==false;
 }
 function modelDetail(id){
   const m=findById(cache.models,id);if(!m)return;
