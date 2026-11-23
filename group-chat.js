@@ -188,7 +188,7 @@ function bindGroupChatInput(){
 }
 function handleGroupInput(){
  var input=document.getElementById("groupChatInput"),menu=document.getElementById("groupCommandMenu");if(!input||!menu)return;
- var raw=input.value,at=raw.match(/(^|\s)@([^\s@]*)$/);
+ var raw=input.value,at=raw.match(/(^|[^A-Za-z0-9_])@([^\s@，。！？,.!?;:：、]*)$/);
  if(at){
   var query=at[2].toLowerCase(),start=at.index+at[1].length,g=groupById(state.groupId);
   var people=(g?.members||[]).map(m=>findById(cache.persons,m.personId)).filter(p=>p&&(!query||p.name.toLowerCase().includes(query)));
@@ -214,7 +214,7 @@ async function sendGroupMessage(){
  var input=document.getElementById("groupChatInput"),g=groupById(state.groupId);if(!input||!g)return;var text=input.value.trim();if(!text)return;
  if(g.stopCommand&&text===g.stopCommand){input.value="";stopGroupTurn();return;}
  if(text.startsWith("/")){input.value="";document.getElementById("groupCommandMenu").classList.add("hidden");await executeGroupCommand(text);return;}
- var target=null,mention=text.match(/(^|\s)@([^\s@]+)\s*/);if(mention){var p=groupFindPerson(mention[2],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;text=(text.slice(0,mention.index)+mention[1]+text.slice(mention.index+mention[0].length)).replace(/[ \t]{2,}/g," ").trim();}
+ var target=null,mention=text.match(/(^|[^A-Za-z0-9_])@([^\s@，。！？,.!?;:：、]+)\s*/);if(mention){var p=groupFindPerson(mention[2],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;text=(text.slice(0,mention.index)+mention[1]+text.slice(mention.index+mention[0].length)).replace(/[ \t]{2,}/g," ").trim();}
  var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
  var msg={id:uid("gm"),groupId:g.id,role:narrator?"narrator":"user",includeInContext:narrator?g.narratorInContext!==false:true,content:text,createdAt:nowISO(),turnId:state.groupTurnId+1};
  await dbPut("groupMessages",msg);state.groupMessages.push(msg);input.value="";state.groupComposerMode="message";
