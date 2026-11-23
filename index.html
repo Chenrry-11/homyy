@@ -1460,7 +1460,7 @@ function memoryForm(id){
         rec.source=document.getElementById("fMemSrc").value.trim();
         rec.enabled=document.getElementById("fMemEn").checked;
         rec.updatedAt=ts;
-        const duplicate=!id?cache.memories.find(x=>x.personId===state.personId&&String(x.content||"").trim().replace(/\\s+/g," ")===content.replace(/\\s+/g," ")):null;
+        const duplicate=!id?cache.memories.find(x=>x.personId===state.personId&&String(x.content||"").trim()===content.trim()):null;
         if(duplicate){rec.id=duplicate.id;rec.createdAt=duplicate.createdAt;rec.personId=duplicate.personId;toast("发现重复记忆，已更新原有记录");}
         await dbPut("memories",rec); closeModal(); await loadCache(); render();
       }}
