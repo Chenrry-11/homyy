@@ -482,7 +482,7 @@ const memoriesOf = (personId)=>cache.memories.filter(m=>m.personId===personId);
 const sessionsOf = (personId)=>cache.sessions.filter(s=>s.personId===personId)
   .sort((a,b)=> (b.updatedAt||"").localeCompare(a.updatedAt||""));
 
-const ICONS={menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'};
+const ICONS={eye:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',audio:'<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>',mic:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>' ,menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'};
 function icon(n){return `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;}
 function avatar(n,img){return img?`<span class="avatar"><img src="${esc(img)}" alt=""></span>`:`<span class="avatar">${esc([...String(n)][0]||"?")}</span>`;}
 function latestSession(){ return [...cache.sessions].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]; }
@@ -1273,7 +1273,7 @@ function viewChatShell(){
       <div class="pending-attachments" id="pendingAttachments"></div>
       <div class="input-row">
         <button class="btn icon-btn composer-attach" title="添加附件" onclick="openComposerMenu()">${icon("plus")}</button>
-        <input class="hidden" id="chatFiles" type="file" accept="image/*,.txt,.md,.csv,.json,.pdf,.doc,.docx" multiple onchange="handleChatFiles(this)">
+        <input class="hidden" id="chatFiles" type="file" accept="image/*,.txt,.md,.csv,.json,.html" multiple onchange="handleChatFiles(this)">
         <textarea id="chatInput" rows="1" placeholder="发消息给 ${esc(pn.name)}…"
           oninput="refreshEstimate()"></textarea>
         <button class="btn icon-btn composer-mic" id="micBtn" title="语音转文字" onclick="toggleBrowserDictation()">${icon("mic")}</button>
@@ -1320,8 +1320,10 @@ async function handleChatFiles(input){
   for(const file of files){
     if(file.size>8*1024*1024){toast(file.name+" 超过 8MB，暂不添加");continue;}
     if(state.pendingAttachments.length>=6){toast("单条消息最多添加 6 个附件");break;}
-    try{state.pendingAttachments.push({id:uid("att"),name:file.name,type:file.type||"application/octet-stream",size:file.size,dataUrl:await fileToDataURL(file)});}
-    catch(e){toast(file.name+" 读取失败");}
+    try{
+      const textContent=(file.type.startsWith("text/")||/\.(txt|md|csv|json|html)$/i.test(file.name))?await file.text():"";
+      state.pendingAttachments.push({id:uid("att"),name:file.name,type:file.type||"application/octet-stream",size:file.size,dataUrl:await fileToDataURL(file),textContent});
+    }catch(e){toast(file.name+" 读取失败");}
   }
   renderPendingAttachments();
 }
@@ -1691,18 +1693,20 @@ async function sendMessage(){
   if(!pv.baseUrl){ addErrorNote("厂商接口地址为空，请先补全。"); return; }
 
   let outgoingDraft=draft;
+  const textFiles=attachments.filter(a=>a.textContent);
+  if(textFiles.length)outgoingDraft+=(draft?"\n\n":"")+textFiles.map(a=>"【附件："+a.name+"】\n"+a.textContent).join("\n\n");
   if(attachments.some(a=>a.type.startsWith("image/"))){
     try{const visual=await analyzePendingImages(attachments,draft);outgoingDraft=(draft?draft+"\n\n":"")+"【图片内容】\n"+visual;}
     catch(e){addErrorNote("图片识别失败："+(e.message||String(e)));return;}
   }
   const built=buildOutgoing(outgoingDraft);
-  const userMsg={id:uid("mg"),sessionId:session.id,role:"user",content:draft,attachments:attachments.map(({id,name,type,size,dataUrl})=>({id,name,type,size,dataUrl})),
+  const userMsg={id:uid("mg"),sessionId:session.id,role:"user",content:draft,attachments:attachments.map(({id,name,type,size,dataUrl,textContent})=>({id,name,type,size,dataUrl,textContent})),
     modelId:m.id,providerId:pv.id,promptTokens:0,completionTokens:0,totalTokens:0,
     cost:0,reasoning:"",createdAt:nowISO()};
   state.chatMessages.push(userMsg);
   await dbPut("messages",userMsg);
   session.updatedAt=nowISO();
-  if((session.title==="新窗口"||!session.title)) session.title=draft.slice(0,12);
+  if((session.title==="新窗口"||!session.title)) session.title=(draft||attachments[0]?.name||"附件").slice(0,12);
   await dbPut("sessions",session);
   ta.value="";state.pendingAttachments=[];renderPendingAttachments();refreshEstimate();
 
