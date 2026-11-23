@@ -1264,6 +1264,7 @@ function modelForm(providerId, id){
         <input id="fMdIn" type="number" min="0" step="0.01" value="${esc(m.priceInput)}"></div>
       <div class="field"><label>输出单价（元 / 百万 token）</label>
         <input id="fMdOut" type="number" min="0" step="0.01" value="${esc(m.priceOutput)}"></div>
+      <div class="field"><label>缓存读取单价（元 / 百万 token）</label><input id="fMdCache" type="number" min="0" step="0.01" value="${m.priceCacheRead==null?"":esc(m.priceCacheRead)}" placeholder="留空则按普通输入价计算"></div>
       ${!id?`<div class="field"><label>归属 AI 身份</label><select id="fMdIdentity"><option value="new">创建一个新的 AI 身份</option>${cache.persons.map(person=>`<option value="${person.id}">${esc(person.name)}（${modelsOfPerson(person).length} 个模型）</option>`).join("")}</select><div class="hint">选择已有身份后，新模型会成为该身份的另一个型号，共用身份设定与破限文档。</div></div><div class="field"><label>新 AI 身份名称</label><input id="fMdIdentityName" placeholder="例如：DeepSeek" value=""></div>`:""}
       <div class="hint">单价以厂商官方价格页为准；保存时自动记录更新日期。
         当前记录日期：${m.priceUpdatedAt ? esc(m.priceUpdatedAt) : "未填写"}</div>`,
@@ -1273,9 +1274,10 @@ function modelForm(providerId, id){
         const name = document.getElementById("fMdName").value.trim();
         const priceInput = Number(document.getElementById("fMdIn").value) || 0;
         const priceOutput = Number(document.getElementById("fMdOut").value) || 0;
+        const cachePriceText=document.getElementById("fMdCache").value.trim();
         if(!name){ toast("模型名必填"); return; }
         const rec = id ? Object.assign({},m) : {id:uid("md"),providerId,createdAt:nowISO()};
-        rec.name=name; rec.priceInput=priceInput; rec.priceOutput=priceOutput;
+        rec.name=name; rec.priceInput=priceInput; rec.priceOutput=priceOutput;rec.priceCacheRead=cachePriceText===""?null:Math.max(0,Number(cachePriceText)||0);
         rec.priceUpdatedAt=todayDate(); rec.updatedAt=nowISO();
         if(id){
           await dbPut("models",rec);
@@ -1522,6 +1524,13 @@ async function deleteSession(id){
   });
 }
 
+function calculateRequestCost(model,usage){
+  const input=Number(model?.priceInput)||0,output=Number(model?.priceOutput)||0;
+  const prompt=Number(usage?.prompt_tokens)||0,completion=Number(usage?.completion_tokens)||0;
+  const cached=Number(usage?.prompt_cache_hit_tokens??usage?.cached_tokens??usage?.input_cached_tokens)||0;
+  const cacheRate=model?.priceCacheRead==null?input:Math.max(0,Number(model.priceCacheRead)||0);
+  return (Math.max(0,prompt-cached)*input+cached*cacheRate+completion*output)/1e6;
+}
 function modelSupportsThinking(model,channel,pv){
   if(!model)return false;
   const remote=(String(channel?.remoteModelId||"")+" "+String(model.name||"")).toLowerCase();
@@ -1859,7 +1868,7 @@ async function generateSessionSummary(){
     const result=await readProviderCompletion(response,request.protocol);
     if(!result.content?.trim())throw new Error("模型没有返回摘要文本");
     const usage=result.usage||{},promptTokens=Number(usage.prompt_tokens)||0,completionTokens=Number(usage.completion_tokens)||0,cachedTokens=Number(usage.prompt_cache_hit_tokens)||0;
-    const cost=(promptTokens*(Number(model.priceInput)||0)+completionTokens*(Number(model.priceOutput)||0))/1e6;
+    const cost=calculateRequestCost(model,usage);
     const fresh=await dbGet("sessions",session.id),events=Array.isArray(fresh.summaryEvents)?fresh.summaryEvents.slice():[];
     events.push({id:uid("ue"),createdAt:nowISO(),promptTokens,completionTokens,totalTokens:Number(usage.total_tokens)||(promptTokens+completionTokens),cachedTokens,cost,modelId:model.id,providerId:provider.id});
     await dbPut("sessions",Object.assign({},fresh,{summaryEvents:events,updatedAt:nowISO()}));await loadCache();
@@ -2041,7 +2050,8 @@ async function readProviderCompletion(resp,protocol,onDelta=()=>{}){
     const content=blocks.filter(x=>x.type==="text").map(x=>x.text||"").join("");
     const reasoning=blocks.filter(x=>x.type==="thinking").map(x=>x.thinking||"").join("");
     const usage=data.usage||{},pt=Number(usage.input_tokens)||0,ct=Number(usage.output_tokens)||0;
-    return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:pt+ct,prompt_cache_hit_tokens:Number(usage.cache_read_input_tokens)||0},raw:data};
+    const cached=Number(usage.cache_read_input_tokens)||0;
+    return {content,reasoning,usage:{prompt_tokens:pt+cached,completion_tokens:ct,total_tokens:pt+ct+cached,prompt_cache_hit_tokens:cached},raw:data};
   }
   if(protocol==="gemini-interactions"){
     const steps=Array.isArray(data.steps)?data.steps:[];
@@ -2198,7 +2208,7 @@ async function sendMessage(existingUserId=null){
     const pt=Number(usage.prompt_tokens)||0;
     const ct=Number(usage.completion_tokens)||0;
     const cached=Number(usage.prompt_cache_hit_tokens ?? usage.cached_tokens ?? usage.input_cached_tokens)||0;
-    const cost=(pt*(Number(m.priceInput)||0)+ct*(Number(m.priceOutput)||0))/1e6;
+    const cost=calculateRequestCost(m,usage);
     if(!aiMsg.content && !aiMsg.reasoning){
       state.chatMessages=state.chatMessages.filter(x=>x.id!==aiMsg.id);
       addErrorNote("接口连接成功，但没有返回可显示的正文或思考摘要。请确认该模型支持 OpenAI 兼容的流式聊天接口。");
