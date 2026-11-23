@@ -182,9 +182,9 @@ input,textarea,select,button{caret-color:#bd829b}
 /* HOMY workspace redesign: responsive home + identity drawer */
 :root{--bg:#fbf5f7;--card:rgba(255,255,255,.78);--ink:#493943;--sub:#897781;--line:#eee1e7;--hover:#f6eaf0;--accent:#bd829b;--accent-soft:#f6e8ee;--r:18px;--r-in:12px}
 html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
-.shell{min-height:0;height:var(--app-height,100dvh);background:radial-gradient(ellipse at 72% 4%,rgba(237,211,224,.38),transparent 36%),linear-gradient(160deg,#fffdfd 0%,#fbf5f7 62%,#f7edf2 100%)}
+.shell{min-height:0;height:var(--app-height,100dvh);padding-top:env(safe-area-inset-top);background:radial-gradient(ellipse at 72% 4%,rgba(237,211,224,.38),transparent 36%),linear-gradient(160deg,#fffdfd 0%,#fbf5f7 62%,#f7edf2 100%)}
 .side{background:rgba(255,255,255,.78);backdrop-filter:blur(24px);border-right:1px solid rgba(222,199,211,.55)}
-.drawer-shell{height:100%;display:flex;flex-direction:column;padding:18px 14px 12px}
+.drawer-shell{height:100%;display:flex;flex-direction:column;padding:calc(18px + env(safe-area-inset-top)) 14px 12px}
 .drawer-brand,.home-brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:750;letter-spacing:.14em;color:#493943}
 .brand-mark{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;background:linear-gradient(145deg,#f4e0e9,#e7cbd9);font-family:Georgia,serif;font-size:17px;letter-spacing:0;color:#684a5a}
 .side-head{padding:4px 2px 18px}
