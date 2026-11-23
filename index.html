@@ -258,9 +258,23 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .setup-hint{align-self:center;margin:0 0 20px;color:#9a7c8c;font-size:12px}
 .setup-hint span{padding-left:6px}
 .home-footer{display:flex;justify-content:space-between;margin-top:auto;padding-top:18px;border-top:1px solid rgba(226,208,217,.5);color:#b39eaa;font-size:9px;letter-spacing:.13em}
+/* Fixed application frame: the page scrolls inside its content, not around its controls. */
+.main{min-height:0;overflow:hidden}
+.home-page{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.home-topbar{position:sticky;top:0;z-index:8;background:rgba(252,247,249,.88);backdrop-filter:blur(18px)}
+.home-bottom-nav{position:sticky;bottom:0;z-index:9;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:12px -4px 0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border:1px solid rgba(231,214,223,.8);border-bottom:0;border-radius:18px 18px 0 0;background:rgba(255,252,253,.88);backdrop-filter:blur(22px);box-shadow:0 -5px 22px rgba(105,70,88,.045)}
+.home-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:48px;border-radius:12px;color:#a18c97}
+.home-nav-item.active{background:#f7eaf0;color:#95657d}
+.home-nav-symbol{font-size:20px;line-height:1.15}
+.home-nav-item small{font-size:10px;letter-spacing:.04em}
+.chat-page{min-height:0;overflow:hidden}
+.msg-list{min-height:0;overscroll-behavior:contain}
+.chat-input{position:relative;z-index:5;background:linear-gradient(180deg,rgba(251,246,248,0),rgba(251,246,248,.94) 18%);padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.content{min-height:0;overscroll-behavior:contain}
+
 @media(min-width:900px){.side{position:relative;inset:auto;transform:none;width:278px;flex:none;z-index:1;border-right:1px solid rgba(222,199,211,.55)}.shell.drawer .side{transform:none}.mask{display:none!important}.home-menu{display:none}}
 @media(max-width:899px){.side{position:fixed;top:0;bottom:0;left:0;width:min(330px,88vw);z-index:40;transform:translateX(-105%);transition:transform .22s;background:rgba(255,252,253,.97)}.shell.drawer .side{transform:translateX(0)}.mask{position:fixed;inset:0;z-index:30;background:rgba(63,43,54,.28);display:none}.shell.drawer .mask{display:block}.home-menu{display:inline-flex}.home-topbar{height:62px}.home-hero{padding:42px 0 30px}.identity-grid{grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}.identity-card{padding:15px 14px 13px}.identity-avatar .avatar{width:40px;height:40px}.identity-name{margin-top:13px;font-size:16px}}
-@media(max-width:420px){.home-page{padding:0 18px 18px}.home-hero h2{font-size:27px}.home-hero p{font-size:12px}.identity-grid{grid-template-columns:1fr 1fr}.identity-card{padding:13px 12px}.identity-meta{font-size:10px}.home-footer{font-size:8px}}
+@media(max-width:420px){.home-page{padding:0 18px calc(8px + env(safe-area-inset-bottom))}.home-hero h2{font-size:27px}.home-hero p{font-size:12px}.identity-grid{grid-template-columns:1fr 1fr}.identity-card{padding:13px 12px}.identity-meta{font-size:10px}.home-footer{font-size:8px}.home-bottom-nav{margin-left:-3px;margin-right:-3px}}
 @media(prefers-reduced-motion:reduce){.identity-card,.side{transition:none}}
 
 .service-hub{padding:0;overflow:hidden}.service-hub-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.service-row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.service-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:var(--accent-soft);color:var(--accent);flex:none}.service-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}.service-copy strong{font-size:14px}.service-copy span{font-size:12px;color:var(--sub)}.service-hub>.hint{padding:12px 16px}.badge.green{background:#e5f5eb;color:#23824a}.msg-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.msg-tools .btn{height:30px;font-size:12px}.code-preview-mask{position:fixed;inset:0;z-index:100;background:rgba(35,24,30,.48);display:flex;align-items:stretch;justify-content:center;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.code-preview-panel{width:100%;height:100%;background:var(--bg);display:flex;flex-direction:column}.code-preview-panel header{height:56px;flex:none;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--card)}.code-preview-panel iframe{border:0;display:block;flex:1;width:100%;background:#fff}@media(min-width:760px){.code-preview-mask{padding:4vh 5vw}.code-preview-panel{max-width:1100px;border-radius:18px;overflow:hidden;box-shadow:0 20px 80px rgba(40,20,30,.2)}}@media(max-width:520px){.service-row{gap:8px;padding:12px}.service-icon{width:36px;height:36px}.service-row .badge{display:none}.service-copy span{font-size:11px}}.pending-attachments{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.pending-file{display:flex;align-items:center;gap:6px;max-width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:12px}.pending-file img{width:34px;height:34px;object-fit:cover;border-radius:7px}.pending-file>span:not(.pending-file-icon){max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pending-file button{font-size:18px;color:var(--sub);padding:0 3px}.message-image{display:block;max-width:min(100%,320px);max-height:320px;object-fit:contain;border-radius:12px;margin-top:8px}.message-file{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px}.composer-attach,.composer-mic{width:36px;height:36px;flex:none}.composer-mic.recording{background:var(--accent-soft);color:var(--danger);animation:micPulse 1s infinite alternate}@keyframes micPulse{to{opacity:.5}}
@@ -280,6 +294,20 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .modal-mask{align-items:center;justify-content:center;padding:18px;overflow:auto}.modal{width:min(100%,520px);max-height:min(84dvh,760px);border-radius:20px;box-shadow:0 20px 70px rgba(60,37,49,.2)}.modal-head{padding:16px 18px}.modal-body{padding:18px;overflow:auto}.modal-foot{padding:13px 18px calc(13px + env(safe-area-inset-bottom))}
 @media(max-width:640px){.bubble-style-grid{gap:7px}.bubble-style-option{padding:8px}.bubble-style-option strong{font-size:12px}.bubble-style-option small{font-size:9px}.modal-mask{padding:16px}.modal{border-radius:18px;max-height:82dvh}}
 /* HOMY chat surface refinements */
+.msg-row{display:flex;align-items:flex-start;gap:9px;width:100%;min-width:0}
+.msg-row.user{justify-content:flex-end}
+.msg-avatar{width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-top:1px;border-radius:50%;overflow:hidden;background:linear-gradient(145deg,#f4e2ea,#e8cfdb);box-shadow:0 2px 7px rgba(105,70,88,.08)}
+.msg-avatar .avatar{width:100%;height:100%;font-size:13px}
+.msg-row .msg.ai{width:auto;max-width:min(82%,760px);min-width:0}
+.msg-row .msg.user{max-width:min(78%,720px);min-width:0}
+.msg-row .msg-body{overflow-wrap:anywhere}
+.msg-row .msg-actions,.msg-row .msg-meta{max-width:100%}
+@media(max-width:640px){
+  .msg-row{gap:7px}
+  .msg-avatar{width:28px;height:28px}
+  .msg-row .msg.ai{max-width:calc(100% - 35px)}
+  .msg-row .msg.user{max-width:calc(100% - 35px)}
+}
 .chat-topbar{gap:8px;padding:0 14px}
 .chat-model-select{min-width:0;max-width:min(44vw,260px);padding:7px 10px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.78);font-size:13px}
 .chat-identity{display:flex;align-items:center;gap:7px;min-width:0;max-width:120px;padding:5px 8px;border-radius:12px;background:rgba(255,255,255,.62);font-size:12px}
@@ -646,6 +674,12 @@ function viewWelcome(){
         }).join("")}</div>`:`<div class="recent-empty">还没有聊天记录。选择上方的 AI 身份开始第一次对话。</div>`}
       </section>`}
     ${noKey?`<button class="setup-hint" onclick="goSettings()">检测到 API 连接尚未填写密钥，前往设置完成配置 <span>→</span></button>`:""}
+    <nav class="home-bottom-nav" aria-label="主导航">
+      <button class="home-nav-item active" aria-current="page" onclick="goTree()"><span class="home-nav-symbol">⌂</span><small>首页</small></button>
+      <button class="home-nav-item" onclick="openGroups()"><span class="home-nav-symbol">▦</span><small>群聊</small></button>
+      <button class="home-nav-item" onclick="goSettings('models')"><span class="home-nav-symbol">⚙</span><small>设置</small></button>
+      <button class="home-nav-item" onclick="goMyPage()"><span class="home-nav-symbol">○</span><small>我的</small></button>
+    </nav>
     <footer class="home-footer"><span>HOMY · AI WORKSPACE</span><span>PRIVATE BY DESIGN</span></footer>
   </div>`;
 }
@@ -1539,21 +1573,22 @@ async function saveGlobalService(key,value){
 function msgHTML(msg){
   if(msg.role==="user"){
     const files=(msg.attachments||[]).map(a=>a.type?.startsWith("image/")?`<img class="message-image" src="${a.dataUrl}" alt="${esc(a.name)}">`:`<div class="message-file">${icon("file")} ${esc(a.name)}</div>`).join("");
-    return `<div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}
+    return `<div class="msg-row user"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}
       ${!state.sending?`<div class="msg-actions"><button onclick="editUserMessage('${msg.id}')">编辑并重新回答</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回</button></div>`:""}
-      <div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div>`;
+      <div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div></div>`;
   }
   if(msg.role==="error")return `<div class="msg err">${esc(msg.content)}</div>`;
   if(msg.role==="system-note")return `<div class="msg sysnote">${esc(msg.content)}</div>`;
-  const m=findById(cache.models,msg.modelId),reason=msg.reasoning?`<details class="reason-box"><summary><span>深度思考</span><span class="reason-hint">模型提供 · 点击展开</span></summary><pre>${esc(msg.reasoning)}</pre></details>`:"";
+  const m=findById(cache.models,msg.modelId),session=findById(cache.sessions,state.sessionId),person=findById(cache.persons,session?.personId);
+  const reason=msg.reasoning?`<details class="reason-box"><summary><span>深度思考</span><span class="reason-hint">模型提供 · 点击展开</span></summary><pre>${esc(msg.reasoning)}</pre></details>`:"";
   const speakOn=!!cache.settings.globalServices?.tts?.enabled;
-  return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
+  return `<div class="msg-row assistant"><span class="msg-avatar">${avatar(person?.name||"AI",person?.avatar)}</span><div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
     <div class="msg-body">${esc(msg.content)}</div>
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
     ${!state.sending&&!msg.streaming?`<div class="msg-actions"><button onclick="regenerateFromMessage('${msg.id}')">重新生成</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回回复</button><button onclick="copyMessageText('${msg.id}')">复制</button>${speakOn?`<button data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}</div>`:""}
     <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${fmtTime(msg.createdAt)}</span></div>
-  </div>`;
+  </div></div>`;
 }
 async function copyMessageText(id){
   const msg=state.chatMessages.find(x=>x.id===id); if(!msg) return;
