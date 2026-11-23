@@ -86,17 +86,65 @@ async function deleteGroup(id){
 
 function loadGroupMessages(){return idbReq(tx("groupMessages").index("groupId").getAll(state.groupId)).then(rows=>{state.groupMessages=rows.sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));renderGroupMessages({forceBottom:true});});}
 function groupMessageHTML(m){
- if(m.role==="user")return '<div class="msg group-user-message"><div class="msg-body">'+esc(m.content)+'</div><div class="group-msg-meta"><span>你</span><span>'+fmtTime(m.createdAt)+'</span></div></div>';
+ if(m.role==="user"){
+  var userAvatar=avatar(cache.settings.userName||"我",cache.settings.userAvatar);
+  return '<div class="group-message-row group-user-row" data-group-msg-id="'+m.id+'"><div class="group-message-stack"><div class="msg-body group-bubble group-user-bubble">'+esc(m.content)+'</div><div class="group-msg-meta"><span>你</span><span>'+fmtTime(m.createdAt)+'</span></div></div><span class="group-message-avatar">'+userAvatar+'</span></div>';
+ }
  if(m.role==="narrator")return '<div class="group-narrator"><span class="group-narrator-label">旁白 · 用户发布</span>'+esc(m.content)+'</div>';
  if(m.role==="system-note")return '<div class="msg sysnote">'+esc(m.content)+'</div>';
  if(m.role==="error")return '<div class="msg err">'+esc(m.content)+'</div>';
  var p=findById(cache.persons,m.personId),model=findById(cache.models,m.modelId);
  var reason=m.reasoning?'<details class="reason-box"><summary><span>深度思考</span><span class="reason-hint">模型提供 · 点击展开</span></summary><pre>'+esc(m.reasoning)+'</pre></details>':"";
- return '<div class="msg group-ai-message">'+reason+'<div class="group-ai-head">'+(p?avatar(p.name,p.avatar):avatar("AI",""))+'<strong>'+esc(p?p.name:"AI")+'</strong></div><div class="msg-body">'+esc(m.content)+'</div><div class="group-msg-meta"><span>'+esc(model?model.name:m.modelId||"模型")+'</span><span>'+(m.thinkingUsed?"深度思考":"")+'</span><span>'+fmtTime(m.createdAt)+'</span></div></div>';
+ return '<div class="group-message-row group-ai-row" data-group-msg-id="'+m.id+'"><span class="group-message-avatar">'+(p?avatar(p.name,p.avatar):avatar("AI",""))+'</span><div class="group-message-stack"><div class="group-ai-name">'+esc(p?p.name:"AI")+'</div>'+reason+'<div class="msg-body group-bubble group-ai-bubble">'+esc(m.content)+'</div><div class="group-msg-meta"><span>'+esc(model?model.name:m.modelId||"模型")+'</span><span>'+(m.thinkingUsed?"深度思考":"")+'</span><span>'+fmtTime(m.createdAt)+'</span></div></div></div>';
+}
+function bindGroupMessageEvents(list){
+ if(!list||list.dataset.messageEvents==="1")return;list.dataset.messageEvents="1";
+ var timer=null,target=null,moved=false,opened=false;
+ var clear=()=>{if(timer)clearTimeout(timer);timer=null;target=null;};
+ list.addEventListener("contextmenu",e=>{var row=e.target.closest("[data-group-msg-id]");if(!row)return;e.preventDefault();openGroupMessageActions(row.dataset.groupMsgId);});
+ list.addEventListener("pointerdown",e=>{var row=e.target.closest("[data-group-msg-id]");if(!row)return;target=row.dataset.groupMsgId;moved=false;opened=false;timer=setTimeout(()=>{if(!moved&&target){opened=true;openGroupMessageActions(target);}clear();},560);});
+ list.addEventListener("pointermove",()=>{moved=true;if(timer){clearTimeout(timer);timer=null;}});
+ list.addEventListener("click",e=>{if(opened){e.preventDefault();e.stopPropagation();opened=false;}},true);
+ ["pointerup","pointercancel","pointerleave"].forEach(type=>list.addEventListener(type,clear));
+}
+function openGroupMessageActions(id){
+ var m=(state.groupMessages||[]).find(x=>x.id===id);if(!m||state.groupRunning)return;
+ var actions=[];
+ if(m.role==="user")actions.push({label:"编辑并重新回答",onClick:()=>editGroupUserMessage(id)});
+ if(m.role==="assistant")actions.push({label:"重新生成",onClick:()=>regenerateGroupMessage(id)});
+ actions.push({label:"复制",onClick:()=>{closeModal();navigator.clipboard?.writeText(m.content||"").then(()=>toast("已复制")).catch(()=>toast("复制失败"));}});
+ actions.push({label:"删除消息",danger:true,onClick:()=>deleteGroupMessage(id)},{label:"关闭",onClick:closeModal});
+ modal({title:m.role==="user"?"用户消息":(m.role==="assistant"?"AI 回复":"群聊消息"),body:'<div class="muted">长按消息可再次打开此菜单。</div>',actions});
+}
+async function deleteGroupMessage(id){
+ var m=(state.groupMessages||[]).find(x=>x.id===id);if(!m)return;
+ await dbDelete("groupMessages",id);state.groupMessages=state.groupMessages.filter(x=>x.id!==id);closeModal();renderGroupMessages();toast("已删除这条群聊消息");
+}
+function editGroupUserMessage(id){
+ var m=(state.groupMessages||[]).find(x=>x.id===id);if(!m||m.role!=="user")return;
+ modal({title:"编辑并重新回答",body:'<div class="field"><label>消息内容</label><textarea id="editGroupMessageText" style="min-height:140px">'+esc(m.content||"")+'</textarea></div><div class="muted small">保存后会删除这条消息之后的群聊记录，并重新触发群聊回复。</div>',actions:[
+  {label:"取消",onClick:closeModal},
+  {label:"保存并重新回答",primary:true,onClick:async()=>{
+   var next=document.getElementById("editGroupMessageText").value.trim();if(!next){toast("消息不能为空");return;}
+   var index=state.groupMessages.findIndex(x=>x.id===id),tail=state.groupMessages.slice(index+1),updated=Object.assign({},m,{content:next,updatedAt:nowISO()});
+   for(var item of tail)await dbDelete("groupMessages",item.id);await dbPut("groupMessages",updated);
+   state.groupMessages=state.groupMessages.slice(0,index).concat([updated]);closeModal();renderGroupMessages({forceBottom:true});
+   await runGroupTurn(groupById(state.groupId),updated);
+  }}
+ ]});
+}
+async function regenerateGroupMessage(id){
+ var index=state.groupMessages.findIndex(x=>x.id===id),m=state.groupMessages[index];if(!m||m.role!=="assistant")return;
+ var user=null;for(var i=index-1;i>=0;i--){if(state.groupMessages[i].role==="user"){user=state.groupMessages[i];break;}}
+ if(!user){toast("找不到对应的用户消息");return;}
+ var personId=m.personId;confirmDialog("重新生成回复","只撤回这条 AI 回复，并让对应成员重新回答。其他成员的消息会保留。确定？",async()=>{
+  await dbDelete("groupMessages",id);state.groupMessages=state.groupMessages.filter(x=>x.id!==id);closeModal();renderGroupMessages({forceBottom:true});
+  await runGroupTurn(groupById(state.groupId),user,personId);
+ });
 }
 function renderGroupMessages(options){
  var list=document.getElementById("groupMsgList");if(!list)return;var near=list.scrollHeight-list.scrollTop-list.clientHeight<150;
- list.innerHTML=(state.groupMessages||[]).map(groupMessageHTML).join("");if((options&&options.forceBottom)||near)list.scrollTop=list.scrollHeight;renderGroupStatus();
+ list.innerHTML=(state.groupMessages||[]).map(groupMessageHTML).join("");bindGroupMessageEvents(list);if((options&&options.forceBottom)||near)list.scrollTop=list.scrollHeight;renderGroupStatus();
 }
 function renderGroupStatus(){var el=document.getElementById("groupStatus");if(el)el.textContent=state.groupStatus||"";var stop=document.getElementById("groupStopBtn");if(stop)stop.disabled=!state.groupRunning;}
 function viewGroupChat(){
