@@ -90,7 +90,7 @@ function groupMessageHTML(m){
   var userAvatar=avatar(cache.settings.userName||"我",cache.settings.userAvatar);
   return '<div class="group-message-row group-user-row" data-group-msg-id="'+m.id+'"><div class="group-message-stack"><div class="msg-body group-bubble group-user-bubble">'+esc(m.content)+'</div><div class="group-msg-meta"><span>你</span><span>'+fmtTime(m.createdAt)+'</span></div></div><span class="group-message-avatar">'+userAvatar+'</span></div>';
  }
- if(m.role==="narrator")return '<div class="group-narrator"><span class="group-narrator-label">旁白 · 用户发布</span>'+esc(m.content)+'</div>';
+ if(m.role==="narrator")return '<div class="group-narrator"><span class="group-narrator-label">旁白 · 用户发布 · '+(m.includeInContext===false?"不进入上下文":"进入上下文")+'</span>'+esc(m.content)+'</div>';
  if(m.role==="system-note")return '<div class="msg sysnote">'+esc(m.content)+'</div>';
  if(m.role==="error")return '<div class="msg err">'+esc(m.content)+'</div>';
  var p=findById(cache.persons,m.personId),model=findById(cache.models,m.modelId);
