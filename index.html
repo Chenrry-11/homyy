@@ -1450,7 +1450,7 @@ function modelSupportsThinking(model,channel,pv){
   const remote=(String(channel?.remoteModelId||"")+" "+String(model.name||"")).toLowerCase();
   const provider=String(pv?.name||"").toLowerCase(),base=String(pv?.baseUrl||"").toLowerCase();
   if(pv?.protocol==="gemini-generate"&&remote.includes("gemini-2.5"))return true;
-  if(pv?.protocol==="openai-responses"&&(/gpt-[56]/.test(remote)||/\\bo[134]\\b/.test(remote)))return true;
+  if(pv?.protocol==="openai-responses"&&(/gpt-[56]/.test(remote)||remote.includes("o1")||remote.includes("o3")||remote.includes("o4")))return true;
   if(pv?.protocol==="anthropic-messages")return false;
   return /deepseek-(flash|v4-pro)/.test(remote)||/deepseek/.test(provider)||base.includes("api.deepseek.com");
 }
@@ -2022,7 +2022,7 @@ async function sendMessage(existingUserId=null){
     cachedTokens:0,cost:0,createdAt:nowISO(),streaming:true};
   state.chatMessages.push(aiMsg); renderMessages();
   const request=buildProviderRequest(pv,remoteModelId,built.messages,{
-    stream:pv.protocol==="openai-chat"&&pv.streamEnabled!==false,
+    stream:(pv.protocol==="openai-chat"||pv.protocol==="openai-responses")&&pv.streamEnabled!==false,
     thinking:session.thinkingEnabled!==false,
     thinkingSupport:modelSupportsThinking(m,channel,pv)
   });
