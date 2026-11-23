@@ -889,9 +889,11 @@ function viewPerson(){
         <div class="hint">每个 AI 身份独立保存。切换该身份下的模型型号时继续使用同一份文档。</div>
       </div>
       <div class="field">
-        <label>破限文档</label>
-        <textarea id="breakLimitDoc" style="min-height:220px" placeholder="把你准备好的破限文档粘贴在这里。平台不会替你编写或改写。">${esc(pn.breakLimitDoc||"")}</textarea>
-        <div class="hint">独立于身份设定和长期记忆；只有启用开关后才会加入请求上下文。</div>
+        <label>独立文档槽位</label>
+        <div class="mem-item"><strong>${esc(pn.breakLimitDocName||"尚未导入文档")}</strong><div class="muted small">${pn.breakLimitDoc?("已保存 · "+pn.breakLimitDoc.length+" 字符 · "+esc(pn.breakLimitDocUpdatedAt||"")):"每个 AI 身份单独保存，不提供网页内编辑。"}</div></div>
+        <input class="hidden" id="breakLimitFile" type="file" accept=".txt,.md,.json,.xml,.yaml,.yml,.csv,text/plain,application/json" onchange="importBreakLimitDoc(this)">
+        <div class="row" style="flex-wrap:wrap"><button class="btn" type="button" onclick="document.getElementById('breakLimitFile').click()">导入 / 替换文档</button>${pn.breakLimitDoc?'<button class="btn btn-danger" type="button" onclick="deleteBreakLimitDoc()">删除文档</button>':""}</div>
+        <div class="hint">支持 TXT、Markdown、JSON、XML、YAML、CSV 文本文件，最大 500 KB。导入后不可在网页内修改；请在外部编辑后重新导入。只有启用开关后才会注入上下文。</div>
       </div>
       <div class="row">
         <button class="btn btn-primary" onclick="savePersona()">保存</button>
@@ -1270,16 +1272,35 @@ async function savePersona(){
   const persona = findById(cache.personas, pn.personaId);
   const name = document.getElementById("personName").value.trim() || pn.name;
   const content = document.getElementById("personaText").value;
-  const breakLimitDoc = document.getElementById("breakLimitDoc").value;
   const breakLimitEnabled = document.getElementById("breakLimitEnabled").checked;
   const ts = nowISO();
   const personaRec = Object.assign({}, persona, {content, updatedAt:ts});
-  const personRec = Object.assign({}, pn, {name, breakLimitDoc, breakLimitEnabled, updatedAt:ts});
+  const personRec = Object.assign({}, pn, {name, breakLimitEnabled, updatedAt:ts});
   await dbPutAtomic([
     {store:"personas",record:personaRec},
     {store:"persons",record:personRec}
   ]);
   await loadCache(); toast("已保存"); render();
+}
+async function importBreakLimitDoc(input){
+  const file=input.files&&input.files[0];input.value="";if(!file)return;
+  if(file.size>500*1024){toast("文档超过 500 KB，请先精简文件");return;}
+  const allowed=/\\.(txt|md|json|xml|yaml|yml|csv)$/i.test(file.name);
+  if(!allowed){toast("目前只支持 TXT、MD、JSON、XML、YAML、CSV 文本文件");return;}
+  try{
+    const content=await file.text();
+    if(!content.trim()){toast("文档内容为空，没有导入");return;}
+    const person=findById(cache.persons,state.personId);if(!person)return;
+    await dbPut("persons",Object.assign({},person,{breakLimitDoc:content,breakLimitDocName:file.name,breakLimitDocUpdatedAt:nowISO(),updatedAt:nowISO()}));
+    await loadCache();render();toast("破限文档已导入");
+  }catch(err){toast("文档读取失败："+(err.message||String(err)));}
+}
+async function deleteBreakLimitDoc(){
+  const person=findById(cache.persons,state.personId);if(!person||!person.breakLimitDoc)return;
+  confirmDialog("删除破限文档","只删除这个 AI 身份的独立文档，不影响其他身份和聊天记录。确定？",async()=>{
+    await dbPut("persons",Object.assign({},person,{breakLimitDoc:"",breakLimitDocName:"",breakLimitDocUpdatedAt:"",updatedAt:nowISO()}));
+    closeModal();await loadCache();render();toast("破限文档已删除");
+  });
 }
 function copyPersona(){
   const pn = findById(cache.persons, state.personId);
