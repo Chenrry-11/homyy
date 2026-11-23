@@ -187,7 +187,7 @@ input,textarea,select,button{caret-color:#bd829b}
 "use strict";
 
 const DB_NAME = "multi_ai_chat_v1";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages"];
 const MEM_LEVELS = ["L0","L1","L2","L3"];
 const DEFAULT_SETTINGS = {
@@ -226,6 +226,12 @@ function openDB(){
       }
       if (!d.objectStoreNames.contains("models")){
         const s = d.createObjectStore("models", {keyPath:"id"});
+        s.createIndex("providerId","providerId",{unique:false});
+      }
+      // v3：模型调用通道独立存储。升级旧数据库时只新增空表，不触碰已有数据。
+      if (!d.objectStoreNames.contains("modelChannels")){
+        const s = d.createObjectStore("modelChannels", {keyPath:"id"});
+        s.createIndex("modelId","modelId",{unique:false});
         s.createIndex("providerId","providerId",{unique:false});
       }
       if (!d.objectStoreNames.contains("personas")) d.createObjectStore("personas", {keyPath:"id"});
