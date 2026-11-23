@@ -286,7 +286,7 @@ async function runGroupTurn(g,userMsg,targetId){
   if(state.groupStoppedMembers.has(item.personId))continue;
   var msg={id:uid("gm"),groupId:g.id,role:"assistant",personId:item.personId,modelId:item.modelId,providerId:item.providerId,content:item.content,reasoning:item.reasoning,promptTokens:item.promptTokens,completionTokens:item.completionTokens,totalTokens:item.totalTokens,cachedTokens:item.cachedTokens,cost:item.cost,thinkingUsed:item.thinkingUsed,turnId:turn,createdAt:nowISO()};
   await dbPut("groupMessages",msg);
-  if(turn!==state.groupTurnId)return;
+  if(turn!==state.groupTurnId){await dbDelete("groupMessages",msg.id);return;}
   state.groupMessages.push(msg);shown++;renderGroupMessages({forceBottom:true});
   var current=groupById(g.id);
   if(current){
