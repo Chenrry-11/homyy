@@ -828,7 +828,10 @@ async function savePersona(){
   const ts = nowISO();
   const personaRec = Object.assign({}, persona, {content, updatedAt:ts});
   const personRec = Object.assign({}, pn, {name, breakLimitDoc, breakLimitEnabled, updatedAt:ts});
-  await dbPut("personas",personaRec); await dbPut("persons",personRec);
+  await dbPutAtomic([
+    {store:"personas",record:personaRec},
+    {store:"persons",record:personRec}
+  ]);
   await loadCache(); toast("已保存"); render();
 }
 function copyPersona(){
@@ -868,18 +871,25 @@ async function deletePerson(){
     "将同时删除该 AI 身份的长期记忆、全部窗口和窗口内消息，以及它引用的身份设定。确定？",
     async()=>{
       const wins=sessionsOf(pn.id);
+      // 先在事务外读取所有消息，避免 await 期间 IndexedDB 事务自动关闭。
+      const messageGroups=await Promise.all(wins.map(w=>
+        idbReq(tx("messages").index("sessionId").getAll(w.id))
+      ));
+      const mems=memoriesOf(pn.id);
       const t=db.transaction(["messages","sessions","memories","persons","personas"],"readwrite");
       const msgOs=t.objectStore("messages");
-      for(const w of wins){
-        const msgs=await idbReq(tx("messages").index("sessionId").getAll(w.id));
-        msgs.forEach(m=>msgOs.delete(m.id));
-        t.objectStore("sessions").delete(w.id);
-      }
-      const mems=memoriesOf(pn.id);
-      mems.forEach(m=>t.objectStore("memories").delete(m.id));
+      for(const msgs of messageGroups) msgs.forEach(m=>msgOs.delete(m.id));
+      const sessionOs=t.objectStore("sessions");
+      wins.forEach(w=>sessionOs.delete(w.id));
+      const memoryOs=t.objectStore("memories");
+      mems.forEach(m=>memoryOs.delete(m.id));
       t.objectStore("persons").delete(pn.id);
       t.objectStore("personas").delete(pn.personaId);
-      await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=rej;});
+      await new Promise((res,rej)=>{
+        t.oncomplete=res;
+        t.onerror=()=>rej(t.error||new Error("删除事务失败"));
+        t.onabort=()=>rej(t.error||new Error("删除事务已中止"));
+      });
       closeModal(); await loadCache(); goTree();
     });
 }
