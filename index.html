@@ -1569,13 +1569,13 @@ async function loadChatMessages(){
 }
 function bindMessageListEvents(list){
   if(list.dataset.eventsBound==="1")return;list.dataset.eventsBound="1";
-  let timer=null,targetId=null,startX=0,startY=0,pointerId=null;
+  let timer=null,targetId=null,startX=0,startY=0,pointerId=null,opened=false;
   const clear=()=>{if(timer)clearTimeout(timer);timer=null;targetId=null;pointerId=null;};
-  list.addEventListener("contextmenu",e=>{const node=e.target.closest(".msg[data-msg-id]");if(!node)return;e.preventDefault();openMessageActions(node.dataset.msgId);});
+  list.addEventListener("contextmenu",e=>{const node=e.target.closest(".msg[data-msg-id]");if(!node)return;e.preventDefault();if(opened)return;opened=true;clear();openMessageActions(node.dataset.msgId);});
   list.addEventListener("pointerdown",e=>{
     const node=e.target.closest(".msg[data-msg-id]");if(!node||e.button!==0)return;
-    targetId=node.dataset.msgId;pointerId=e.pointerId;startX=e.clientX;startY=e.clientY;
-    timer=setTimeout(()=>{if(targetId)openMessageActions(targetId);clear();},560);
+    targetId=node.dataset.msgId;pointerId=e.pointerId;startX=e.clientX;startY=e.clientY;opened=false;
+    timer=setTimeout(()=>{if(targetId&&!opened){opened=true;openMessageActions(targetId);}clear();},560);
   });
   list.addEventListener("pointermove",e=>{
     if(pointerId===null||e.pointerId!==pointerId||!timer)return;
