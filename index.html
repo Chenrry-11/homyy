@@ -1285,7 +1285,7 @@ async function savePersona(){
 async function importBreakLimitDoc(input){
   const file=input.files&&input.files[0];input.value="";if(!file)return;
   if(file.size>500*1024){toast("文档超过 500 KB，请先精简文件");return;}
-  const allowed=/\\.(txt|md|json|xml|yaml|yml|csv)$/i.test(file.name);
+  const extension=String(file.name||"").toLowerCase().split(".").pop();const allowed=["txt","md","json","xml","yaml","yml","csv"].includes(extension);
   if(!allowed){toast("目前只支持 TXT、MD、JSON、XML、YAML、CSV 文本文件");return;}
   try{
     const content=await file.text();
