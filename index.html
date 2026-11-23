@@ -700,7 +700,7 @@ function viewTree(){
     </section>`;
   }).join("");
   return `<div class="drawer-shell">
-    <div class="side-head"><div class="drawer-brand"><span class="brand-mark">H</span><span>HOMY</span></div><button class="icon-btn drawer-close" title="关闭导航" onclick="toggleDrawer()">${icon("x")}</button></div>
+    <div class="side-head"><button class="drawer-brand" onclick="goTree()" title="返回 Home"><span class="brand-mark">H</span><span>HOMY</span></button><button class="icon-btn drawer-close" title="关闭导航" onclick="toggleDrawer()">${icon("x")}</button></div>
     <button class="drawer-new" onclick="${cache.persons.length?"newWindow('"+(cache.persons[0]?.id||"")+"')":"goSettings()"}">${icon("plus")}<span>新建聊天</span></button>
     <div class="side-list"><div class="drawer-label">AI 身份</div>${rows||`<p class="muted pad">还没有 AI 身份。</p>`}</div>
     <div class="side-foot"><button class="my-entry" onclick="goMyPage()"><span class="avatar-btn">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><span class="drawer-user-label">${esc(cache.settings.userName||"我的")}</span><span class="my-entry-arrow">›</span></button><button class="btn btn-ghost" onclick="goSettings()">${icon("gear")}设置</button></div>
@@ -1565,13 +1565,16 @@ function openMessageActions(id){
 async function deleteOneMessage(id){
   const index=state.chatMessages.findIndex(x=>x.id===id);if(index<0)return;
   const msg=state.chatMessages[index],tail=msg.role==="user"?state.chatMessages.slice(index):[msg];
-  const remove=async()=>{
-    const ids=tail.map(x=>x.id);
-    await new Promise((resolve,reject)=>{const t=db.transaction("messages","readwrite"),store=t.objectStore("messages");ids.forEach(mid=>store.delete(mid));t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error||new Error("撤回失败"));});
-    const idSet=new Set(ids);state.chatMessages=state.chatMessages.filter(x=>!idSet.has(x.id));
-    closeModal();renderMessages();toast(msg.role==="user"?"消息已撤回，后续依赖内容已一并清除":"回复已撤回，不再进入后续上下文");
-  };
-  confirmDialog(msg.role==="user"?"撤回这条消息":"撤回这条 AI 回复",msg.role==="user"?"这条用户消息及其后续对话会一并撤回，避免留下失去上下文的回复。":"这条 AI 回复将从聊天记录中移除，不再作为后续请求的上下文。",remove);
+  const withdrawn={id:uid("mg"),sessionId:state.sessionId,role:"system-note",content:msg.role==="user"?"你撤回了一条消息":"你撤回了一条 AI 回复",createdAt:nowISO(),withdrawn:true};
+  const ids=tail.map(x=>x.id),idSet=new Set(ids);
+  await new Promise((resolve,reject)=>{
+    const t=db.transaction("messages","readwrite"),store=t.objectStore("messages");
+    ids.forEach(mid=>store.delete(mid));store.put(withdrawn);
+    t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error||new Error("撤回失败"));
+  });
+  state.chatMessages=state.chatMessages.filter(x=>!idSet.has(x.id));
+  const insertAt=Math.min(index,state.chatMessages.length);state.chatMessages.splice(insertAt,0,withdrawn);
+  closeModal();renderMessages();toast("已撤回，原内容不会再进入后续聊天上下文");
 }
 function editUserMessage(id){
   const msg=state.chatMessages.find(x=>x.id===id);if(!msg||msg.role!=="user")return;
