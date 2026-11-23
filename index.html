@@ -797,7 +797,7 @@ function providerNode(p){
     <div class="node-row">
       <button class="caret ${open?"open":""}" onclick="toggleNode('${p.id}')">${icon("chev")}</button>
       <strong>${esc(p.name)}</strong>
-      <span class="badge gray">${models.length} 个模型</span><span class="badge">${p.protocol==="anthropic-messages"?"Anthropic":p.protocol==="gemini-generate"?"Gemini":p.protocol==="openai-responses"?"OpenAI Responses":"OpenAI 兼容"}</span>
+      <span class="badge gray">${models.length} 个模型</span><span class="badge">${p.protocol==="anthropic-messages"?"Anthropic":p.protocol==="gemini-generate"?"Gemini":p.protocol==="openai-responses"?"OpenAI Responses":p.protocol==="openai-chat"?"OpenAI Chat":"其他协议"}</span>
       <span class="spacer"></span>
       <span class="tree-actions">
         <button class="btn" onclick="modelForm('${p.id}')">添加模型</button>
@@ -1114,7 +1114,7 @@ function modelDetail(id){
   const owner=personOfModel(id),channels=channelsOfModel(m),active=activeChannelOf(m);
   const identityOptions=cache.persons.map(p=>'<option value="'+esc(p.id)+'" '+(owner&&owner.id===p.id?'selected':'')+'>'+esc(p.name)+'</option>').join('');
   const channelOptions=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId);return '<option value="'+esc(ch.id)+'" '+(active&&active.id===ch.id?'selected':'')+' '+(ch.enabled===false?'disabled':'')+'>'+esc(pv?pv.name:'连接已不存在')+' · '+esc(ch.remoteModelId||m.name)+(ch.enabled===false?'（已停用）':'')+'</option>';}).join('');
-  const channelRows=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId),protocol=pv?.protocol==="anthropic-messages"?"Anthropic Messages":pv?.protocol==="gemini-generate"?"Gemini generateContent":"OpenAI Chat Completions";return '<div class="mem-item"><div class="mem-head"><strong>'+esc(pv?pv.name:'连接已不存在')+'</strong><span class="spacer"></span><label class="switch"><input type="checkbox" id="channelEnabled_'+esc(ch.id)+'" '+(ch.enabled!==false?'checked':'')+'> 启用</label></div><div class="muted small">协议：'+protocol+' · 实际模型 ID：'+esc(ch.remoteModelId||m.name)+'</div><div class="muted small">地址：'+esc(pv?.baseUrl||"连接已不存在")+'</div></div>';}).join('');
+  const channelRows=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId),protocol=pv?.protocol==="anthropic-messages"?"Anthropic Messages":pv?.protocol==="gemini-generate"?"Gemini generateContent":pv?.protocol==="openai-responses"?"OpenAI Responses":"OpenAI Chat Completions";return '<div class="mem-item"><div class="mem-head"><strong>'+esc(pv?pv.name:'连接已不存在')+'</strong><span class="spacer"></span><label class="switch"><input type="checkbox" id="channelEnabled_'+esc(ch.id)+'" '+(ch.enabled!==false?'checked':'')+'> 启用</label></div><div class="muted small">协议：'+protocol+' · 实际模型 ID：'+esc(ch.remoteModelId||m.name)+'</div><div class="muted small">地址：'+esc(pv?.baseUrl||"连接已不存在")+'</div></div>';}).join('');
   modal({title:"模型详情",body:
     '<div class="field"><label>官方模型名称</label><strong>'+esc(m.name)+'</strong><div class="hint">平台内部模型名称；每条调用通道可使用不同的实际模型 ID。</div></div>'+
     '<div class="field"><label>所属 AI 身份</label><select id="detailIdentity"><option value="">暂不绑定</option>'+identityOptions+'</select></div>'+
@@ -1450,7 +1450,7 @@ function modelSupportsThinking(model,channel,pv){
   const remote=(String(channel?.remoteModelId||"")+" "+String(model.name||"")).toLowerCase();
   const provider=String(pv?.name||"").toLowerCase(),base=String(pv?.baseUrl||"").toLowerCase();
   if(pv?.protocol==="gemini-generate"&&remote.includes("gemini-2.5"))return true;
-  if(pv?.protocol==="openai-responses"&&(/gpt-[56]/.test(remote)||remote.includes("o1")||remote.includes("o3")||remote.includes("o4")))return true;
+  if((pv?.protocol==="openai-responses"||pv?.protocol==="openai-chat")&&(/gpt-[56]/.test(remote)||remote.includes("o1")||remote.includes("o3")||remote.includes("o4")))return true;
   if(pv?.protocol==="anthropic-messages")return false;
   return /deepseek-(flash|v4-pro)/.test(remote)||/deepseek/.test(provider)||base.includes("api.deepseek.com");
 }
@@ -1848,7 +1848,7 @@ async function buildProviderRequest(provider,modelId,messages,options={}){
     return {protocol,stream:false,endpoint:base+"/models/"+encodeURIComponent(model)+":generateContent?key="+encodeURIComponent(provider.apiKey),headers:{"Content-Type":"application/json"},body};
   }
   const body={model:modelId,messages,stream:options.stream!==false};
-  if(options.thinkingSupport)body.thinking={type:options.thinking===false?"disabled":"enabled"};
+  if(options.thinkingSupport){if((provider.name||"").toLowerCase().includes("deepseek")||String(modelId).toLowerCase().includes("deepseek"))body.thinking={type:options.thinking===false?"disabled":"enabled"};else body.reasoning_effort=options.thinking===false?"low":"high";}
   return {protocol:"openai-chat",stream:body.stream,endpoint:base+"/chat/completions",headers:{"Content-Type":"application/json","Authorization":"Bearer "+provider.apiKey},body};
 }
 async function readResponsesCompletion(resp,onDelta=()=>{}){
