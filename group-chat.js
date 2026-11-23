@@ -73,12 +73,12 @@ function groupAddMembersDialog(g){
 function addGroupMembersDialog(){var g=groupById(state.groupId);if(g)groupAddMembersDialog(g);}
 function addGroupMembersDialogFromChat(){var g=groupById(state.groupId);if(g)groupAddMembersDialog(g);}
 function removeGroupMember(id){
- var g=groupById(state.groupId);if(!g)return;if(g.members.length<=1){toast("群聊至少保留一位成员");return;}stopGroupMember(id);
- confirmDialog("移除群成员","只会将该 AI 移出当前群聊，不会删除身份、模型或其他聊天。",async()=>{var members=g.members.filter(x=>x.personId!==id);await dbPut("groups",Object.assign({},g,{members:members,soloMemberId:g.soloMemberId===id?members[0].personId:g.soloMemberId,updatedAt:nowISO()}));await loadCache();render();});
+ var g=groupById(state.groupId);if(!g)return;if(g.members.length<=1){toast("群聊至少保留一位成员");return;}
+ confirmDialog("移除群成员","只会将该 AI 移出当前群聊，不会删除身份、模型或其他聊天。",async()=>{stopGroupMember(id);var members=g.members.filter(x=>x.personId!==id);await dbPut("groups",Object.assign({},g,{members:members,soloMemberId:g.soloMemberId===id?members[0].personId:g.soloMemberId,updatedAt:nowISO()}));await loadCache();render();});
 }
 async function deleteGroup(id){
- if(state.groupRunning)stopGroupTurn(true);
  confirmDialog("删除群聊","将删除这个群聊及其群聊消息，不会删除群成员身份、单聊和长期记忆。",async()=>{
+  if(state.groupRunning)stopGroupTurn(true);
   var msgs=await idbReq(tx("groupMessages").index("groupId").getAll(id)),t=db.transaction(["groups","groupMessages"],"readwrite");msgs.forEach(m=>t.objectStore("groupMessages").delete(m.id));t.objectStore("groups").delete(id);
   await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);});state.groupId=null;state.view="groups";await loadCache();render();
  });
