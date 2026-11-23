@@ -1778,7 +1778,7 @@ function msgHTML(msg){
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
     ${!state.sending&&!msg.streaming?`<div class="msg-actions"><button title="重新生成" aria-label="重新生成" onclick="regenerateFromMessage('${msg.id}')">${icon("refresh")}</button><button class="danger" title="撤回回复" aria-label="撤回回复" onclick="deleteOneMessage('${msg.id}')">${icon("trash")}</button><button title="复制" aria-label="复制" onclick="copyMessageText('${msg.id}')">${icon("copy")}</button>${speakOn?`<button data-speak-id="${msg.id}" title="朗读" aria-label="朗读" onclick="speakMessage('${msg.id}')">${icon("volume")}</button>`:""}</div>`:""}
-    <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${esc(pv?.name||"")}</span><span>${esc(msg.remoteModelId||"")}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${msg.totalTokens?msg.totalTokens+" tokens":""}</span><span>${msg.cachedTokens?"缓存 "+msg.cachedTokens:""}</span><span>${fmtTime(msg.createdAt)}</span></div>
+    <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${esc(pv?.name||"")}</span><span>${esc(msg.remoteModelId||"")}</span><span>${msg.thinkingUsed?"深度思考":""}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${msg.totalTokens?msg.totalTokens+" tokens":""}</span><span>${msg.cachedTokens?"缓存 "+msg.cachedTokens:""}</span><span>${fmtTime(msg.createdAt)}</span></div>
   </div></div>`;
 }
 async function copyMessageText(id){
@@ -2177,7 +2177,7 @@ async function sendMessage(existingUserId=null){
   const historyForRequest=existingUser?state.chatMessages.slice(0,existingIndex):state.chatMessages;
   if(existingUser&&existingIndex>=0){const stale=state.chatMessages.slice(existingIndex+1);for(const oldMessage of stale)await dbDelete("messages",oldMessage.id);state.chatMessages=state.chatMessages.slice(0,existingIndex+1);}
   const built=buildOutgoing(outgoingDraft,historyForRequest);
-  const userMsg=existingUser||{id:uid("mg"),sessionId:session.id,role:"user",content:draft,attachments:attachments.map(({id,name,type,size,dataUrl,textContent})=>({id,name,type,size,dataUrl,textContent})),modelId:m.id,providerId:pv.id,channelId:channel?.id||null,remoteModelId:remoteModelId,promptTokens:0,completionTokens:0,totalTokens:0,cost:0,reasoning:"",createdAt:nowISO()};
+  const userMsg=existingUser||{id:uid("mg"),sessionId:session.id,role:"user",content:draft,attachments:attachments.map(({id,name,type,size,dataUrl,textContent})=>({id,name,type,size,dataUrl,textContent})),modelId:m.id,providerId:pv.id,channelId:channel?.id||null,remoteModelId:remoteModelId,thinkingUsed:modelSupportsThinking(m,channel,pv)&&session.thinkingEnabled!==false,promptTokens:0,completionTokens:0,totalTokens:0,cost:0,reasoning:"",createdAt:nowISO()};
   if(existingUser){userMsg.modelId=m.id;userMsg.providerId=pv.id;await dbPut("messages",userMsg);}
   else{state.chatMessages.push(userMsg);await dbPut("messages",userMsg);}
   session.updatedAt=nowISO();
