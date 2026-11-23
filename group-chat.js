@@ -235,7 +235,7 @@ function groupTranscript(){
  var rows=(state.groupMessages||[]).filter(m=>m.role==="user"||m.role==="assistant"||(m.role==="narrator"&&m.includeInContext!==false)).slice(-30);
  var lines=rows.map(m=>{if(m.role==="user")return "用户："+m.content;if(m.role==="narrator")return "旁白（用户发布的第三方叙述/指令）："+m.content;var p=findById(cache.persons,m.personId);return (p?p.name:"AI")+"："+m.content;});
  var budget=Number(cache.settings.recentCharCap)||6000,picked=[];
- for(var i=lines.length-1;i>=0;i--){if(lines[i].length>budget)continue;picked.unshift(lines[i]);budget-=lines[i].length;}
+ for(var i=lines.length-1;i>=0;i--){if(lines[i].length>budget){if(!picked.length&&budget>0)picked.unshift(lines[i].slice(-budget));break;}picked.unshift(lines[i]);budget-=lines[i].length;}
  return picked.join("\n");
 }
 async function requestGroupCandidate(g,member,turn){
