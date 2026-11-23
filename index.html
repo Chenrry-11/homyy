@@ -310,16 +310,18 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .modal-head{padding:16px 18px}.modal-body{padding:18px;overflow:auto}.modal-foot{padding:13px 18px calc(13px + env(safe-area-inset-bottom))}
 @media(max-width:640px){.chat-topbar{height:58px;gap:6px;padding:0 9px}.chat-model-select{max-width:38vw;font-size:11px;padding:7px 6px}.chat-identity{max-width:82px;gap:5px;padding:4px}.chat-identity .avatar{width:25px;height:25px}.chat-identity span:last-child{font-size:10px}.thinking-toggle{padding:6px 7px;gap:4px;font-size:10px}.thinking-toggle strong{font-size:9px}.msg-list{padding:13px 14px;gap:17px}.msg.user{max-width:90%}.msg.ai{max-width:96%}.msg-actions{gap:12px}.msg-actions button{font-size:10px}.modal-mask{padding:16px}.modal{border-radius:18px;max-height:82dvh}}
 </style>
+  <link rel="stylesheet" href="./group-chat.css">
 </head>
 <body>
 <div class="wrap" id="app"></div>
 
+<script src="./group-chat.js"></script>
 <script>
 "use strict";
 
 const DB_NAME = "multi_ai_chat_v1";
-const DB_VERSION = 3;
-const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages"];
+const DB_VERSION = 4;
+const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages","groups","groupMessages"];
 const MEM_LEVELS = ["L0","L1","L2","L3"];
 const DEFAULT_SETTINGS = {
   id:"app",monthlyCap:50,personaCharCap:1500,memoryCharCap:2000,recentCharCap:6000,
@@ -345,9 +347,11 @@ const state = {
   controller: null,
   chatMessages: [],
   pendingAttachments: [],
-  recognition: null
+  recognition: null,
+  groupId:null, groupMessages:[], groupControllers:new Map(), groupTurnId:0,
+  groupRunning:false, groupStatus:"", groupComposerMode:"message", groupThinkingOverride:null, groupStoppedMembers:new Set()
 };
-let cache = { settings:null, providers:[], models:[], personas:[], persons:[], memories:[], sessions:[] };
+let cache = { settings:null, providers:[], models:[], personas:[], persons:[], memories:[], sessions:[], groups:[] };
 
 function openDB(){
   if (dbPromise) return dbPromise;
@@ -387,6 +391,12 @@ function openDB(){
         const s = d.createObjectStore("messages", {keyPath:"id"});
         s.createIndex("sessionId","sessionId",{unique:false});
         s.createIndex("createdAt","createdAt",{unique:false});
+      }
+      if (!d.objectStoreNames.contains("groups")){
+        const s=d.createObjectStore("groups",{keyPath:"id"});s.createIndex("updatedAt","updatedAt",{unique:false});
+      }
+      if (!d.objectStoreNames.contains("groupMessages")){
+        const s=d.createObjectStore("groupMessages",{keyPath:"id"});s.createIndex("groupId","groupId",{unique:false});s.createIndex("createdAt","createdAt",{unique:false});
       }
     };
     req.onsuccess = ()=>resolve(req.result);
@@ -466,13 +476,13 @@ async function seedIfNeeded(){
 }
 
 async function loadCache(){
-  const [settings,providers,models,channels,personas,persons,memories,sessions] = await Promise.all([
+  const [settings,providers,models,channels,personas,persons,memories,sessions,groups] = await Promise.all([
     dbGet("settings","app"), dbAll("providers"), dbAll("models"), dbAll("modelChannels"),
-    dbAll("personas"), dbAll("persons"), dbAll("memories"), dbAll("sessions")
+    dbAll("personas"), dbAll("persons"), dbAll("memories"), dbAll("sessions"), dbAll("groups")
   ]);
   cache = {
     settings: settings || Object.assign({}, DEFAULT_SETTINGS),
-    providers, models, channels, personas, persons, memories, sessions
+    providers, models, channels, personas, persons, memories, sessions, groups
   };
   cache.settings.globalServices=Object.assign({},DEFAULT_SETTINGS.globalServices,cache.settings.globalServices||{});
   for(const key of ["vision","tts","stt","image"]){
@@ -583,6 +593,7 @@ function viewWelcome(){
       <button class="icon-btn home-menu" aria-label="打开导航" onclick="toggleDrawer()">${icon("menu")}</button>
       <div class="home-brand"><span class="brand-mark">H</span><span>HOMY<span class="brand-dot">.</span></span></div>
       <span class="spacer"></span>
+      <button class="home-settings" onclick="openGroups()">群聊</button>
       <button class="home-settings" onclick="goMyPage()">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}<span>我的</span></button>
     </header>
     <section class="home-hero">
@@ -658,15 +669,17 @@ async function quickStart(){
   document.getElementById("chatInput").value=text; refreshEstimate(); sendMessage();
 }
 async function render(){
-  if (state.view === "chat" && !findById(cache.sessions, state.sessionId)){
-    state.view = "tree";
-  }
+  if (state.view === "chat" && !findById(cache.sessions, state.sessionId)) state.view = "tree";
+  if ((state.view === "groupChat" || state.view === "groupDetail") && !findById(cache.groups,state.groupId)) state.view="groups";
   const app = document.getElementById("app");
   let main = "";
   if (state.view === "person") main = viewPerson();
   else if (state.view === "settings") main = viewSettings();
   else if (state.view === "profile") main = viewProfile();
   else if (state.view === "chat") main = viewChatShell();
+  else if (state.view === "groups") main = viewGroups();
+  else if (state.view === "groupChat") main = viewGroupChat();
+  else if (state.view === "groupDetail") main = viewGroupDetail();
   if (state.view === "tree") main = "";
   if (!main) main = viewWelcome();
   app.dataset.bubbleStyle=cache.settings.appearance?.bubbleStyle||"soft";
@@ -675,6 +688,10 @@ async function render(){
   if (state.view === "chat"){
     await loadChatMessages();
     bindChatInput();
+  }
+  if (state.view === "groupChat"){
+    await loadGroupMessages();
+    bindGroupChatInput();
   }
   if (state.view === "person" && state.tab === "memory") bindMemoryEvents();
 }
@@ -1658,10 +1675,11 @@ function refreshEstimate(){
 }
 async function getMonthSpend(){
   const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),1).toISOString(),end=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString();
-  return new Promise((resolve,reject)=>{const request=tx("messages").index("createdAt").openCursor(IDBKeyRange.bound(start,end,false,true));let total=0;
+  const sumStore=name=>new Promise((resolve,reject)=>{const request=tx(name).index("createdAt").openCursor(IDBKeyRange.bound(start,end,false,true));let total=0;
     request.onsuccess=()=>{const cursor=request.result;if(!cursor){resolve(total);return;}total+=Number(cursor.value.cost)||0;cursor.continue();};
     request.onerror=()=>reject(request.error||new Error("费用统计读取失败"));
   });
+  const sums=await Promise.all([sumStore("messages"),sumStore("groupMessages")]);return sums[0]+sums[1];
 }
 async function refreshMonthPill(){
   const pill=document.getElementById("monthPill");
