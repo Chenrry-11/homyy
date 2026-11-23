@@ -258,7 +258,7 @@ async function requestGroupCandidate(g,member,turn){
   var result=await readProviderCompletion(resp,request.protocol,function(){}),content=String(result.content||"").trim();if(!content||/^\[\[PASS\]\]$/i.test(content))return null;
   var pm=content.match(/^\s*\[P\s*:\s*([1-5])\]\s*/i),priority=pm?Number(pm[1]):3;if(pm)content=content.slice(pm[0].length).trim();if(!content)return null;
   var usage=result.usage||{},pt=Number(usage.prompt_tokens)||0,ct=Number(usage.completion_tokens)||0,cached=Number(usage.prompt_cache_hit_tokens??usage.cached_tokens??usage.input_cached_tokens)||0;
-  return {personId:p.id,modelId:model.id,providerId:provider.id,content:content,reasoning:result.reasoning||"",priority:priority,promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),cachedTokens:cached,cost:(pt*(Number(model.priceInput)||0)+ct*(Number(model.priceOutput)||0))/1e6,thinkingUsed:supports&&thinking,lastSpokeAt:member.lastSpokeAt||"",readyAt:Date.now()};
+  return {personId:p.id,modelId:model.id,providerId:provider.id,content:content,reasoning:result.reasoning||"",priority:priority,promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),cachedTokens:cached,cost:calculateRequestCost(model,usage),thinkingUsed:supports&&thinking,lastSpokeAt:member.lastSpokeAt||"",readyAt:Date.now()};
  }finally{if(state.groupControllers.get(p.id)===controller)state.groupControllers.delete(p.id);}
 }
 async function runGroupTurn(g,userMsg,targetId){
