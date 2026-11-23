@@ -33,12 +33,19 @@
 .group-composer-mode{padding:0 8px 5px;color:#8e6379;font-size:10px}
 .group-narrator{align-self:center;width:min(92%,680px);margin:2px auto;padding:11px 15px;border:1px solid rgba(225,216,221,.75);border-radius:14px;background:rgba(245,242,244,.68);color:#827781;text-align:center;font-size:12px;line-height:1.7}
 .group-narrator-label{display:block;margin-bottom:4px;color:#a09199;font-size:10px;letter-spacing:.08em}
-.group-ai-head{display:flex;align-items:center;gap:7px;margin:0 0 5px 2px;color:#917b87;font-size:11px}
-.group-ai-head .avatar{width:23px;height:23px;font-size:10px}
-.group-ai-message{align-self:flex-start;width:100%;max-width:min(92%,780px)}
-.group-ai-message .msg-body{padding:12px 15px;background:rgba(255,255,255,.78);border:1px solid rgba(232,218,225,.7);border-radius:5px 18px 18px 18px;box-shadow:0 3px 14px rgba(105,70,88,.035)}
-.group-user-message{align-self:flex-end;max-width:min(86%,720px)}
-.group-user-message .msg-body{padding:10px 14px;background:#f4e4eb;border:1px solid rgba(226,202,215,.6);border-radius:18px 18px 5px 18px}
+.group-message-row{display:flex;align-items:flex-start;gap:9px;width:100%;max-width:min(94%,780px);min-width:0}
+.group-ai-row{align-self:flex-start}
+.group-user-row{align-self:flex-end;justify-content:flex-end;max-width:min(94%,780px)}
+.group-message-avatar{display:block;flex:none;width:34px;height:34px;margin-top:2px}
+.group-message-avatar .avatar{width:34px;height:34px;font-size:14px;box-shadow:0 2px 8px rgba(105,70,88,.08)}
+.group-message-stack{display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:calc(100% - 43px)}
+.group-user-row .group-message-stack{align-items:flex-end}
+.group-ai-name{margin:0 0 5px 3px;color:#917b87;font-size:11px;line-height:1.2}
+.group-bubble{width:fit-content;max-width:100%;padding:10px 14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
+.group-ai-bubble{background:rgba(255,255,255,.86);border:1px solid rgba(232,218,225,.72);border-radius:18px 18px 18px 5px;color:#493943}
+.group-user-bubble{background:rgba(246,232,238,.96);border:1px solid rgba(226,202,215,.62);border-radius:18px 18px 5px 18px;color:#493943}
+.group-msg-meta{font-size:10px;margin-top:4px;opacity:.9}
+.group-message-row[data-group-msg-id]{-webkit-touch-callout:none;user-select:text}
 .group-msg-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;padding:0 3px;color:#a3939c;font-size:10px}
 .group-detail-page .card{background:rgba(255,255,255,.68)}
 .group-member-setting{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #f0e5eb}
