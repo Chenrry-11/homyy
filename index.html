@@ -400,7 +400,14 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
  .home-shortcut{min-height:88px;padding:12px 4px;border-radius:16px;font-size:12px}
  .recent-item{gap:12px;padding:14px 2px}
  .recent-avatar{width:42px;height:42px}
-}</style>
+}
+.drawer-group-heading{display:flex;align-items:center;justify-content:space-between;padding:18px 10px 6px}
+.drawer-group-heading .drawer-label{padding:0}
+.drawer-group-add{display:grid;width:28px;height:28px;place-items:center;color:var(--sub)}
+.drawer-group-add .i{width:17px;height:17px}
+.drawer-group-session{display:flex;align-items:center;gap:8px;width:100%;margin:2px 0;text-align:left}
+.drawer-group-session.active{background:var(--accent-soft);color:var(--accent)}
+</style>
   <link rel="stylesheet" href="./group-chat.css">
 </head>
 <body>
@@ -777,10 +784,11 @@ function viewTree(){
       </div>`).join("")||`<div class="drawer-no-session">还没有对话</div>`}</div>`:""}
     </section>`;
   }).join("");
+  const groupRows=[...(cache.groups||[])].sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||"")).map(g=>`<button class="drawer-session drawer-group-session${state.view==="groupChat"&&state.groupId===g.id?" active":""}" onclick="openGroup('${g.id}')"><span class="session-mark"></span><span>${esc(g.name||"未命名群聊")}</span></button>`).join("");
   return `<div class="drawer-shell">
     <div class="side-head"><button class="drawer-brand" onclick="goTree()" title="返回 Home"><span class="brand-mark">H</span><span>HOMY</span></button><button class="icon-btn drawer-close" title="关闭导航" onclick="toggleDrawer()">${icon("x")}</button></div>
     <button class="drawer-new" onclick="${cache.persons.length?"newWindow('"+(cache.persons[0]?.id||"")+"')":"goSettings()"}">${icon("plus")}<span>新建聊天</span></button>
-    <div class="side-list"><div class="drawer-label">AI 身份</div>${rows||`<p class="muted pad">还没有 AI 身份。</p>`}</div>
+    <div class="side-list"><div class="drawer-label">单聊</div>${rows||`<p class="muted pad">还没有单聊。</p>`}<div class="drawer-group-heading"><span class="drawer-label">群聊</span><button class="drawer-group-add" onclick="createGroupDialog()" aria-label="新建群聊">${icon("plus")}</button></div>${groupRows||`<div class="drawer-no-session">还没有群聊</div>`}</div>
     <div class="side-foot"><button class="my-entry" onclick="goMyPage()"><span class="avatar-btn">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><span class="drawer-user-label">${esc(cache.settings.userName||"我的")}</span><span class="my-entry-arrow">›</span></button><button class="btn btn-ghost" onclick="goSettings()">${icon("gear")}设置</button></div>
   </div>`;
 }
