@@ -711,9 +711,9 @@ function viewWelcome(){
     </section>
     <nav class="home-bottom-nav" aria-label="主导航">
       <button class="home-nav-item active" aria-current="page" onclick="goTree()"><span class="home-nav-symbol">${icon("home")}</span><small>Home</small></button>
-      <button class="home-nav-item" onclick="openWorkspaceModule('code')"><span class="home-nav-symbol">${icon("code")}</span><small>Code</small></button>
-      <button class="home-nav-item" onclick="openWorkspaceModule('projects')"><span class="home-nav-symbol">${icon("folder")}</span><small>Projects</small></button>
-      <button class="home-nav-item" onclick="openWorkspaceModule('artifacts')"><span class="home-nav-symbol">${icon("layers")}</span><small>Artifacts</small></button>
+      <button class="home-nav-item" onclick="openWorkspaceModule('code')"><span class="home-nav-symbol">${icon("file")}</span><small>Code</small></button>
+      <button class="home-nav-item" onclick="openWorkspaceModule('projects')"><span class="home-nav-symbol">${icon("panel")}</span><small>Projects</small></button>
+      <button class="home-nav-item" onclick="openWorkspaceModule('artifacts')"><span class="home-nav-symbol">${icon("grid")}</span><small>Artifacts</small></button>
     </nav>
   </div>`;
 }
@@ -984,7 +984,7 @@ function viewSettings(){
         <div class="field"><label>最近聊天注入字符上限</label><input id="setRecentCap" type="number" min="200" step="200" value="${esc(cache.settings.recentCharCap)}"></div>
         <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
       </div>
-      <div class="card"><strong>数据备份</strong><p class="muted small">导出或导入当前浏览器中的身份、聊天和记忆数据。</p><label class="switch"><input type="checkbox" id="includeKeys">导出内容包含 API Key</label><div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="exportData()">导出 JSON</button><button class="btn" onclick="document.getElementById('importFile').click()">导入 JSON</button><input type="file" id="importFile" accept="application/json,.json" class="hidden" onchange="importData(this)"></div></div>`;
+      `
   }else if(section==="voice"){
     body=`<h2 class="sec">语音回复</h2><p class="muted small">文字模型先生成回复，再由所有 AI 身份共用的 MiniMax 服务合成语音。</p><div class="card service-hub">${serviceRow("tts","语音合成","MiniMax · Text to Speech","audio")}${serviceRow("stt","语音输入","浏览器语音识别 · 暂不使用云端 Key","mic")}<div class="hint">语音回复和语言模型分别配置。模型负责说什么，MiniMax 负责把文字读出来。</div></div>`;
   }else if(section==="appearance"){
