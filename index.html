@@ -544,11 +544,12 @@ function openSessionActions(id){
 }
 function bindDrawerSessionEvents(){
   const drawer=document.querySelector(".drawer-shell");if(!drawer||drawer.dataset.sessionEvents==="1")return;
-  drawer.dataset.sessionEvents="1";let timer=null,target=null,moved=false;
+  drawer.dataset.sessionEvents="1";let timer=null,target=null,moved=false,longPressed=false;
   const clear=()=>{if(timer)clearTimeout(timer);timer=null;target=null;};
   drawer.addEventListener("contextmenu",e=>{const row=e.target.closest("[data-session-id]");if(!row)return;e.preventDefault();openSessionActions(row.dataset.sessionId);});
-  drawer.addEventListener("pointerdown",e=>{const row=e.target.closest("[data-session-id]");if(!row)return;target=row.dataset.sessionId;moved=false;timer=setTimeout(()=>{if(!moved&&target)openSessionActions(target);clear();},560);});
+  drawer.addEventListener("pointerdown",e=>{const row=e.target.closest("[data-session-id]");if(!row)return;target=row.dataset.sessionId;moved=false;longPressed=false;timer=setTimeout(()=>{if(!moved&&target){longPressed=true;openSessionActions(target);}clear();},560);});
   drawer.addEventListener("pointermove",()=>{moved=true;if(timer)clearTimeout(timer);timer=null;});
+  drawer.addEventListener("click",e=>{if(longPressed){e.preventDefault();e.stopPropagation();longPressed=false;}},true);
   ["pointerup","pointercancel","pointerleave"].forEach(type=>drawer.addEventListener(type,clear));
 }
 async function renameSession(id){openSessionActions(id);}
@@ -1314,7 +1315,7 @@ function modelSupportsThinking(model,channel,pv){
   if(!model)return false;
   if(model.thinkingSupport==="yes"||model.thinkingSupport===true)return true;
   if(model.thinkingSupport==="no"||model.thinkingSupport===false)return false;
-  const remote=String(channel?.remoteModelId||model.name||"").toLowerCase();
+  const remote=(String(channel?.remoteModelId||"")+" "+String(model.name||"")).toLowerCase();
   const provider=String(pv?.name||"").toLowerCase(),base=String(pv?.baseUrl||"").toLowerCase();
   return /deepseek-(flash|v4-pro)/.test(remote)||/deepseek/.test(provider)||/api\.deepseek\.com/.test(base);
 }
@@ -1598,7 +1599,7 @@ async function regenerateFromMessage(id){
 function bindChatInput(){
   refreshEstimate();renderPendingAttachments();
   const ta=document.getElementById("chatInput");
-  if(ta){ ta.focus(); ta.addEventListener("keydown",e=>{
+  if(ta){ if(!state.drawer)ta.focus(); ta.addEventListener("keydown",e=>{
     if(e.key==="Enter" && !e.shiftKey &&
       !("ontouchstart" in window)){ e.preventDefault(); sendMessage(); }
   });}
