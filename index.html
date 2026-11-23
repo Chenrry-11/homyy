@@ -1856,7 +1856,7 @@ function bindChatInput(){
 
 function openSessionSummary(){
   const session=findById(cache.sessions,state.sessionId);if(!session)return;
-  modal({title:"会话历史摘要",body:'<p class="muted small">摘要属于当前会话，不会混入其他 AI 或其他窗口。生成时只处理最近消息窗口之前的旧记录。</p><textarea id="sessionSummaryText" rows="9" placeholder="可以手动编辑，也可以根据较早的聊天记录生成摘要。">'+esc(session.summary||"")+'</textarea><div class="row" style="margin-top:8px"><button class="btn" type="button" onclick="generateSessionSummary()">根据旧聊天生成摘要</button><span class="muted small" id="summaryStatus">'+(session.summaryUpdatedAt?"上次更新："+fmtTime(session.summaryUpdatedAt):"尚未生成")+'</span></div>',
+  modal({title:"会话历史摘要",body:'<p class="muted small">摘要属于当前会话，不会混入其他 AI 或其他窗口。生成时最多读取较早记录中的最近 4 万字符；摘要最多 8000 字符，后续会随当前会话注入。</p><textarea id="sessionSummaryText" maxlength="8000" rows="9" placeholder="可以手动编辑，也可以根据较早的聊天记录生成摘要。">'+esc(session.summary||"")+'</textarea><div class="row" style="margin-top:8px"><button class="btn" type="button" onclick="generateSessionSummary()">根据旧聊天生成摘要</button><span class="muted small" id="summaryStatus">'+(session.summaryUpdatedAt?"上次更新："+fmtTime(session.summaryUpdatedAt):"尚未生成")+'</span></div>',
     actions:[{label:"取消",onClick:closeModal},{label:"保存摘要",primary:true,onClick:saveSessionSummary}]});
 }
 async function generateSessionSummary(){
@@ -1885,7 +1885,7 @@ async function generateSessionSummary(){
 }
 async function saveSessionSummary(){
   const session=findById(cache.sessions,state.sessionId),field=document.getElementById("sessionSummaryText");if(!session||!field)return;
-  const summary=field.value.trim();
+  const summary=field.value.trim();if(summary.length>8000){toast("摘要最多 8000 字符");return;}
   await dbPut("sessions",Object.assign({},session,{summary,summaryUpdatedAt:summary?nowISO():"",updatedAt:nowISO()}));
   closeModal();await loadCache();toast("会话摘要已保存");
 }
