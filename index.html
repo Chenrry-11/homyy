@@ -1207,7 +1207,8 @@ function modelDetail(id){
     '<div class="field"><label>官方模型名称</label><strong>'+esc(m.name)+'</strong><div class="hint">平台内部模型名称；每条调用通道可使用不同的实际模型 ID。</div></div>'+
     '<div class="field"><label>所属 AI 身份</label><select id="detailIdentity"><option value="">暂不绑定</option>'+identityOptions+'</select></div>'+
     '<div class="field"><label class="switch"><input type="checkbox" id="detailModelEnabled" '+(m.enabled!==false?'checked':'')+'> 启用此模型</label><div class="hint">停用后不能在聊天窗口新选用此型号，历史消息仍保留。</div></div>'+
-     '<div class="field"><label>深度思考开关能力</label><select id="detailThinkingSupport"><option value="auto" '+(!m.thinkingSupport||m.thinkingSupport==="auto"?'selected':'')+'>自动识别（推荐）</option><option value="yes" '+(m.thinkingSupport==="yes"?'selected':'')+'>支持开关</option><option value="no" '+(m.thinkingSupport==="no"?'selected':'')+'>不支持</option></select><div class="hint">DeepSeek 官方模型会自动识别；其他模型可按服务商文档手动指定。未确认支持时不显示开关。</div></div>'+
+     '<div class="field"><label>型号专属记忆与口癖差异</label><textarea id="detailModelMemory" rows="4" placeholder="只写当前型号相对 AI 身份的独有差异。">'+esc(m.modelMemory||"")+"</textarea><div class="hint">同一 AI 身份下的其他型号不会自动继承这段补充。</div></div>"+
+    '<div class="field"><label>深度思考开关能力</label><select id="detailThinkingSupport"><option value="auto" '+(!m.thinkingSupport||m.thinkingSupport==="auto"?'selected':'')+'>自动识别（推荐）</option><option value="yes" '+(m.thinkingSupport==="yes"?'selected':'')+'>支持开关</option><option value="no" '+(m.thinkingSupport==="no"?'selected':'')+'>不支持</option></select><div class="hint">DeepSeek 官方模型会自动识别；其他模型可按服务商文档手动指定。未确认支持时不显示开关。</div></div>'+
     '<div class="field"><label>当前调用通道</label><select id="detailActiveChannel">'+channelOptions+'</select><div class="hint">切换通道不会改变 AI 身份、聊天记录或模型名称。</div></div>'+
     '<div class="field"><label>已配置通道（'+channels.length+'）</label>'+(channelRows||'<div class="muted small">还没有调用通道。</div>')+
     '<button class="btn" onclick="addModelChannel(\''+m.id+'\')">＋ 添加调用通道</button></div>',
@@ -1218,10 +1219,11 @@ function modelDetail(id){
         const enabled=document.getElementById("detailModelEnabled").checked;
         const activeId=document.getElementById("detailActiveChannel").value;
         const thinkingSupport=document.getElementById("detailThinkingSupport").value;
+        const modelMemory=document.getElementById("detailModelMemory").value.trim();
         const valid=channels.find(ch=>ch.id===activeId&&document.getElementById("channelEnabled_"+ch.id)?.checked);
         if(enabled&&!valid){toast("启用模型前，请先配置并选择一条可用通道");return;}
         if(identityId&&!cache.persons.some(p=>p.id===identityId))throw new Error("所选 AI 身份不存在");
-        const writes=[{store:"models",record:Object.assign({},m,{enabled,thinkingSupport,activeChannelId:valid?valid.id:m.activeChannelId,updatedAt:nowISO()})}];
+        const writes=[{store:"models",record:Object.assign({},m,{enabled,thinkingSupport,modelMemory,activeChannelId:valid?valid.id:m.activeChannelId,updatedAt:nowISO()})}];
         for(const ch of channels){
           const toggle=document.getElementById("channelEnabled_"+ch.id);
           if(toggle && toggle.checked!==(ch.enabled!==false)){
