@@ -1546,7 +1546,7 @@ function viewChatShell(){
       <textarea id="chatInput" rows="1" placeholder="发消息给 ${esc(pn.name)}…" oninput="refreshEstimate()"></textarea>
       <button class="btn icon-btn composer-mic" id="micBtn" title="语音转文字" onclick="toggleBrowserDictation()">${icon("mic")}</button>
       <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">发送</button>
-    </div><div class="composer-style-link"><button onclick="goSettings('appearance')">气泡与聊天外观</button></div>
+    </div><div class="composer-style-link"><button onclick="openSessionSummary()">历史摘要</button><button onclick="goSettings('appearance')">气泡与聊天外观</button></div>
   </div></div>`;
 }
 async function toggleThinkingMode(){
@@ -1824,6 +1824,38 @@ function bindChatInput(){
   });}
 }
 
+function openSessionSummary(){
+  const session=findById(cache.sessions,state.sessionId);if(!session)return;
+  modal({title:"会话历史摘要",body:'<p class="muted small">摘要属于当前会话，不会混入其他 AI 或其他窗口。生成时只处理最近消息窗口之前的旧记录。</p><textarea id="sessionSummaryText" rows="9" placeholder="可以手动编辑，也可以根据较早的聊天记录生成摘要。">'+esc(session.summary||"")+'</textarea><div class="row" style="margin-top:8px"><button class="btn" type="button" onclick="generateSessionSummary()">根据旧聊天生成摘要</button><span class="muted small" id="summaryStatus">'+(session.summaryUpdatedAt?"上次更新："+fmtTime(session.summaryUpdatedAt):"尚未生成")+'</span></div>',
+    actions:[{label:"取消",onClick:closeModal},{label:"保存摘要",primary:true,onClick:saveSessionSummary}]});
+}
+async function generateSessionSummary(){
+  const session=findById(cache.sessions,state.sessionId),person=session&&findById(cache.persons,session.personId);
+  const model=session&&sessionModel(session,person),channel=activeChannelOf(model),provider=findById(cache.providers,channel?channel.providerId:model?.providerId);
+  const status=document.getElementById("summaryStatus"),field=document.getElementById("sessionSummaryText");
+  if(!session||!model||!provider?.apiKey||!provider?.baseUrl){toast("当前会话模型或 API 通道未配置完整");return;}
+  const count=Math.max(1,Math.min(50,Number(cache.settings.recentMessageCount)||20));
+  const old=(state.chatMessages||[]).filter(x=>x.role==="user"||x.role==="assistant").slice(0,-count);
+  if(!old.length){toast("当前还没有超出最近消息窗口的旧记录");return;}
+  const transcript=old.map(x=>(x.role==="user"?"用户：":"AI：")+(x.content||"")).join("\n\n").slice(-40000);
+  if(status)status.textContent="正在生成摘要……";
+  try{
+    const messages=[{role:"system",content:"你负责压缩一段真实聊天记录，生成可供后续对话使用的长期会话摘要。只保留明确事实、重要经历、关系变化、共同约定、持续事项、未解决问题和必要时间线。区分用户与 AI 的发言，不得补写、推测或虚构。用简洁条目表达，避免重复。"},{"role":"user",content:"请总结以下较早的会话记录：\n\n"+transcript}];
+    const request=buildProviderRequest(provider,channel?.remoteModelId||model.name,messages,{stream:false,thinking:false,thinkingSupport:false});
+    const response=await fetch(request.endpoint,{method:"POST",headers:request.headers,body:JSON.stringify(request.body)});
+    if(!response.ok)throw new Error("HTTP "+response.status+"："+(await response.text()).slice(0,260));
+    const result=await readProviderCompletion(response,request.protocol);
+    if(!result.content?.trim())throw new Error("模型没有返回摘要文本");
+    field.value=result.content.trim();if(status)status.textContent="摘要已生成，保存后才会用于后续对话";
+  }catch(error){if(status)status.textContent="生成失败："+(error.message||String(error)).slice(0,160);}
+}
+async function saveSessionSummary(){
+  const session=findById(cache.sessions,state.sessionId),field=document.getElementById("sessionSummaryText");if(!session||!field)return;
+  const summary=field.value.trim();
+  await dbPut("sessions",Object.assign({},session,{summary,summaryUpdatedAt:summary?nowISO():"",updatedAt:nowISO()}));
+  closeModal();await loadCache();toast("会话摘要已保存");
+}
+
 function buildOutgoing(draft,historyOverride=null){
   const session=findById(cache.sessions,state.sessionId);
   const pn=findById(cache.persons,session.personId);
@@ -1851,6 +1883,7 @@ function buildOutgoing(draft,historyOverride=null){
 
   const systemParts=[];
   if(s.userBio?.trim())systemParts.push("【用户个人资料】\n"+s.userBio.trim());
+  if(session.summary?.trim())systemParts.push("【较早会话摘要】\n"+session.summary.trim().slice(0,8000));
   if(pn.breakLimitEnabled && pn.breakLimitDoc?.trim()) systemParts.push("【用户提供的独立上下文文档】\n"+pn.breakLimitDoc);
   if(personaText) systemParts.push("【AI 身份设定】\n"+personaText);
   if(memLines.length) systemParts.push("【长期记忆】\n"+memLines.join("\n"));
