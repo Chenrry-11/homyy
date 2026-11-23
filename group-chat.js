@@ -26,8 +26,8 @@ async function createGroupFromDialog(){
  autoReply:true,autoReplyPaused:false,allowCrossTalk:true,maxAutoReplies:2,createdAt:ts,updatedAt:ts};
  await dbPut("groups",g);closeModal();await loadCache();openGroup(g.id);
 }
-function openGroup(id){if(state.groupRunning)stopGroupTurn(true);state.groupId=id;state.view="groupChat";state.groupComposerMode="message";state.groupMessages=[];state.drawer=false;render();}
-function openGroupDetail(){state.view="groupDetail";render();}
+function openGroup(id){if(state.groupRunning)stopGroupTurn(true);state.groupId=id;state.view="groupChat";state.groupComposerMode="message";state.groupThinkingOverride=null;state.groupIconDraft="";state.groupMessages=[];state.drawer=false;render();}
+function openGroupDetail(){state.groupIconDraft="";state.view="groupDetail";render();}
 function viewGroupDetail(){
  var g=groupById(state.groupId);if(!g)return "";
  var members=(g.members||[]).map(m=>{var p=findById(cache.persons,m.personId),model=findById(cache.models,m.modelId);if(!p)return "";return '<div class="group-member-setting">'+avatar(p.name,p.avatar)+'<div class="group-member-setting-copy"><strong>'+esc(p.name)+'</strong><small>'+esc(model?model.name:"未选择模型")+' · 深度思考'+(m.thinkingEnabled===false?"关闭":"开启")+'</small></div><button class="btn" onclick="openGroupMemberSettings(\''+m.personId+'\')">模型与思考</button><button class="icon-btn" onclick="removeGroupMember(\''+m.personId+'\')">'+icon("x")+'</button></div>';}).join("");
@@ -54,7 +54,7 @@ function openGroupMemberSettings(personId){
  var g=groupById(state.groupId),member=g&&g.members.find(x=>x.personId===personId),p=findById(cache.persons,personId);if(!g||!member||!p)return;
  var models=modelsOfPerson(p).filter(modelReady),selected=member.modelId||p.modelId,model=findById(cache.models,selected),channel=activeChannelOf(model),provider=findById(cache.providers,channel?channel.providerId:model&&model.providerId),canThink=modelSupportsThinking(model,channel,provider);
  modal({title:p.name+" · 群聊配置",body:'<div class="field"><label>本群使用的模型型号</label><select id="groupMemberModel">'+models.map(x=>'<option value="'+x.id+'" '+(x.id===selected?"selected":"")+'>'+esc(x.name)+'</option>').join("")+'</select><div class="hint">只影响这个 AI 在当前群聊中的模型选择，不修改其他单聊。</div></div><div class="field"><label class="switch"><input type="checkbox" id="groupMemberThinking" '+(member.thinkingEnabled!==false?"checked":"")+' '+(canThink?"":"disabled")+'>默认开启深度思考</label><div class="hint" id="groupThinkingCapability">'+(canThink?"当前模型支持深度思考开关。":"当前型号尚未确认支持深度思考。")+'</div></div><div class="muted small">当前通道：'+esc(provider?provider.name:"未配置")+' · 实际模型 ID：'+esc(channel?channel.remoteModelId:model?model.name:"未选择")+'</div>',
- actions:[{label:"取消",onClick:closeModal},{label:"保存",primary:true,onClick:async()=>{
+ actions:[...(state.groupRunning?[{label:"停止该成员",onClick:()=>{stopGroupMember(personId);closeModal();}}]:[]),{label:"取消",onClick:closeModal},{label:"保存",primary:true,onClick:async()=>{
   var modelId=document.getElementById("groupMemberModel").value,m=findById(cache.models,modelId),ch=activeChannelOf(m),pv=findById(cache.providers,ch?ch.providerId:m&&m.providerId);
   if(!m||!modelReady(m)){toast("请选择可用模型");return;}var supported=modelSupportsThinking(m,ch,pv);
   var next=Object.assign({},g,{members:g.members.map(x=>x.personId===personId?Object.assign({},x,{modelId:modelId,thinkingEnabled:supported?document.getElementById("groupMemberThinking").checked:false}):x),updatedAt:nowISO()});
@@ -73,10 +73,11 @@ function groupAddMembersDialog(g){
 function addGroupMembersDialog(){var g=groupById(state.groupId);if(g)groupAddMembersDialog(g);}
 function addGroupMembersDialogFromChat(){var g=groupById(state.groupId);if(g)groupAddMembersDialog(g);}
 function removeGroupMember(id){
- var g=groupById(state.groupId);if(!g)return;if(g.members.length<=1){toast("群聊至少保留一位成员");return;}
+ var g=groupById(state.groupId);if(!g)return;if(g.members.length<=1){toast("群聊至少保留一位成员");return;}stopGroupMember(id);
  confirmDialog("移除群成员","只会将该 AI 移出当前群聊，不会删除身份、模型或其他聊天。",async()=>{var members=g.members.filter(x=>x.personId!==id);await dbPut("groups",Object.assign({},g,{members:members,soloMemberId:g.soloMemberId===id?members[0].personId:g.soloMemberId,updatedAt:nowISO()}));await loadCache();render();});
 }
 async function deleteGroup(id){
+ if(state.groupRunning)stopGroupTurn(true);
  confirmDialog("删除群聊","将删除这个群聊及其群聊消息，不会删除群成员身份、单聊和长期记忆。",async()=>{
   var msgs=await idbReq(tx("groupMessages").index("groupId").getAll(id)),t=db.transaction(["groups","groupMessages"],"readwrite");msgs.forEach(m=>t.objectStore("groupMessages").delete(m.id));t.objectStore("groups").delete(id);
   await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);});state.groupId=null;state.view="groups";await loadCache();render();
@@ -130,7 +131,7 @@ async function sendGroupMessage(){
  var target=null,mention=text.match(/^@([^\s]+)\s*/);if(mention){var p=groupFindPerson(mention[1],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;text=text.slice(mention[0].length).trim();}
  var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
  var msg={id:uid("gm"),groupId:g.id,role:narrator?"narrator":"user",content:text,createdAt:nowISO(),turnId:state.groupTurnId+1};
- await dbPut("groupMessages",msg);state.groupMessages.push(msg);input.value="";state.groupComposerMode="message";state.groupThinkingOverride=null;
+ await dbPut("groupMessages",msg);state.groupMessages.push(msg);input.value="";state.groupComposerMode="message";
  var mode=document.getElementById("groupComposerMode");if(mode)mode.textContent="";input.placeholder="发消息给群聊……";renderGroupMessages({forceBottom:true});
  await dbPut("groups",Object.assign({},g,{updatedAt:nowISO()}));await loadCache();if(!narrator)await runGroupTurn(groupById(g.id),msg,target);
 }
@@ -148,7 +149,7 @@ async function executeGroupCommand(raw){
  if(cmd==="/help"){toast("/chat /task /solo /to /think /stop /pause /continue /add /remove");return;}
  toast("未识别的命令。输入 / 查看命令。");
 }
-function stopGroupMember(id){var c=state.groupControllers.get(id);if(c){c.abort();state.groupStoppedMembers.add(id);state.groupControllers.delete(id);toast("已停止该成员的本轮生成");}renderGroupStatus();}
+function stopGroupMember(id){state.groupStoppedMembers.add(id);var c=state.groupControllers.get(id);if(c){c.abort();state.groupControllers.delete(id);}toast("已停止该成员的本轮生成");renderGroupStatus();}
 function stopGroupTurn(silent){
  state.groupTurnId++;for(var c of state.groupControllers.values())try{c.abort();}catch(e){}state.groupControllers.clear();state.groupStoppedMembers.clear();state.groupRunning=false;state.groupStatus="已停止本轮发言";if(!silent)toast("已停止群聊中的全部 AI");renderGroupStatus();
 }
