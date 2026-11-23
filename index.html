@@ -1185,7 +1185,7 @@ function providerForm(id){
 }
 function updateProviderProtocolHint(){
   const protocol=document.getElementById("fPvProtocol")?.value,hint=document.getElementById("fPvProtocolHint"),stream=document.getElementById("fPvStream");
-  if(hint)hint.textContent=protocol==="openai-responses"?"OpenAI Responses 协议：基础地址后自动拼接 /responses，支持 Responses 类型流式事件。":protocol==="anthropic-messages"?"Claude Messages 协议：基础地址后自动拼接 /messages；浏览器跨域权限由服务商决定。":protocol==="gemini-interactions"?"Gemini Interactions：基础地址后自动拼接 /interactions，使用 x-goog-api-key，并按无状态方式传入完整上下文。":protocol==="gemini-generate"?"Gemini generateContent：基础地址后自动拼接 /models/{模型}:generateContent。":"OpenAI 兼容协议：基础地址后自动拼接 /chat/completions。";
+  if(hint)hint.textContent=protocol==="openai-responses"?"OpenAI Responses 协议：基础地址后自动拼接 /responses，支持 Responses 类型流式事件。":protocol==="anthropic-messages"?"Claude Messages 协议：/messages，支持 SSE 流式输出；浏览器跨域权限由服务商决定。":protocol==="gemini-interactions"?"Gemini Interactions：/interactions，使用 x-goog-api-key 和完整上下文，支持 step.delta 流式输出。":protocol==="gemini-generate"?"Gemini generateContent：普通请求使用 generateContent，流式请求使用 streamGenerateContent。":"OpenAI 兼容协议：基础地址后自动拼接 /chat/completions。";
   if(stream){stream.disabled=!["openai-chat","openai-responses","anthropic-messages","gemini-generate","gemini-interactions"].includes(protocol);if(stream.disabled)stream.checked=false;}
   const usage=document.getElementById("fPvUsage");if(usage){usage.disabled=protocol!=="openai-chat";if(usage.disabled)usage.checked=false;}
 }
@@ -2185,7 +2185,7 @@ async function readGeminiStreamCompletion(resp,onDelta=()=>{}){
     const parts=data.candidates?.[0]?.content?.parts||[];
     for(const part of parts){const text=typeof part.text==="string"?part.text:"";if(!text)continue;if(part.thought){reasoning+=text;onDelta({content:"",reasoning:text,allContent:content,allReasoning:reasoning});}else{content+=text;onDelta({content:text,reasoning:"",allContent:content,allReasoning:reasoning});}}
   });
-  const pt=Number(usage.promptTokenCount)||0,ct=Number(usage.candidatesTokenCount)||0,cached=Number(usage.cachedContentTokenCount)||0;
+  const pt=Number(usage.promptTokenCount)||0,ct=(Number(usage.candidatesTokenCount)||0)+(Number(usage.thoughtsTokenCount)||0),cached=Number(usage.cachedContentTokenCount)||0;
   return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:Number(usage.totalTokenCount)||(pt+ct),prompt_cache_hit_tokens:cached},raw:null};
 }
 async function readGeminiInteractionsStreamCompletion(resp,onDelta=()=>{}){
