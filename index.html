@@ -263,7 +263,7 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 @media(max-width:420px){.home-page{padding:0 18px 18px}.home-hero h2{font-size:27px}.home-hero p{font-size:12px}.identity-grid{grid-template-columns:1fr 1fr}.identity-card{padding:13px 12px}.identity-meta{font-size:10px}.home-footer{font-size:8px}}
 @media(prefers-reduced-motion:reduce){.identity-card,.side{transition:none}}
 
-.service-hub{padding:0;overflow:hidden}.service-hub-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.service-row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.service-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:var(--accent-soft);color:var(--accent);flex:none}.service-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}.service-copy strong{font-size:14px}.service-copy span{font-size:12px;color:var(--sub)}.service-hub>.hint{padding:12px 16px}.badge.green{background:#e5f5eb;color:#23824a}.msg-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.msg-tools .btn{height:30px;font-size:12px}.code-preview-mask{position:fixed;inset:0;z-index:100;background:rgba(35,24,30,.48);display:flex;align-items:stretch;justify-content:center;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.code-preview-panel{width:100%;height:100%;background:var(--bg);display:flex;flex-direction:column}.code-preview-panel header{height:56px;flex:none;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--card)}.code-preview-panel iframe{border:0;display:block;flex:1;width:100%;background:#fff}@media(min-width:760px){.code-preview-mask{padding:4vh 5vw}.code-preview-panel{max-width:1100px;border-radius:18px;overflow:hidden;box-shadow:0 20px 80px rgba(40,20,30,.2)}}@media(max-width:520px){.service-row{gap:8px;padding:12px}.service-icon{width:36px;height:36px}.service-row .badge{display:none}.service-copy span{font-size:11px}}</style>
+.service-hub{padding:0;overflow:hidden}.service-hub-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.service-row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.service-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:var(--accent-soft);color:var(--accent);flex:none}.service-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}.service-copy strong{font-size:14px}.service-copy span{font-size:12px;color:var(--sub)}.service-hub>.hint{padding:12px 16px}.badge.green{background:#e5f5eb;color:#23824a}.msg-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.msg-tools .btn{height:30px;font-size:12px}.code-preview-mask{position:fixed;inset:0;z-index:100;background:rgba(35,24,30,.48);display:flex;align-items:stretch;justify-content:center;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.code-preview-panel{width:100%;height:100%;background:var(--bg);display:flex;flex-direction:column}.code-preview-panel header{height:56px;flex:none;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--card)}.code-preview-panel iframe{border:0;display:block;flex:1;width:100%;background:#fff}@media(min-width:760px){.code-preview-mask{padding:4vh 5vw}.code-preview-panel{max-width:1100px;border-radius:18px;overflow:hidden;box-shadow:0 20px 80px rgba(40,20,30,.2)}}@media(max-width:520px){.service-row{gap:8px;padding:12px}.service-icon{width:36px;height:36px}.service-row .badge{display:none}.service-copy span{font-size:11px}}.pending-attachments{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.pending-file{display:flex;align-items:center;gap:6px;max-width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:12px}.pending-file img{width:34px;height:34px;object-fit:cover;border-radius:7px}.pending-file>span:not(.pending-file-icon){max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pending-file button{font-size:18px;color:var(--sub);padding:0 3px}.message-image{display:block;max-width:min(100%,320px);max-height:320px;object-fit:contain;border-radius:12px;margin-top:8px}.message-file{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px}.composer-attach,.composer-mic{width:36px;height:36px;flex:none}.composer-mic.recording{background:var(--accent-soft);color:var(--danger);animation:micPulse 1s infinite alternate}@keyframes micPulse{to{opacity:.5}}</style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
@@ -296,7 +296,9 @@ const state = {
   expanded: {},          // 树节点展开状态
   sending: false,
   controller: null,
-  chatMessages: []
+  chatMessages: [],
+  pendingAttachments: [],
+  recognition: null
 };
 let cache = { settings:null, providers:[], models:[], personas:[], persons:[], memories:[], sessions:[] };
 
@@ -1268,9 +1270,13 @@ function viewChatShell(){
     <div class="msg-list" id="msgList"></div>
     <div class="chat-input">
       <div class="estimate" id="estimateLine"></div>
+      <div class="pending-attachments" id="pendingAttachments"></div>
       <div class="input-row">
+        <button class="btn icon-btn composer-attach" title="添加附件" onclick="document.getElementById('chatFiles').click()">${icon("plus")}</button>
+        <input class="hidden" id="chatFiles" type="file" accept="image/*,.txt,.md,.csv,.json,.pdf,.doc,.docx" multiple onchange="handleChatFiles(this)">
         <textarea id="chatInput" rows="1" placeholder="发消息给 ${esc(pn.name)}…"
           oninput="refreshEstimate()"></textarea>
+        <button class="btn icon-btn composer-mic" id="micBtn" title="语音转文字" onclick="toggleBrowserDictation()">${icon("mic")}</button>
         <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">发送</button>
       </div>
     </div>
@@ -1305,6 +1311,64 @@ function renderMessages(){
   const send=document.getElementById("sendBtn");
   if(stop) stop.disabled = !state.sending;
   if(send) send.disabled = state.sending;
+}
+function fileToDataURL(file){
+  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(reader.error||new Error("文件读取失败"));reader.readAsDataURL(file);});
+}
+async function handleChatFiles(input){
+  const files=[...(input.files||[])];input.value="";
+  for(const file of files){
+    if(file.size>8*1024*1024){toast(file.name+" 超过 8MB，暂不添加");continue;}
+    if(state.pendingAttachments.length>=6){toast("单条消息最多添加 6 个附件");break;}
+    try{state.pendingAttachments.push({id:uid("att"),name:file.name,type:file.type||"application/octet-stream",size:file.size,dataUrl:await fileToDataURL(file)});}
+    catch(e){toast(file.name+" 读取失败");}
+  }
+  renderPendingAttachments();
+}
+function renderPendingAttachments(){
+  const box=document.getElementById("pendingAttachments");if(!box)return;
+  box.innerHTML=state.pendingAttachments.map(a=>`<div class="pending-file">${a.type.startsWith("image/")?`<img src="${a.dataUrl}" alt="">`:`<span class="pending-file-icon">${icon("file")}</span>`}<span>${esc(a.name)}</span><button type="button" aria-label="移除附件" onclick="removePendingAttachment('${a.id}')">×</button></div>`).join("");
+}
+function removePendingAttachment(id){state.pendingAttachments=state.pendingAttachments.filter(a=>a.id!==id);renderPendingAttachments();}
+function toggleBrowserDictation(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast("当前浏览器不支持语音识别，请使用键盘语音输入");return;}
+  if(state.recognition){try{state.recognition.stop();}catch(e){}state.recognition=null;const b=document.getElementById("micBtn");if(b)b.classList.remove("recording");return;}
+  const recognition=new SR();state.recognition=recognition;recognition.lang="zh-CN";recognition.interimResults=true;recognition.continuous=false;
+  const ta=document.getElementById("chatInput"),button=document.getElementById("micBtn");
+  if(button)button.classList.add("recording");
+  recognition.onresult=e=>{let finalText="",interim="";for(let i=e.resultIndex;i<e.results.length;i++){const text=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=text;else interim+=text;}if(ta){ta.value=(ta.dataset.dictationBase||"")+(finalText||interim);refreshEstimate();}};
+  recognition.onstart=()=>{if(ta)ta.dataset.dictationBase=ta.value?ta.value+" ":"";toast("正在识别语音");};
+  recognition.onerror=e=>toast(e.error==="not-allowed"?"麦克风权限未允许":"语音识别失败："+e.error);
+  recognition.onend=()=>{state.recognition=null;if(button)button.classList.remove("recording");if(ta){ta.value=(ta.dataset.dictationBase||"")+ta.value;delete ta.dataset.dictationBase;refreshEstimate();}};
+  try{recognition.start();}catch(e){state.recognition=null;if(button)button.classList.remove("recording");toast("无法启动语音识别");}
+}
+async function analyzePendingImages(attachments,prompt){
+  const cfg=cache.settings.globalServices?.vision;
+  const images=(attachments||[]).filter(a=>a.type.startsWith("image/"));
+  if(!images.length)return "";
+  if(!cfg?.enabled||!cfg.apiKey||!cfg.baseUrl||!cfg.model)return "用户附带了图片，但尚未配置可用的图片视觉服务。";
+  const endpoint=cfg.baseUrl.replace(/\/+$/,"")+(cfg.endpoint||"/chat/completions");
+  const content=[{type:"text",text:prompt||"请准确描述图片内容、文字和重要细节。"},...images.map(a=>({type:"image_url",image_url:{url:a.dataUrl}}))];
+  const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},body:JSON.stringify({model:cfg.model,messages:[{role:"user",content}],stream:false})});
+  if(!response.ok)throw new Error("图片视觉接口返回 HTTP "+response.status+": "+(await response.text()).slice(0,240));
+  const data=await response.json();return data.choices?.[0]?.message?.content||"视觉接口未返回可读取的图片描述。";
+}
+async function speakMessage(id){
+  const msg=state.chatMessages.find(x=>x.id===id);if(!msg||!msg.content)return;
+  const cfg=cache.settings.globalServices?.tts;
+  if(!cfg?.enabled||!cfg.apiKey||!cfg.voiceId){toast("请先在设置中配置并启用 MiniMax 语音合成、API Key 和音色 ID");return;}
+  try{
+    const button=document.querySelector('[data-speak-id="'+id+'"]');if(button){button.disabled=true;button.textContent="合成中…";}
+    const response=await fetch(cfg.baseUrl||"https://api.minimaxi.com/v1/t2a_v2",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},body:JSON.stringify({model:cfg.model||"speech-2.6-hd",text:msg.content.slice(0,10000),stream:false,voice_setting:{voice_id:cfg.voiceId,speed:1,vol:1,pitch:0},audio_setting:{sample_rate:32000,bitrate:128000,format:"mp3"}})});
+    if(!response.ok)throw new Error("MiniMax 返回 HTTP "+response.status+": "+(await response.text()).slice(0,260));
+    const result=await response.json();const hex=result.data?.audio;
+    if(!hex)throw new Error(result.base_resp?.status_msg||"接口没有返回音频数据");
+    const bytes=new Uint8Array(hex.match(/.{1,2}/g).map(x=>parseInt(x,16)));
+    const url=URL.createObjectURL(new Blob([bytes],{type:"audio/mpeg"}));const audio=new Audio(url);
+    audio.onended=()=>URL.revokeObjectURL(url);await audio.play();
+  }catch(e){toast("语音合成失败："+(e.message||String(e)));}
+  finally{const button=document.querySelector('[data-speak-id="'+id+'"]');if(button){button.disabled=false;button.textContent="朗读";}}
 }
 function htmlCodeFromMessage(content){
   const match=String(content||"").match(/```(?:html|htm)\s*([\s\S]*?)```/i);
@@ -1352,7 +1416,8 @@ async function saveGlobalService(key,value){
 
 function msgHTML(msg){
   if(msg.role==="user"){
-    return `<div class="msg user" data-msg-id="${msg.id}" data-role="user"><div>${esc(msg.content)}</div><div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div>`;
+    const files=(msg.attachments||[]).map(a=>a.type?.startsWith("image/")?`<img class="message-image" src="${a.dataUrl}" alt="${esc(a.name)}">`:`<div class="message-file">${icon("file")} ${esc(a.name)}</div>`).join("");
+    return `<div class="msg user" data-msg-id="${msg.id}" data-role="user"><div>${esc(msg.content)}</div>${files}<div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div>`;
   }
   if(msg.role==="error"){
     return `<div class="msg err">${esc(msg.content)}</div>`;
@@ -1367,10 +1432,11 @@ function msgHTML(msg){
       <pre>${esc(msg.reasoning)}</pre>
     </details>` : "";
   const hasHtml=!!htmlCodeFromMessage(msg.content);
+  const speakOn=!!cache.settings.globalServices?.tts?.enabled;
   return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">
     ${reason}
     <div>${esc(msg.content)}</div>
-    <div class="msg-tools">${hasHtml?`<button class="btn" onclick="openCodePreview('${msg.id}')">网页预览</button>`:""}<button class="btn" onclick="exportMessageText('${msg.id}','md')">导出 MD</button><button class="btn" onclick="exportMessageText('${msg.id}','txt')">导出 TXT</button></div>
+    <div class="msg-tools">${hasHtml?`<button class="btn" onclick="openCodePreview('${msg.id}')">网页预览</button>`:""}${speakOn?`<button class="btn" data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}<button class="btn" onclick="exportMessageText('${msg.id}','md')">导出 MD</button><button class="btn" onclick="exportMessageText('${msg.id}','txt')">导出 TXT</button></div>
     <div class="msg-meta">
       <span>模型：${esc(m?m.name:msg.modelId)}</span>
       <span>输入 ${msg.promptTokens||0} / 输出 ${msg.completionTokens||0} tokens</span>
@@ -1450,7 +1516,7 @@ function regenerateFromMessage(id){
 }
 
 function bindChatInput(){
-  refreshEstimate();
+  refreshEstimate();renderPendingAttachments();
   const ta=document.getElementById("chatInput");
   if(ta){ ta.focus(); ta.addEventListener("keydown",e=>{
     if(e.key==="Enter" && !e.shiftKey &&
@@ -1574,7 +1640,8 @@ async function sendMessage(){
   if(state.sending) return;
   const ta=document.getElementById("chatInput");
   const draft=ta.value.trim();
-  if(!draft){ toast("请先输入内容"); return; }
+  const attachments=(state.pendingAttachments||[]).slice();
+  if(!draft&&!attachments.length){toast("请先输入内容或添加附件");return;}
   const session=findById(cache.sessions,state.sessionId);
   const pn=findById(cache.persons,session.personId);
   const m=sessionModel(session,pn)||findById(cache.models,pn.modelId);
@@ -1590,8 +1657,13 @@ async function sendMessage(){
   if(!pv.apiKey){ addErrorNote("该厂商还没有填写 API Key，请先到树状列表编辑厂商。"); return; }
   if(!pv.baseUrl){ addErrorNote("厂商接口地址为空，请先补全。"); return; }
 
-  const built=buildOutgoing(draft);
-  const userMsg={id:uid("mg"),sessionId:session.id,role:"user",content:draft,
+  let outgoingDraft=draft;
+  if(attachments.some(a=>a.type.startsWith("image/"))){
+    try{const visual=await analyzePendingImages(attachments,draft);outgoingDraft=(draft?draft+"\n\n":"")+"【图片内容】\n"+visual;}
+    catch(e){addErrorNote("图片识别失败："+(e.message||String(e)));return;}
+  }
+  const built=buildOutgoing(outgoingDraft);
+  const userMsg={id:uid("mg"),sessionId:session.id,role:"user",content:draft,attachments:attachments.map(({id,name,type,size,dataUrl})=>({id,name,type,size,dataUrl})),
     modelId:m.id,providerId:pv.id,promptTokens:0,completionTokens:0,totalTokens:0,
     cost:0,reasoning:"",createdAt:nowISO()};
   state.chatMessages.push(userMsg);
@@ -1599,7 +1671,7 @@ async function sendMessage(){
   session.updatedAt=nowISO();
   if((session.title==="新窗口"||!session.title)) session.title=draft.slice(0,12);
   await dbPut("sessions",session);
-  ta.value=""; refreshEstimate();
+  ta.value="";state.pendingAttachments=[];renderPendingAttachments();refreshEstimate();
 
   const controller=new AbortController();
   state.controller=controller; state.sending=true;
