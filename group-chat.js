@@ -157,7 +157,7 @@ function groupTranscript(){return (state.groupMessages||[]).filter(m=>["user","n
 async function requestGroupCandidate(g,member,turn){
  var p=findById(cache.persons,member.personId);if(!p)return null;var model=findById(cache.models,member.modelId||p.modelId||(p.modelIds||[])[0]);if(!model||!modelReady(model))throw new Error((p.name||"成员")+"没有可用模型");
  var channel=activeChannelOf(model),provider=findById(cache.providers,channel?channel.providerId:model.providerId);if(!provider?.apiKey||!provider?.baseUrl)throw new Error((p.name||"成员")+"的 API 连接尚未配置完整");
- var spend=await getMonthSpend();if(turn!==state.groupTurnId)return null;if(spend>=(Number(cache.settings.monthlyCap)||0))throw new Error("本月费用已达上限，群聊请求已停止");
+ var spend=await getMonthSpend();if(turn!==state.groupTurnId||state.groupStoppedMembers.has(p.id))return null;if(spend>=(Number(cache.settings.monthlyCap)||0))throw new Error("本月费用已达上限，群聊请求已停止");
  var persona=findById(cache.personas,p.personaId),memories=cache.memories.filter(x=>x.personId===p.id&&x.enabled).sort((a,b)=>MEM_LEVELS.indexOf(a.level)-MEM_LEVELS.indexOf(b.level)||b.importance-a.importance);
  var memoryText=memories.slice(0,20).map(x=>"["+x.level+"] "+x.content).join("\n"),mode=g.mode||"chat";
  var instruction=mode==="task"?"当前是协作讨论模式：认真分析、给出依据，允许质疑，但不要为了反驳而反驳。":"当前是自然闲聊模式：尽量用一到三句话自然回应，不要把普通聊天写成长篇报告。";
