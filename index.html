@@ -1558,8 +1558,8 @@ function modelSupportsThinking(model,channel,pv){
   if(pv?.protocol==="gemini-generate"&&remote.includes("gemini-2.5-flash"))return true;
   if((pv?.protocol==="gemini-generate"||pv?.protocol==="gemini-interactions")&&remote.includes("gemini-3."))return true;
   if((pv?.protocol==="openai-responses"||pv?.protocol==="openai-chat")&&(/gpt-[56]/.test(remote)||remote.includes("o1")||remote.includes("o3")||remote.includes("o4")))return true;
-  if(pv?.protocol==="anthropic-messages")return false;
-  return /deepseek-(flash|v4-pro)/.test(remote)||/deepseek/.test(provider)||base.includes("api.deepseek.com");
+  if(pv?.protocol==="anthropic-messages")return /claude-3-7|claude-(sonnet|opus)-4/.test(remote);
+  return /deepseek-(reasoner|r1|v4-(pro|flash))/.test(remote);
 }
 function viewChatShell(){
   const session=findById(cache.sessions,state.sessionId),pn=findById(cache.persons,session.personId);
