@@ -2025,12 +2025,12 @@ function showImportPreview(parsed){
   });
 }
 
-(async function syncViewportHeight(){
+function syncViewportHeight(){
   const vv=window.visualViewport;
   const height=vv&&vv.height?vv.height:window.innerHeight;
   document.documentElement.style.setProperty("--app-height",Math.round(height)+"px");
 }
-function init(){
+(async function init(){
   try{
     syncViewportHeight();
     window.addEventListener("resize",syncViewportHeight,{passive:true});
