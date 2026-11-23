@@ -1824,7 +1824,7 @@ async function refreshMonthPill(){
   if(tokenPill)tokenPill.textContent=usage.tokens?`输入 ${usage.input} · 输出 ${usage.output} · 合计 ${usage.tokens} tokens · 缓存命中 ${usage.cached}`:"服务商尚未返回可统计的 Token 用量";
 }
 
-async function buildProviderRequest(provider,modelId,messages,options={}){
+function buildProviderRequest(provider,modelId,messages,options={}){
   const protocol=provider.protocol||"openai-chat";let base=String(provider.baseUrl||"");while(base.endsWith("/"))base=base.slice(0,-1);
   const system=messages.filter(x=>x.role==="system").map(x=>String(x.content||"")).join("\n\n");
   const turns=messages.filter(x=>x.role!=="system").map(x=>({role:x.role==="assistant"?"assistant":"user",content:String(x.content||"")}));
