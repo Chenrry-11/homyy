@@ -258,19 +258,50 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .setup-hint{align-self:center;margin:0 0 20px;color:#9a7c8c;font-size:12px}
 .setup-hint span{padding-left:6px}
 .home-footer{display:flex;justify-content:space-between;margin-top:auto;padding-top:18px;border-top:1px solid rgba(226,208,217,.5);color:#b39eaa;font-size:9px;letter-spacing:.13em}
-/* Fixed application frame: the page scrolls inside its content, not around its controls. */
-.main{min-height:0;overflow:hidden}
-.home-page{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
-.home-topbar{position:sticky;top:0;z-index:8;background:rgba(252,247,249,.88);backdrop-filter:blur(18px)}
-.home-bottom-nav{position:sticky;bottom:0;z-index:9;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:12px -4px 0 auto;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border:1px solid rgba(231,214,223,.8);border-bottom:0;border-radius:18px 18px 0 0;background:rgba(255,252,253,.88);backdrop-filter:blur(22px);box-shadow:0 -5px 22px rgba(105,70,88,.045)}
-.home-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:48px;border-radius:12px;color:#a18c97}
+/* Responsive application frame and iPhone-safe home navigation */
+html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
+.shell{width:100%;height:100vh;height:100dvh;min-height:0;overflow:hidden}
+.main{flex:1;min-width:0;min-height:0;height:100%;overflow:hidden}
+.home-page{position:relative;width:100%;max-width:1120px;height:100%;min-height:0;margin:0 auto;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:0 clamp(16px,4vw,48px) calc(108px + env(safe-area-inset-bottom));}
+.home-topbar{position:sticky;top:0;z-index:8;background:rgba(252,247,249,.92);backdrop-filter:blur(18px);padding-top:env(safe-area-inset-top)}
+.home-bottom-nav{position:fixed;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));z-index:50;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;width:auto;max-width:720px;margin:0 auto;padding:7px;border:1px solid rgba(231,214,223,.88);border-radius:20px;background:rgba(255,252,253,.94);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:0 5px 26px rgba(105,70,88,.12)}
+.home-nav-item{display:flex;min-width:0;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:54px;padding:5px 2px;border-radius:14px;color:#a18c97}
 .home-nav-item.active{background:#f7eaf0;color:#95657d}
 .home-nav-symbol{font-size:20px;line-height:1.15}
-.home-nav-item small{font-size:10px;letter-spacing:.04em}
-.chat-page{min-height:0;overflow:hidden}
-.msg-list{min-height:0;overscroll-behavior:contain}
+.home-nav-item small{font-size:11px;letter-spacing:.04em}
+.chat-page{min-height:0;height:100%;overflow:hidden}
+.msg-list{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .chat-input{position:relative;z-index:5;background:linear-gradient(180deg,rgba(251,246,248,0),rgba(251,246,248,.94) 18%);padding-bottom:calc(10px + env(safe-area-inset-bottom))}
-.content{min-height:0;overscroll-behavior:contain}
+.content{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+@media(min-width:760px){.home-bottom-nav{left:50%;right:auto;width:min(720px,calc(100% - 48px));transform:translateX(-50%)}}
+@media(max-width:520px){
+ .home-page{padding-left:16px;padding-right:16px;padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+ .home-topbar{height:60px;gap:10px}
+ .home-hero{padding:clamp(30px,6vh,48px) 0 28px}
+ .home-hero h2{font-size:clamp(25px,7vw,30px);line-height:1.35}
+ .home-hero p{font-size:12px;line-height:1.7}
+ .setup-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .setup-card{min-width:0;padding:12px;overflow-wrap:anywhere}
+ .setup-card small{font-size:11px;line-height:1.5}
+ .identity-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .identity-card{min-width:0;padding:13px 11px}
+ .home-bottom-nav{left:10px;right:10px;bottom:calc(7px + env(safe-area-inset-bottom));padding:6px;border-radius:18px}
+ .home-nav-item{min-height:50px}
+ .home-nav-item small{font-size:10px}
+}
+@media(max-width:360px){
+ .home-page{padding-left:12px;padding-right:12px}
+ .setup-grid,.identity-grid{gap:7px}
+ .setup-card{padding:10px}
+ .home-brand{font-size:13px}
+ .home-bottom-nav{left:8px;right:8px}
+}
+@media(orientation:landscape) and (max-height:500px){
+ .home-hero{padding:18px 0}
+ .home-hero p{display:none}
+ .home-bottom-nav{bottom:6px}
+ .home-page{padding-bottom:90px}
+}
 
 @media(min-width:900px){.side{position:relative;inset:auto;transform:none;width:278px;flex:none;z-index:1;border-right:1px solid rgba(222,199,211,.55)}.shell.drawer .side{transform:none}.mask{display:none!important}.home-menu{display:none}}
 @media(max-width:899px){.side{position:fixed;top:0;bottom:0;left:0;width:min(330px,88vw);z-index:40;transform:translateX(-105%);transition:transform .22s;background:rgba(255,252,253,.97)}.shell.drawer .side{transform:translateX(0)}.mask{position:fixed;inset:0;z-index:30;background:rgba(63,43,54,.28);display:none}.shell.drawer .mask{display:block}.home-menu{display:inline-flex}.home-topbar{height:62px}.home-hero{padding:42px 0 30px}.identity-grid{grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}.identity-card{padding:15px 14px 13px}.identity-avatar .avatar{width:40px;height:40px}.identity-name{margin-top:13px;font-size:16px}}
@@ -621,8 +652,6 @@ function viewWelcome(){
       <button class="icon-btn home-menu" aria-label="打开导航" onclick="toggleDrawer()">${icon("menu")}</button>
       <div class="home-brand"><span class="brand-mark">H</span><span>HOMY<span class="brand-dot">.</span></span></div>
       <span class="spacer"></span>
-      <button class="home-settings" onclick="openGroups()">群聊</button>
-      <button class="home-settings" onclick="goMyPage()">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}<span>我的</span></button>
     </header>
     <section class="home-hero">
       <div class="hero-kicker">YOUR AI WORKSPACE</div>
