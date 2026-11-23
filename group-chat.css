@@ -1,6 +1,6 @@
 .drawer-group-link{margin-top:8px;background:rgba(255,255,255,.68);color:#8d6b7c;border:1px solid #f0e3e9;box-shadow:none}
-.groups-page,.group-detail-page{width:100%;max-width:900px;margin:0 auto;padding:18px 18px 30px;min-height:100%;overflow:auto}
-.groups-head,.group-detail-head{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.groups-page,.group-detail-page{width:100%;max-width:900px;height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin:0 auto;padding:18px 18px 30px}
+.groups-head,.group-detail-head{position:sticky;top:0;z-index:7;display:flex;align-items:center;gap:10px;margin:-18px -18px 18px;padding:18px;background:rgba(251,246,248,.9);backdrop-filter:blur(18px)}
 .groups-head h2,.group-detail-head h2{font-size:21px;font-family:var(--serif)}
 .group-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
 .group-card{display:flex;align-items:center;gap:12px;padding:15px;border:1px solid #eadde4;border-radius:17px;background:rgba(255,255,255,.72);text-align:left;box-shadow:0 5px 20px rgba(105,70,88,.035)}
