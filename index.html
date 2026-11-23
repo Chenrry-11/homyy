@@ -962,7 +962,9 @@ function openWorkspaceModule(module){
 function viewWorkspaceModule(){
   const labels={code:"Code",projects:"Projects",artifacts:"Artifacts"};
   const label=labels[state.workspaceModule]||"Workspace";
-  return '<section class="workspace-placeholder"><div class="workspace-placeholder-mark">'+icon(state.workspaceModule==="code"?"code":state.workspaceModule==="projects"?"folder":"layers")+'</div><h2>'+label+'</h2><p>工作区入口已建立。该模块的实际功能尚未接入，不会用空壳按钮假装已经完成。</p><button class="btn" onclick="goTree()">返回 Home</button></section>';
+  const active=state.workspaceModule;
+  const nav='<nav class="home-bottom-nav" aria-label="主导航"><button class="home-nav-item" onclick="goTree()"><span class="home-nav-symbol">'+icon("home")+'</span><small>Home</small></button><button class="home-nav-item '+(active==="code"?"active":"")+'" onclick="openWorkspaceModule(\'code\')"><span class="home-nav-symbol">'+icon("file")+'</span><small>Code</small></button><button class="home-nav-item '+(active==="projects"?"active":"")+'" onclick="openWorkspaceModule(\'projects\')"><span class="home-nav-symbol">'+icon("panel")+'</span><small>Projects</small></button><button class="home-nav-item '+(active==="artifacts"?"active":"")+'" onclick="openWorkspaceModule(\'artifacts\')"><span class="home-nav-symbol">'+icon("grid")+'</span><small>Artifacts</small></button></nav>';
+  return '<section class="workspace-placeholder"><div class="workspace-placeholder-mark">'+icon(state.workspaceModule==="code"?"code":state.workspaceModule==="projects"?"folder":"layers")+'</div><h2>'+label+'</h2><p>工作区入口已建立。该模块的实际功能尚未接入，不会用空壳按钮假装已经完成。</p></section>'+nav;
 }
 function goSettings(section="models"){state.drawer=false;state.settingsSection=section;state.settingsHome=arguments.length===0&&window.matchMedia("(max-width:760px)").matches;state.view="settings";render();}
 function goSettingsHome(){state.drawer=false;state.settingsHome=true;state.view="settings";render();}
