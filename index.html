@@ -1272,7 +1272,7 @@ function viewChatShell(){
       <div class="estimate" id="estimateLine"></div>
       <div class="pending-attachments" id="pendingAttachments"></div>
       <div class="input-row">
-        <button class="btn icon-btn composer-attach" title="添加附件" onclick="document.getElementById('chatFiles').click()">${icon("plus")}</button>
+        <button class="btn icon-btn composer-attach" title="添加附件" onclick="openComposerMenu()">${icon("plus")}</button>
         <input class="hidden" id="chatFiles" type="file" accept="image/*,.txt,.md,.csv,.json,.pdf,.doc,.docx" multiple onchange="handleChatFiles(this)">
         <textarea id="chatInput" rows="1" placeholder="发消息给 ${esc(pn.name)}…"
           oninput="refreshEstimate()"></textarea>
@@ -1330,6 +1330,37 @@ function renderPendingAttachments(){
   box.innerHTML=state.pendingAttachments.map(a=>`<div class="pending-file">${a.type.startsWith("image/")?`<img src="${a.dataUrl}" alt="">`:`<span class="pending-file-icon">${icon("file")}</span>`}<span>${esc(a.name)}</span><button type="button" aria-label="移除附件" onclick="removePendingAttachment('${a.id}')">×</button></div>`).join("");
 }
 function removePendingAttachment(id){state.pendingAttachments=state.pendingAttachments.filter(a=>a.id!==id);renderPendingAttachments();}
+function openComposerMenu(){
+  modal({title:"添加内容",body:`<div class="muted">选择要放进这条消息的内容。</div>`,actions:[
+    {label:"选择附件",primary:true,onClick:()=>{closeModal();document.getElementById("chatFiles")?.click();}},
+    {label:"生成图片",onClick:()=>{closeModal();generateImagePrompt();}},
+    {label:"取消",onClick:closeModal}
+  ]});
+}
+function generateImagePrompt(){
+  modal({title:"生成图片",body:`<div class="field"><label>图片描述</label><textarea id="imagePrompt" rows="5" placeholder="描述你想生成的图片、风格、构图和文字内容……"></textarea></div><div class="hint">将使用设置中的全局图片生成服务。请确认公益站支持 OpenAI Images API。</div>`,actions:[
+    {label:"取消",onClick:closeModal},
+    {label:"生成",primary:true,onClick:async()=>{const prompt=document.getElementById("imagePrompt").value.trim();if(!prompt){toast("先写图片描述");return;}closeModal();await runImageGeneration(prompt);}}
+  ]});
+}
+async function runImageGeneration(prompt){
+  const cfg=cache.settings.globalServices?.image;
+  if(!cfg?.enabled||!cfg.apiKey||!cfg.baseUrl||!cfg.model){toast("请先配置并启用图片生成服务");return;}
+  const session=findById(cache.sessions,state.sessionId);if(!session){toast("请先进入一个聊天窗口");return;}
+  const msg={id:uid("mg"),sessionId:session.id,role:"assistant",content:"正在生成图片："+prompt,modelId:session.modelId||"",providerId:"",promptTokens:0,completionTokens:0,totalTokens:0,cost:0,createdAt:nowISO(),generating:true};
+  state.chatMessages.push(msg);renderMessages();
+  try{
+    const endpoint=cfg.baseUrl.replace(/\/+$/,"")+(cfg.endpoint||"/images/generations");
+    const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},body:JSON.stringify({model:cfg.model,prompt,n:1,size:"1024x1024",response_format:"b64_json"})});
+    if(!response.ok)throw new Error("图片生成接口返回 HTTP "+response.status+": "+(await response.text()).slice(0,300));
+    const result=await response.json(),item=result.data?.[0];
+    if(!item)throw new Error("接口没有返回图片数据");
+    msg.generatedImage=item.b64_json?"data:image/png;base64,"+item.b64_json:(item.url||"");
+    if(!msg.generatedImage)throw new Error("响应中没有图片 URL 或 base64 图片");
+    msg.content="图片已生成："+prompt;msg.generating=false;msg.createdAt=nowISO();
+    await dbPut("messages",msg);renderMessages();toast("图片生成完成");
+  }catch(e){state.chatMessages=state.chatMessages.filter(x=>x.id!==msg.id);renderMessages();addErrorNote("图片生成失败："+(e.message||String(e)));}
+}
 function toggleBrowserDictation(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){toast("当前浏览器不支持语音识别，请使用键盘语音输入");return;}
@@ -1337,10 +1368,10 @@ function toggleBrowserDictation(){
   const recognition=new SR();state.recognition=recognition;recognition.lang="zh-CN";recognition.interimResults=true;recognition.continuous=false;
   const ta=document.getElementById("chatInput"),button=document.getElementById("micBtn");
   if(button)button.classList.add("recording");
-  recognition.onresult=e=>{let finalText="",interim="";for(let i=e.resultIndex;i<e.results.length;i++){const text=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=text;else interim+=text;}if(ta){ta.value=(ta.dataset.dictationBase||"")+(finalText||interim);refreshEstimate();}};
   recognition.onstart=()=>{if(ta)ta.dataset.dictationBase=ta.value?ta.value+" ":"";toast("正在识别语音");};
+  recognition.onresult=e=>{let finalText="",interim="";for(let i=0;i<e.results.length;i++){const text=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=text;else interim+=text;}if(ta){ta.value=(ta.dataset.dictationBase||"")+finalText+interim;refreshEstimate();}};
   recognition.onerror=e=>toast(e.error==="not-allowed"?"麦克风权限未允许":"语音识别失败："+e.error);
-  recognition.onend=()=>{state.recognition=null;if(button)button.classList.remove("recording");if(ta){ta.value=(ta.dataset.dictationBase||"")+ta.value;delete ta.dataset.dictationBase;refreshEstimate();}};
+  recognition.onend=()=>{state.recognition=null;if(button)button.classList.remove("recording");if(ta){delete ta.dataset.dictationBase;refreshEstimate();}};
   try{recognition.start();}catch(e){state.recognition=null;if(button)button.classList.remove("recording");toast("无法启动语音识别");}
 }
 async function analyzePendingImages(attachments,prompt){
@@ -1436,6 +1467,8 @@ function msgHTML(msg){
   return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">
     ${reason}
     <div>${esc(msg.content)}</div>
+    ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
+    ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
     <div class="msg-tools">${hasHtml?`<button class="btn" onclick="openCodePreview('${msg.id}')">网页预览</button>`:""}${speakOn?`<button class="btn" data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}<button class="btn" onclick="exportMessageText('${msg.id}','md')">导出 MD</button><button class="btn" onclick="exportMessageText('${msg.id}','txt')">导出 TXT</button></div>
     <div class="msg-meta">
       <span>模型：${esc(m?m.name:msg.modelId)}</span>
