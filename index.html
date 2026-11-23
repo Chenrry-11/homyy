@@ -262,7 +262,7 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .main{min-height:0;overflow:hidden}
 .home-page{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
 .home-topbar{position:sticky;top:0;z-index:8;background:rgba(252,247,249,.88);backdrop-filter:blur(18px)}
-.home-bottom-nav{position:sticky;bottom:0;z-index:9;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:12px -4px 0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border:1px solid rgba(231,214,223,.8);border-bottom:0;border-radius:18px 18px 0 0;background:rgba(255,252,253,.88);backdrop-filter:blur(22px);box-shadow:0 -5px 22px rgba(105,70,88,.045)}
+.home-bottom-nav{position:sticky;bottom:0;z-index:9;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:12px -4px 0 auto;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border:1px solid rgba(231,214,223,.8);border-bottom:0;border-radius:18px 18px 0 0;background:rgba(255,252,253,.88);backdrop-filter:blur(22px);box-shadow:0 -5px 22px rgba(105,70,88,.045)}
 .home-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:48px;border-radius:12px;color:#a18c97}
 .home-nav-item.active{background:#f7eaf0;color:#95657d}
 .home-nav-symbol{font-size:20px;line-height:1.15}
@@ -674,13 +674,13 @@ function viewWelcome(){
         }).join("")}</div>`:`<div class="recent-empty">还没有聊天记录。选择上方的 AI 身份开始第一次对话。</div>`}
       </section>`}
     ${noKey?`<button class="setup-hint" onclick="goSettings()">检测到 API 连接尚未填写密钥，前往设置完成配置 <span>→</span></button>`:""}
+    <footer class="home-footer"><span>HOMY · AI WORKSPACE</span><span>PRIVATE BY DESIGN</span></footer>
     <nav class="home-bottom-nav" aria-label="主导航">
       <button class="home-nav-item active" aria-current="page" onclick="goTree()"><span class="home-nav-symbol">⌂</span><small>首页</small></button>
       <button class="home-nav-item" onclick="openGroups()"><span class="home-nav-symbol">▦</span><small>群聊</small></button>
       <button class="home-nav-item" onclick="goSettings('models')"><span class="home-nav-symbol">⚙</span><small>设置</small></button>
       <button class="home-nav-item" onclick="goMyPage()"><span class="home-nav-symbol">○</span><small>我的</small></button>
     </nav>
-    <footer class="home-footer"><span>HOMY · AI WORKSPACE</span><span>PRIVATE BY DESIGN</span></footer>
   </div>`;
 }
 async function saveWelcomeKey(){
