@@ -385,7 +385,7 @@ const STORES = ["settings","providers","models","modelChannels","personas","pers
 const MEM_LEVELS = ["L0","L1","L2","L3"];
 const MEMORY_CATEGORIES = ["重要经历","关系变化","共同约定","持续事实"];
 const DEFAULT_SETTINGS = {
-  id:"app",monthlyCap:50,personaCharCap:1500,memoryCharCap:2000,recentCharCap:6000,
+  id:"app",monthlyCap:50,personaCharCap:1500,memoryCharCap:2000,recentCharCap:6000,recentMessageCount:20,
   globalServices:{
     vision:{enabled:false,provider:"",baseUrl:"",apiKey:"",model:"",endpoint:"/chat/completions",protocol:"openai-chat"},
     tts:{enabled:false,provider:"MiniMax",baseUrl:"https://api.minimaxi.com/v1/t2a_v2",apiKey:"",model:"speech-2.6-hd",voiceId:"",protocol:"minimax-tts"},
@@ -1005,6 +1005,7 @@ function viewSettings(){
         <div class="field"><label>人设注入字符上限</label><input id="setPersonaCap" type="number" min="100" step="100" value="${esc(cache.settings.personaCharCap)}"></div>
         <div class="field"><label>长期记忆注入字符上限</label><input id="setMemCap" type="number" min="100" step="100" value="${esc(cache.settings.memoryCharCap)}"></div>
         <div class="field"><label>最近聊天注入字符上限</label><input id="setRecentCap" type="number" min="200" step="200" value="${esc(cache.settings.recentCharCap)}"></div>
+        <div class="field"><label>最近聊天消息条数</label><input id="setRecentCount" type="number" min="1" max="50" step="1" value="${esc(cache.settings.recentMessageCount||20)}"><div class="hint">默认保留最近 20 条消息，再受字符上限约束。</div></div>
         <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
       </div>
       <div class="card"><strong>数据备份</strong><p class="muted small">导出或导入当前浏览器中的身份、聊天和记忆数据。</p><label class="switch"><input type="checkbox" id="includeKeys">导出内容包含 API Key</label><div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="exportData()">导出 JSON</button><button class="btn" onclick="document.getElementById('importFile').click()">导入 JSON</button><input type="file" id="importFile" accept="application/json,.json" class="hidden" onchange="importData(this)"></div></div>`;
@@ -1033,6 +1034,7 @@ async function saveSettings(){
   s.personaCharCap = Number(document.getElementById("setPersonaCap").value) || 1500;
   s.memoryCharCap = Number(document.getElementById("setMemCap").value) || 2000;
   s.recentCharCap = Number(document.getElementById("setRecentCap").value) || 6000;
+  s.recentMessageCount=Math.max(1,Math.min(50,Number(document.getElementById("setRecentCount").value)||20));
   s.updatedAt = nowISO();
   await dbPut("settings", s);
   await loadCache(); toast("设置已保存"); render();
@@ -1832,7 +1834,7 @@ function buildOutgoing(draft,historyOverride=null){
     memLines.push(line); memBudget-=line.length;
   }
   let recentBudget=s.recentCharCap; const picked=[];
-  const history=(historyOverride||state.chatMessages).filter(x=>x.role==="user"||x.role==="assistant");
+  const history=(historyOverride||state.chatMessages).filter(x=>x.role==="user"||x.role==="assistant").slice(-Math.max(1,Math.min(50,Number(s.recentMessageCount)||20)));
   for(let i=history.length-1;i>=0;i--){
     const line=history[i].content||"";
     if(line.length>recentBudget) break;
