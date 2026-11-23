@@ -262,10 +262,10 @@ async function requestGroupCandidate(g,member,turn){
   var resp=await fetch(request.endpoint,{method:"POST",headers:request.headers,body:JSON.stringify(request.body),signal:controller.signal});
   if(!resp.ok)throw new Error(p.name+" 接口错误 HTTP "+resp.status+"："+(await resp.text()).slice(0,240));
   var result=await readProviderCompletion(resp,request.protocol,function(){}),usage=result.usage||{},pt=Number(usage.prompt_tokens)||0,ct=Number(usage.completion_tokens)||0,cached=Number(usage.prompt_cache_hit_tokens??usage.cached_tokens??usage.input_cached_tokens)||0;
-  var usageEvent=await recordUsageEvent({groupId:g.id,personId:p.id,modelId:model.id,providerId:provider.id,usage});
+  var usageEvent=await recordUsageEvent({groupId:g.id,personId:p.id,modelId:model.id,providerId:provider.id,channelId:channel?.id,remoteModelId:channel?.remoteModelId||model.name,usage});
   var content=String(result.content||"").trim(),pass=!content||/^\[\[PASS\]\]$/i.test(content);
   var pm=content.match(/^\s*\[P\s*:\s*([1-5])\]\s*/i),priority=pm?Number(pm[1]):3;if(pm)content=content.slice(pm[0].length).trim();if(!content)pass=true;
-  return {pass:pass,usageEventId:usageEvent.id,personId:p.id,modelId:model.id,providerId:provider.id,content:content,reasoning:result.reasoning||"",priority:priority,promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),cachedTokens:cached,cost:usageEvent.cost,thinkingUsed:supports&&thinking,lastSpokeAt:member.lastSpokeAt||"",readyAt:Date.now()};
+  return {pass:pass,usageEventId:usageEvent.id,personId:p.id,modelId:model.id,providerId:provider.id,channelId:channel?.id,remoteModelId:channel?.remoteModelId||model.name,content:content,reasoning:result.reasoning||"",priority:priority,promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),cachedTokens:cached,cost:usageEvent.cost,thinkingUsed:supports&&thinking,lastSpokeAt:member.lastSpokeAt||"",readyAt:Date.now()};
  }finally{if(state.groupControllers.get(p.id)===controller)state.groupControllers.delete(p.id);}
 }
 async function runGroupTurn(g,userMsg,targetId){
@@ -291,7 +291,7 @@ async function runGroupTurn(g,userMsg,targetId){
   if(!speakers.length)break;
   var item=speakers[0];spoken.add(item.personId);
   if(state.groupStoppedMembers.has(item.personId))continue;
-  var msg={id:uid("gm"),groupId:g.id,role:"assistant",personId:item.personId,modelId:item.modelId,providerId:item.providerId,content:item.content,reasoning:item.reasoning,promptTokens:item.promptTokens,completionTokens:item.completionTokens,totalTokens:item.totalTokens,cachedTokens:item.cachedTokens,cost:item.cost,usageEventId:item.usageEventId,thinkingUsed:item.thinkingUsed,turnId:turn,createdAt:nowISO()};
+  var msg={id:uid("gm"),groupId:g.id,role:"assistant",personId:item.personId,modelId:item.modelId,providerId:item.providerId,channelId:item.channelId,remoteModelId:item.remoteModelId,content:item.content,reasoning:item.reasoning,promptTokens:item.promptTokens,completionTokens:item.completionTokens,totalTokens:item.totalTokens,cachedTokens:item.cachedTokens,cost:item.cost,usageEventId:item.usageEventId,thinkingUsed:item.thinkingUsed,turnId:turn,createdAt:nowISO()};
   await dbPut("groupMessages",msg);
   if(turn!==state.groupTurnId){await dbDelete("groupMessages",msg.id);return;}
   state.groupMessages.push(msg);shown++;renderGroupMessages({forceBottom:true});
