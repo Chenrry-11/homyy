@@ -538,10 +538,10 @@ function viewWelcome(){
     <section class="home-section setup-grid-section">
       <div class="section-heading"><div><span class="section-eyebrow">WORKSPACE SETUP</span><h3>工作空间配置</h3></div></div>
       <div class="setup-grid">
-        <button class="setup-card" onclick="goSettings('models')"><span class="setup-card-icon">\${icon("gear")}</span><strong>语言模型</strong><small>API 连接、模型绑定与调用通道</small><span class="setup-card-link">管理模型　›</span></button>
-        <button class="setup-card" onclick="goSettings('voice')"><span class="setup-card-icon">\${icon("audio")}</span><strong>语音回复</strong><small>MiniMax 语音合成与语音输入</small><span class="setup-card-link">配置语音　›</span></button>
-        <button class="setup-card" onclick="goSettings('visual')"><span class="setup-card-icon">\${icon("eye")}</span><strong>图片与视觉</strong><small>图片识别与图片生成接口</small><span class="setup-card-link">配置图像　›</span></button>
-        <button class="setup-card" onclick="goMyPage()"><span class="setup-card-icon">\${icon("user")}</span><strong>我的</strong><small>头像、昵称与个人资料</small><span class="setup-card-link">编辑资料　›</span></button>
+        <button class="setup-card" onclick="goSettings('models')"><span class="setup-card-icon">${icon("gear")}</span><strong>语言模型</strong><small>API 连接、模型绑定与调用通道</small><span class="setup-card-link">管理模型　›</span></button>
+        <button class="setup-card" onclick="goSettings('voice')"><span class="setup-card-icon">${icon("audio")}</span><strong>语音回复</strong><small>MiniMax 语音合成与语音输入</small><span class="setup-card-link">配置语音　›</span></button>
+        <button class="setup-card" onclick="goSettings('visual')"><span class="setup-card-icon">${icon("eye")}</span><strong>图片与视觉</strong><small>图片识别与图片生成接口</small><span class="setup-card-link">配置图像　›</span></button>
+        <button class="setup-card" onclick="goMyPage()"><span class="setup-card-icon">${icon("user")}</span><strong>我的</strong><small>头像、昵称与个人资料</small><span class="setup-card-link">编辑资料　›</span></button>
       </div>
     </section>
     ${noIdentity?`
@@ -612,7 +612,7 @@ async function render(){
   else if (state.view === "profile") main = viewProfile();
   else if (state.view === "chat") main = viewChatShell();
   if (state.view === "tree") main = "";
-  if (!main) main = `<div class="topbar"><span class="spacer"></span><button class="btn icon-btn" title="打开抽屉" onclick="toggleDrawer()">${icon("menu")}</button></div>`+viewWelcome();
+  if (!main) main = viewWelcome();
   app.innerHTML = `<div class="shell${state.drawer?" drawer":""}"><div class="mask" onclick="toggleDrawer()"></div><aside class="side">${viewTree()}</aside><main class="main">${main}</main></div>`;
   if (state.view === "chat"){
     await loadChatMessages();
@@ -938,6 +938,7 @@ function modelDetail(id){
     '<div class="field"><label>官方模型名称</label><strong>'+esc(m.name)+'</strong><div class="hint">平台内部模型名称；每条调用通道可使用不同的实际模型 ID。</div></div>'+
     '<div class="field"><label>所属 AI 身份</label><select id="detailIdentity"><option value="">暂不绑定</option>'+identityOptions+'</select></div>'+
     '<div class="field"><label class="switch"><input type="checkbox" id="detailModelEnabled" '+(m.enabled!==false?'checked':'')+'> 启用此模型</label><div class="hint">停用后不能在聊天窗口新选用此型号，历史消息仍保留。</div></div>'+
+     '<div class="field"><label>深度思考开关能力</label><select id="detailThinkingSupport"><option value="auto" '+(!m.thinkingSupport||m.thinkingSupport==="auto"?'selected':'')+'>自动识别（推荐）</option><option value="yes" '+(m.thinkingSupport==="yes"?'selected':'')+'>支持开关</option><option value="no" '+(m.thinkingSupport==="no"?'selected':'')+'>不支持</option></select><div class="hint">DeepSeek 官方模型会自动识别；其他模型可按服务商文档手动指定。未确认支持时不显示开关。</div></div>'+
     '<div class="field"><label>当前调用通道</label><select id="detailActiveChannel">'+channelOptions+'</select><div class="hint">切换通道不会改变 AI 身份、聊天记录或模型名称。</div></div>'+
     '<div class="field"><label>已配置通道（'+channels.length+'）</label>'+(channelRows||'<div class="muted small">还没有调用通道。</div>')+
     '<button class="btn" onclick="addModelChannel(\''+m.id+'\')">＋ 添加调用通道</button></div>',
@@ -947,10 +948,11 @@ function modelDetail(id){
         const identityId=document.getElementById("detailIdentity").value;
         const enabled=document.getElementById("detailModelEnabled").checked;
         const activeId=document.getElementById("detailActiveChannel").value;
+        const thinkingSupport=document.getElementById("detailThinkingSupport").value;
         const valid=channels.find(ch=>ch.id===activeId&&document.getElementById("channelEnabled_"+ch.id)?.checked);
         if(enabled&&!valid){toast("启用模型前，请先配置并选择一条可用通道");return;}
         if(identityId&&!cache.persons.some(p=>p.id===identityId))throw new Error("所选 AI 身份不存在");
-        const writes=[{store:"models",record:Object.assign({},m,{enabled,activeChannelId:valid?valid.id:m.activeChannelId,updatedAt:nowISO()})}];
+        const writes=[{store:"models",record:Object.assign({},m,{enabled,thinkingSupport,activeChannelId:valid?valid.id:m.activeChannelId,updatedAt:nowISO()})}];
         for(const ch of channels){
           const toggle=document.getElementById("channelEnabled_"+ch.id);
           if(toggle && toggle.checked!==(ch.enabled!==false)){
@@ -1214,7 +1216,7 @@ function bindMemoryEvents(){  }
 async function createSession(){
   const pn=findById(cache.persons,state.personId);
   const ts=nowISO();
-  const rec={id:uid("ss"),personId:pn.id,modelId:pn.modelId,title:"新窗口",createdAt:ts,updatedAt:ts};
+  const rec={id:uid("ss"),personId:pn.id,modelId:pn.modelId,title:"新窗口",thinkingEnabled:true,createdAt:ts,updatedAt:ts};
   await dbPut("sessions",rec); await loadCache();
   openChat(rec.id);
 }
@@ -1241,35 +1243,44 @@ async function deleteSession(id){
   });
 }
 
+function modelSupportsThinking(model,channel,pv){
+  if(!model)return false;
+  if(model.thinkingSupport==="yes"||model.thinkingSupport===true)return true;
+  if(model.thinkingSupport==="no"||model.thinkingSupport===false)return false;
+  const remote=String(channel?.remoteModelId||model.name||"").toLowerCase();
+  const provider=String(pv?.name||"").toLowerCase(),base=String(pv?.baseUrl||"").toLowerCase();
+  return /deepseek-(flash|v4-pro)/.test(remote)||/deepseek/.test(provider)||/api\.deepseek\.com/.test(base);
+}
 function viewChatShell(){
-  const session=findById(cache.sessions,state.sessionId);
-  const pn=findById(cache.persons,session.personId);
-  const m=sessionModel(session,pn)||findById(cache.models,pn.modelId);
-  const pv=findById(cache.providers,m.providerId);
-  const identityModels=modelsOfPerson(pn).filter(modelReady);
+  const session=findById(cache.sessions,state.sessionId),pn=findById(cache.persons,session.personId);
+  const m=sessionModel(session,pn)||findById(cache.models,pn.modelId),channel=activeChannelOf(m);
+  const pv=findById(cache.providers,channel?channel.providerId:m.providerId),identityModels=modelsOfPerson(pn).filter(modelReady);
+  const canThink=modelSupportsThinking(m,channel,pv),thinkingEnabled=session.thinkingEnabled!==false;
   return `
-  <div class="chat-page">
-    <div class="topbar">
-      <h1 style="cursor:pointer" title="AI 身份设置" onclick="openPerson('${pn.id}')">${avatar(pn.name,pn.avatar)}<span class="who">${esc(pn.name)}<small>AI 身份</small></span></h1>
-      <select aria-label="切换模型型号" title="切换此 AI 身份的模型型号" onchange="changeSessionModel(this.value)" style="max-width:42%;min-width:100px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--card)">${identityModels.map(x=>`<option value="${x.id}" ${x.id===m.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
-      <span class="spacer"></span>
-      <button class="btn btn-stop" id="stopBtn" onclick="stopSending()" disabled>停止</button>
-      <button class="btn icon-btn" title="打开抽屉" onclick="toggleDrawer()">${icon("menu")}</button>
-    </div>
-    <div class="msg-list" id="msgList"></div>
-    <div class="chat-input">
-      <div class="estimate" id="estimateLine"></div>
-      <div class="pending-attachments" id="pendingAttachments"></div>
-      <div class="input-row">
-        <button class="btn icon-btn composer-attach" title="添加附件" onclick="openComposerMenu()">${icon("plus")}</button>
-        <input class="hidden" id="chatFiles" type="file" accept="image/*,.txt,.md,.csv,.json,.html" multiple onchange="handleChatFiles(this)">
-        <textarea id="chatInput" rows="1" placeholder="发消息给 ${esc(pn.name)}…"
-          oninput="refreshEstimate()"></textarea>
-        <button class="btn icon-btn composer-mic" id="micBtn" title="语音转文字" onclick="toggleBrowserDictation()">${icon("mic")}</button>
-        <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">发送</button>
-      </div>
-    </div>
-  </div>`;
+  <div class="chat-page"><div class="topbar chat-topbar">
+    <button class="btn icon-btn chat-nav-btn" title="返回聊天列表" aria-label="返回聊天列表" onclick="state.drawer=true;render()">${icon("menu")}</button>
+    <select aria-label="切换模型型号" title="切换此 AI 身份的模型型号" onchange="changeSessionModel(this.value)" class="chat-model-select">${identityModels.map(x=>`<option value="${x.id}" ${x.id===m.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
+    <span class="spacer"></span>
+    ${canThink?`<button class="thinking-toggle ${thinkingEnabled?"active":""}" id="thinkingToggle" onclick="toggleThinkingMode()" aria-pressed="${thinkingEnabled}"><span class="thinking-toggle-dot"></span><span>深度思考</span><strong>${thinkingEnabled?"开":"关"}</strong></button>`:""}
+    <button class="chat-identity" title="AI 身份资料" onclick="openPerson('${pn.id}')">${avatar(pn.name,pn.avatar)}<span>${esc(pn.name)}</span></button>
+    <button class="btn btn-stop" id="stopBtn" onclick="stopSending()" disabled>停止</button>
+  </div>
+  <div class="msg-list" id="msgList"></div>
+  <div class="chat-input"><div class="estimate" id="estimateLine"></div><div class="pending-attachments" id="pendingAttachments"></div>
+    <div class="input-row">
+      <button class="btn icon-btn composer-attach" title="添加附件" onclick="openComposerMenu()">${icon("plus")}</button>
+      <input class="hidden" id="chatFiles" type="file" accept="image/*,.txt,.md,.csv,.json,.html" multiple onchange="handleChatFiles(this)">
+      <textarea id="chatInput" rows="1" placeholder="发消息给 ${esc(pn.name)}…" oninput="refreshEstimate()"></textarea>
+      <button class="btn icon-btn composer-mic" id="micBtn" title="语音转文字" onclick="toggleBrowserDictation()">${icon("mic")}</button>
+      <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">发送</button>
+    </div><div class="composer-style-link"><button onclick="goSettings('appearance')">气泡与聊天外观</button></div>
+  </div></div>`;
+}
+async function toggleThinkingMode(){
+  const session=findById(cache.sessions,state.sessionId);if(!session)return;
+  const next=session.thinkingEnabled===false;
+  await dbPut("sessions",Object.assign({},session,{thinkingEnabled:next,updatedAt:nowISO()}));
+  await loadCache();render();
 }
 function backToPerson(){
   if(state.sending && state.controller){ try{state.controller.abort();}catch(e){} }
@@ -1443,36 +1454,21 @@ async function saveGlobalService(key,value){
 function msgHTML(msg){
   if(msg.role==="user"){
     const files=(msg.attachments||[]).map(a=>a.type?.startsWith("image/")?`<img class="message-image" src="${a.dataUrl}" alt="${esc(a.name)}">`:`<div class="message-file">${icon("file")} ${esc(a.name)}</div>`).join("");
-    return `<div class="msg user" data-msg-id="${msg.id}" data-role="user"><div>${esc(msg.content)}</div>${files}<div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div>`;
+    return `<div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}
+      <div class="msg-actions"><button onclick="editUserMessage('${msg.id}')">编辑</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回</button></div>
+      <div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div>`;
   }
-  if(msg.role==="error"){
-    return `<div class="msg err">${esc(msg.content)}</div>`;
-  }
-  if(msg.role==="system-note"){
-    return `<div class="msg sysnote">${esc(msg.content)}</div>`;
-  }
-  const m=findById(cache.models,msg.modelId);
-  const reason = msg.reasoning ? `
-    <details class="reason-box" open>
-      <summary>思考摘要（模型提供）</summary>
-      <pre>${esc(msg.reasoning)}</pre>
-    </details>` : "";
-  const hasHtml=!!htmlCodeFromMessage(msg.content);
+  if(msg.role==="error")return `<div class="msg err">${esc(msg.content)}</div>`;
+  if(msg.role==="system-note")return `<div class="msg sysnote">${esc(msg.content)}</div>`;
+  const m=findById(cache.models,msg.modelId),reason=msg.reasoning?`<details class="reason-box"><summary><span>深度思考</span><span class="reason-hint">模型提供 · 点击展开</span></summary><pre>${esc(msg.reasoning)}</pre></details>`:"";
   const speakOn=!!cache.settings.globalServices?.tts?.enabled;
-  return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">
-    ${reason}
+  return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
     <div class="msg-body">${esc(msg.content)}</div>
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
-    <div class="msg-meta">
-      <span>模型：${esc(m?m.name:msg.modelId)}</span>
-      <span>输入 ${msg.promptTokens||0} / 输出 ${msg.completionTokens||0} tokens</span>
-      ${(msg.cachedTokens||0)>0?`<span>缓存命中 ${msg.cachedTokens} tokens</span>`:""}
-      ${msg.partial?`<span>部分回复</span>`:""}
-      ${msg.streaming?`<span>生成中…</span>`:""}
-      <span>本条 ${money(msg.cost)}</span>
-      <span>${fmtTime(msg.createdAt)}</span>
-    </div></div>`;
+    <div class="msg-actions"><button onclick="regenerateFromMessage('${msg.id}')">重新生成</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回回复</button><button onclick="copyMessageText('${msg.id}')">复制</button>${speakOn?`<button data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}</div>
+    <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${fmtTime(msg.createdAt)}</span></div>
+  </div>`;
 }
 async function copyMessageText(id){
   const msg=state.chatMessages.find(x=>x.id===id); if(!msg) return;
@@ -1488,64 +1484,50 @@ async function copyMessageText(id){
 }
 function openMessageActions(id){
   const msg=state.chatMessages.find(x=>x.id===id);if(!msg||state.sending)return;
-  const isUser=msg.role==="user",actions=[{label:"复制",onClick:()=>copyMessageText(id)}];
-  if(isUser)actions.push({label:"编辑这条消息",onClick:()=>editUserMessage(id)});
+  const isUser=msg.role==="user",actions=[];
+  if(isUser)actions.push({label:"编辑并重新发送",onClick:()=>editUserMessage(id)});
   else{
     if(htmlCodeFromMessage(msg.content))actions.push({label:"网页预览",onClick:()=>{closeModal();openCodePreview(id);}});
     if(cache.settings.globalServices?.tts?.enabled)actions.push({label:"朗读",onClick:()=>{closeModal();speakMessage(id);}});
-    actions.push({label:"导出 Markdown",onClick:()=>{closeModal();exportMessageText(id,"md");}});
-    actions.push({label:"导出 TXT",onClick:()=>{closeModal();exportMessageText(id,"txt");}});
     actions.push({label:"重新生成",onClick:()=>regenerateFromMessage(id)});
   }
-  actions.push({label:"删除",danger:true,onClick:()=>deleteOneMessage(id)},{label:"关闭",onClick:closeModal});
-  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="muted">${isUser?"可复制、编辑或删除这条消息。":"预览、朗读、导出等操作收在这里，聊天正文保持简洁。"}</div>`,actions});
+  actions.push({label:"复制",onClick:()=>copyMessageText(id)},{label:isUser?"撤回消息":"撤回回复",danger:true,onClick:()=>deleteOneMessage(id)},{label:"关闭",onClick:closeModal});
+  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="muted">${isUser?"编辑后会清除旧回复，并根据修改后的内容重新回答。":"撤回后，这条回复将不再进入后续聊天上下文。"}</div>`,actions});
 }
 async function deleteOneMessage(id){
-  const index=state.chatMessages.findIndex(x=>x.id===id); if(index<0) return;
-  const msg=state.chatMessages[index];
-  const tail=msg.role==="user"?state.chatMessages.slice(index):[msg];
+  const index=state.chatMessages.findIndex(x=>x.id===id);if(index<0)return;
+  const msg=state.chatMessages[index],tail=msg.role==="user"?state.chatMessages.slice(index):[msg];
   const remove=async()=>{
-    for(const item of tail) await dbDelete("messages",item.id);
-    const ids=new Set(tail.map(x=>x.id));
-    state.chatMessages=state.chatMessages.filter(x=>!ids.has(x.id));
-    closeModal(); renderMessages();
+    const ids=tail.map(x=>x.id);
+    await new Promise((resolve,reject)=>{const t=db.transaction("messages","readwrite"),store=t.objectStore("messages");ids.forEach(mid=>store.delete(mid));t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error||new Error("撤回失败"));});
+    const idSet=new Set(ids);state.chatMessages=state.chatMessages.filter(x=>!idSet.has(x.id));
+    closeModal();renderMessages();toast(msg.role==="user"?"消息已撤回，后续依赖内容已一并清除":"回复已撤回，不再进入后续上下文");
   };
-  if(msg.role==="user") confirmDialog("删除这条用户消息","为了避免留下失去上下文的旧回复，这条消息及之后的对话都会删除。确定？",remove);
-  else await remove();
+  confirmDialog(msg.role==="user"?"撤回这条消息":"撤回这条 AI 回复",msg.role==="user"?"这条用户消息及其后续对话会一并撤回，避免留下失去上下文的回复。":"这条 AI 回复将从聊天记录中移除，不再作为后续请求的上下文。",remove);
 }
 function editUserMessage(id){
-  const msg=state.chatMessages.find(x=>x.id===id); if(!msg||msg.role!=="user") return;
-  modal({title:"编辑用户消息",body:`<div class="field"><label>消息内容</label><textarea id="editMessageText" style="min-height:160px">${esc(msg.content)}</textarea></div><div class="muted small">保存后，这条消息之后的对话会被删除，因为旧回复是基于原内容生成的。</div>`,actions:[
+  const msg=state.chatMessages.find(x=>x.id===id);if(!msg||msg.role!=="user")return;
+  modal({title:"编辑并重新发送",body:`<div class="field"><label>消息内容</label><textarea id="editMessageText" style="min-height:150px">${esc(msg.content)}</textarea></div><div class="muted small">保存后会清除这条消息之后的旧内容，并让 AI 根据修改后的消息重新回答。</div>`,actions:[
     {label:"取消",onClick:closeModal},
-    {label:"保存并清除后续对话",primary:true,onClick:async()=>{
-      const next=document.getElementById("editMessageText").value.trim(); if(!next){toast("消息不能为空");return;}
-      const index=state.chatMessages.findIndex(x=>x.id===id);
-      const tail=state.chatMessages.slice(index+1);
-      await dbPut("messages",Object.assign({},msg,{content:next,updatedAt:nowISO()}));
-      for(const item of tail) await dbDelete("messages",item.id);
-      closeModal(); await loadChatMessages(); toast("已更新消息");
+    {label:"保存并重新回答",primary:true,onClick:async()=>{
+      const next=document.getElementById("editMessageText").value.trim();if(!next){toast("消息不能为空");return;}
+      const index=state.chatMessages.findIndex(x=>x.id===id),tail=state.chatMessages.slice(index+1),updated=Object.assign({},msg,{content:next,updatedAt:nowISO()});
+      await dbPut("messages",updated);for(const item of tail)await dbDelete("messages",item.id);
+      closeModal();await loadChatMessages();const input=document.getElementById("chatInput");if(input)input.value="";
+      await sendMessage(id);
     }}
   ]});
 }
-function regenerateFromMessage(id){
-  const index=state.chatMessages.findIndex(x=>x.id===id);
-  const msg=state.chatMessages[index]; if(!msg||msg.role!=="assistant") return;
-  let user=null;
-  for(let i=index-1;i>=0;i--){if(state.chatMessages[i].role==="user"){user=state.chatMessages[i];break;}}
+async function regenerateFromMessage(id){
+  const index=state.chatMessages.findIndex(x=>x.id===id),msg=state.chatMessages[index];if(!msg||msg.role!=="assistant")return;
+  let user=null;for(let i=index-1;i>=0;i--){if(state.chatMessages[i].role==="user"){user=state.chatMessages[i];break;}}
   if(!user){toast("找不到对应的用户消息");return;}
-  confirmDialog("重新生成回复","将从对应的用户消息重新开始，并删除该轮及之后的旧对话。确定？",async()=>{
-    const userIndex=state.chatMessages.findIndex(x=>x.id===user.id);
-    const tail=state.chatMessages.slice(userIndex);
-    const session=findById(cache.sessions,state.sessionId);
-    if(session && user.modelId) await dbPut("sessions",Object.assign({},session,{modelId:user.modelId,updatedAt:nowISO()}));
-    for(const item of tail) await dbDelete("messages",item.id);
-    state.chatMessages=state.chatMessages.slice(0,userIndex);
-    await loadCache(); closeModal(); renderMessages();
-    const input=document.getElementById("chatInput");
-    if(input){input.value=user.content;refreshEstimate();sendMessage();}
+  confirmDialog("重新生成回复","保留原用户消息，撤回这条旧回复及之后的对话，再让 AI 重新回答。确定？",async()=>{
+    const currentIndex=state.chatMessages.findIndex(x=>x.id===msg.id),tail=state.chatMessages.slice(currentIndex),ids=new Set(tail.map(x=>x.id));
+    for(const item of tail)await dbDelete("messages",item.id);
+    state.chatMessages=state.chatMessages.filter(x=>!ids.has(x.id));closeModal();renderMessages();await sendMessage(user.id);
   });
 }
-
 function bindChatInput(){
   refreshEstimate();renderPendingAttachments();
   const ta=document.getElementById("chatInput");
@@ -1555,7 +1537,7 @@ function bindChatInput(){
   });}
 }
 
-function buildOutgoing(draft){
+function buildOutgoing(draft,historyOverride=null){
   const session=findById(cache.sessions,state.sessionId);
   const pn=findById(cache.persons,session.personId);
   const persona=findById(cache.personas,pn.personaId)||{content:""};
@@ -1572,7 +1554,7 @@ function buildOutgoing(draft){
     memLines.push(line); memBudget-=line.length;
   }
   let recentBudget=s.recentCharCap; const picked=[];
-  const history=state.chatMessages.filter(x=>x.role==="user"||x.role==="assistant");
+  const history=(historyOverride||state.chatMessages).filter(x=>x.role==="user"||x.role==="assistant");
   for(let i=history.length-1;i>=0;i--){
     const line=history[i].content||"";
     if(line.length>recentBudget) break;
@@ -1654,11 +1636,12 @@ async function readStreamingCompletion(resp, onDelta){
   return {content,reasoning,usage,raw:null};
 }
 
-async function sendMessage(){
+async function sendMessage(existingUserId=null){
   if(state.sending) return;
   const ta=document.getElementById("chatInput");
-  const draft=ta.value.trim();
-  const attachments=(state.pendingAttachments||[]).slice();
+  const existingUser=existingUserId?state.chatMessages.find(x=>x.id===existingUserId&&x.role==="user"):null;
+  const draft=existingUser?(existingUser.content||""):ta.value.trim();
+  const attachments=existingUser?(existingUser.attachments||[]).slice():(state.pendingAttachments||[]).slice();
   if(!draft&&!attachments.length){toast("请先输入内容或添加附件");return;}
   const session=findById(cache.sessions,state.sessionId);
   const pn=findById(cache.persons,session.personId);
@@ -1682,12 +1665,12 @@ async function sendMessage(){
     try{const visual=await analyzePendingImages(attachments,draft);outgoingDraft=(draft?draft+"\n\n":"")+"【图片内容】\n"+visual;}
     catch(e){addErrorNote("图片识别失败："+(e.message||String(e)));return;}
   }
-  const built=buildOutgoing(outgoingDraft);
-  const userMsg={id:uid("mg"),sessionId:session.id,role:"user",content:draft,attachments:attachments.map(({id,name,type,size,dataUrl,textContent})=>({id,name,type,size,dataUrl,textContent})),
-    modelId:m.id,providerId:pv.id,promptTokens:0,completionTokens:0,totalTokens:0,
-    cost:0,reasoning:"",createdAt:nowISO()};
-  state.chatMessages.push(userMsg);
-  await dbPut("messages",userMsg);
+  const existingIndex=existingUser?state.chatMessages.findIndex(x=>x.id===existingUser.id):-1;
+  const historyForRequest=existingUser?state.chatMessages.slice(0,existingIndex):state.chatMessages;
+  const built=buildOutgoing(outgoingDraft,historyForRequest);
+  const userMsg=existingUser||{id:uid("mg"),sessionId:session.id,role:"user",content:draft,attachments:attachments.map(({id,name,type,size,dataUrl,textContent})=>({id,name,type,size,dataUrl,textContent})),modelId:m.id,providerId:pv.id,promptTokens:0,completionTokens:0,totalTokens:0,cost:0,reasoning:"",createdAt:nowISO()};
+  if(existingUser){userMsg.modelId=m.id;userMsg.providerId=pv.id;await dbPut("messages",userMsg);}
+  else{state.chatMessages.push(userMsg);await dbPut("messages",userMsg);}
   session.updatedAt=nowISO();
   if((session.title==="新窗口"||!session.title)) session.title=(draft||attachments[0]?.name||"附件").slice(0,12);
   await dbPut("sessions",session);
@@ -1702,11 +1685,11 @@ async function sendMessage(){
   const endpoint=pv.baseUrl.replace(/\/+$/,"")+"/chat/completions";
   let saved=false;
   try{
+    const requestBody={model:remoteModelId,messages:built.messages,stream:pv.streamEnabled!==false};
+    if(modelSupportsThinking(m,channel,pv))requestBody.thinking={type:session.thinkingEnabled===false?"disabled":"enabled"};
     const resp=await fetch(endpoint,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+pv.apiKey},
-      body:JSON.stringify({model:remoteModelId,messages:built.messages,stream:pv.streamEnabled!==false}),
-      signal:controller.signal
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+pv.apiKey},
+      body:JSON.stringify(requestBody),signal:controller.signal
     });
     if(!resp.ok){
       let detail=""; try{detail=await resp.text();}catch(e){}
