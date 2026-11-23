@@ -1280,23 +1280,27 @@ async function loadChatMessages(){
     .sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
   renderMessages();
 }
-function renderMessages(){
-  const list=document.getElementById("msgList");
-  if(!list) return;
-  list.innerHTML = state.chatMessages.map(msgHTML).join("");
-  list.querySelectorAll(".msg[data-msg-id]").forEach(node=>{
-    const id=node.dataset.msgId;
-    node.addEventListener("contextmenu",e=>{e.preventDefault();openMessageActions(id);});
-    let pressTimer=null, moved=false;
-    node.addEventListener("pointerdown",()=>{moved=false;pressTimer=setTimeout(()=>{if(!moved)openMessageActions(id);},520);});
-    node.addEventListener("pointermove",()=>{moved=true;if(pressTimer)clearTimeout(pressTimer);});
-    ["pointerup","pointercancel","pointerleave"].forEach(type=>node.addEventListener(type,()=>{if(pressTimer)clearTimeout(pressTimer);}));
-  });
-  list.scrollTop = list.scrollHeight;
-  const stop=document.getElementById("stopBtn");
-  const send=document.getElementById("sendBtn");
-  if(stop) stop.disabled = !state.sending;
-  if(send) send.disabled = state.sending;
+function bindMessageListEvents(list){
+  if(list.dataset.eventsBound==="1")return;list.dataset.eventsBound="1";
+  let timer=null,targetId=null,moved=false;
+  const clear=()=>{if(timer)clearTimeout(timer);timer=null;targetId=null;};
+  list.addEventListener("contextmenu",e=>{const node=e.target.closest(".msg[data-msg-id]");if(!node)return;e.preventDefault();openMessageActions(node.dataset.msgId);});
+  list.addEventListener("pointerdown",e=>{const node=e.target.closest(".msg[data-msg-id]");if(!node)return;targetId=node.dataset.msgId;moved=false;timer=setTimeout(()=>{if(!moved&&targetId)openMessageActions(targetId);clear();},560);});
+  list.addEventListener("pointermove",()=>{moved=true;if(timer)clearTimeout(timer);timer=null;});
+  ["pointerup","pointercancel","pointerleave"].forEach(type=>list.addEventListener(type,clear));
+}
+function renderMessages(options={}){
+  const list=document.getElementById("msgList");if(!list)return;
+  const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<140;
+  list.innerHTML=state.chatMessages.map(msgHTML).join("");bindMessageListEvents(list);
+  if(options.forceBottom||nearBottom)list.scrollTop=list.scrollHeight;
+  const stop=document.getElementById("stopBtn"),send=document.getElementById("sendBtn");
+  if(stop)stop.disabled=!state.sending;if(send)send.disabled=state.sending;
+}
+let streamPaintPending=false,streamPaintMessage=null;
+function scheduleStreamingPaint(msg){
+  streamPaintMessage=msg;if(streamPaintPending)return;streamPaintPending=true;
+  requestAnimationFrame(()=>{streamPaintPending=false;const current=streamPaintMessage;if(!current)return;const node=document.querySelector('.msg[data-msg-id="'+current.id+'"]');const body=node?.querySelector(".msg-body");if(body)body.textContent=current.content||"";});
 }
 function fileToDataURL(file){
   return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(reader.error||new Error("文件读取失败"));reader.readAsDataURL(file);});
@@ -1454,10 +1458,9 @@ function msgHTML(msg){
   const speakOn=!!cache.settings.globalServices?.tts?.enabled;
   return `<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">
     ${reason}
-    <div>${esc(msg.content)}</div>
+    <div class="msg-body">${esc(msg.content)}</div>
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
-    <div class="msg-tools">${hasHtml?`<button class="btn" onclick="openCodePreview('${msg.id}')">网页预览</button>`:""}${speakOn?`<button class="btn" data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}<button class="btn" onclick="exportMessageText('${msg.id}','md')">导出 MD</button><button class="btn" onclick="exportMessageText('${msg.id}','txt')">导出 TXT</button></div>
     <div class="msg-meta">
       <span>模型：${esc(m?m.name:msg.modelId)}</span>
       <span>输入 ${msg.promptTokens||0} / 输出 ${msg.completionTokens||0} tokens</span>
@@ -1481,14 +1484,18 @@ async function copyMessageText(id){
   closeModal();
 }
 function openMessageActions(id){
-  const msg=state.chatMessages.find(x=>x.id===id); if(!msg||state.sending) return;
-  const isUser=msg.role==="user";
-  const actions=[{label:"复制",onClick:()=>copyMessageText(id)}];
-  if(isUser) actions.push({label:"编辑这条消息",onClick:()=>editUserMessage(id)});
-  if(!isUser) actions.push({label:"重新生成",onClick:()=>regenerateFromMessage(id)});
-  actions.push({label:"删除",danger:true,onClick:()=>deleteOneMessage(id)});
-  actions.push({label:"关闭",onClick:closeModal});
-  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="muted">${isUser?"长按消息可再次打开此菜单。编辑用户消息时，会一并清除它之后的对话，避免旧回复与新内容错位。":"可以复制、重新生成或删除这条回复。"}</div>`,actions});
+  const msg=state.chatMessages.find(x=>x.id===id);if(!msg||state.sending)return;
+  const isUser=msg.role==="user",actions=[{label:"复制",onClick:()=>copyMessageText(id)}];
+  if(isUser)actions.push({label:"编辑这条消息",onClick:()=>editUserMessage(id)});
+  else{
+    if(htmlCodeFromMessage(msg.content))actions.push({label:"网页预览",onClick:()=>{closeModal();openCodePreview(id);}});
+    if(cache.settings.globalServices?.tts?.enabled)actions.push({label:"朗读",onClick:()=>{closeModal();speakMessage(id);}});
+    actions.push({label:"导出 Markdown",onClick:()=>{closeModal();exportMessageText(id,"md");}});
+    actions.push({label:"导出 TXT",onClick:()=>{closeModal();exportMessageText(id,"txt");}});
+    actions.push({label:"重新生成",onClick:()=>regenerateFromMessage(id)});
+  }
+  actions.push({label:"删除",danger:true,onClick:()=>deleteOneMessage(id)},{label:"关闭",onClick:closeModal});
+  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="muted">${isUser?"可复制、编辑或删除这条消息。":"预览、朗读、导出等操作收在这里，聊天正文保持简洁。"}</div>`,actions});
 }
 async function deleteOneMessage(id){
   const index=state.chatMessages.findIndex(x=>x.id===id); if(index<0) return;
@@ -1583,33 +1590,19 @@ function buildOutgoing(draft){
   return {messages,sendChars,person:pn,memCount:memLines.length,breakDocIncluded:!!(pn.breakLimitEnabled && pn.breakLimitDoc?.trim())};
 }
 function refreshEstimate(){
-  const ta=document.getElementById("chatInput");
-  const line=document.getElementById("estimateLine");
-  if(!ta||!line) return;
-  const draft=ta.value;
-  if(!draft.trim()){ line.innerHTML=`<span class="muted">输入内容后显示本次发送量与预计费用</span>`; return; }
-  const {sendChars,messages}=buildOutgoing(draft);
-  const session=findById(cache.sessions,state.sessionId);
-  const pn=findById(cache.persons,session.personId);
-  const m=sessionModel(session,pn)||findById(cache.models,pn.modelId);
-  const inTokens=estimateTokens(messages.map(x=>x.content).join(""));
-  const outTokens=inTokens; // 预估假设回复长度与输入相当，仅用于估算
-  const estCost=(inTokens*(Number(m.priceInput)||0)+outTokens*(Number(m.priceOutput)||0))/1e6;
-  const priceMissing=(!m.priceInput && !m.priceOutput);
-  line.innerHTML=`
-    <span>本次将发送 <b>${sendChars}</b> 字符，约 <b>${inTokens}</b> tokens
-      （含身份设定、${buildOutgoing(draft).breakDocIncluded?"破限文档、":""}${buildOutgoing(draft).memCount} 条记忆、最近聊天）</span>
-    <span>预计费用 <b>${money(estCost)}</b>${priceMissing?"（单价未填，按 0 估算）":""}
-      （实际以厂商返回为准）</span>`;
+  const ta=document.getElementById("chatInput"),line=document.getElementById("estimateLine");if(!ta||!line)return;
+  const draft=ta.value;if(!draft.trim()){line.innerHTML='<span class="muted">输入内容后显示本次发送量与预计费用</span>';return;}
+  const built=buildOutgoing(draft),messages=built.messages,session=findById(cache.sessions,state.sessionId),pn=findById(cache.persons,session?.personId),m=sessionModel(session,pn)||findById(cache.models,pn?.modelId);if(!m)return;
+  const inTokens=estimateTokens(messages.map(x=>typeof x.content==="string"?x.content:JSON.stringify(x.content)).join("")),outTokens=inTokens;
+  const estCost=(inTokens*(Number(m.priceInput)||0)+outTokens*(Number(m.priceOutput)||0))/1e6,priceMissing=(!m.priceInput&&!m.priceOutput);
+  line.innerHTML=`<span>本次将发送 <b>${built.sendChars}</b> 字符，约 <b>${inTokens}</b> tokens（含身份设定、${built.breakDocIncluded?"破限文档、":""}${built.memCount} 条记忆、最近聊天）</span><span>预计费用 <b>${money(estCost)}</b>${priceMissing?"（单价未填，按 0 估算）":""}（实际以厂商返回为准）</span>`;
 }
-
 async function getMonthSpend(){
-  const now=new Date();
-  const all=await dbAll("messages");
-  return all.filter(x=>{
-    const d=new Date(x.createdAt);
-    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
-  }).reduce((n,x)=>n+(Number(x.cost)||0),0);
+  const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),1).toISOString(),end=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString();
+  return new Promise((resolve,reject)=>{const request=tx("messages").index("createdAt").openCursor(IDBKeyRange.bound(start,end));let total=0;
+    request.onsuccess=()=>{const cursor=request.result;if(!cursor){resolve(total);return;}total+=Number(cursor.value.cost)||0;cursor.continue();};
+    request.onerror=()=>reject(request.error||new Error("费用统计读取失败"));
+  });
 }
 async function refreshMonthPill(){
   const pill=document.getElementById("monthPill");
@@ -1720,7 +1713,7 @@ async function sendMessage(){
     }
     const result=await readStreamingCompletion(resp,parts=>{
       aiMsg.content=parts.allContent; aiMsg.reasoning=parts.allReasoning;
-      renderMessages();
+      scheduleStreamingPaint(aiMsg);
     });
     aiMsg.content=result.content||aiMsg.content;
     aiMsg.reasoning=result.reasoning||aiMsg.reasoning;
@@ -1755,7 +1748,6 @@ async function sendMessage(){
   }finally{
     state.sending=false; state.controller=null;
     renderMessages();
-    await loadCache();
     refreshMonthPill();
   }
 }
