@@ -1267,7 +1267,7 @@ function addModelChannel(modelId){
   });
 }
 function modelForm(providerId, id){
-  const m = id ? findById(cache.models,id) : {name:"",priceInput:0,priceOutput:0,priceUpdatedAt:null};
+  const m = id ? findById(cache.models,id) : {name:"",priceInput:0,priceOutput:0,modelMemory:"",priceUpdatedAt:null};
   modal({
     title: id ? "编辑模型" : "添加模型",
     body:`
@@ -1278,6 +1278,7 @@ function modelForm(providerId, id){
       <div class="field"><label>输出单价（元 / 百万 token）</label>
         <input id="fMdOut" type="number" min="0" step="0.01" value="${esc(m.priceOutput)}"></div>
       <div class="field"><label>缓存读取单价（元 / 百万 token）</label><input id="fMdCache" type="number" min="0" step="0.01" value="${m.priceCacheRead==null?"":esc(m.priceCacheRead)}" placeholder="留空则按普通输入价计算"></div>
+      <div class="field"><label>该型号专属记忆与口癖差异</label><textarea id="fMdMemory" rows="4" placeholder="只写这个型号相对所属 AI 身份的差异，例如表达习惯、已知经历差异或需要保留的细节。">${esc(m.modelMemory||"")}</textarea><div class="hint">AI 身份的核心设定与长期记忆仍然共享；这里只补充当前型号的独有差异。</div></div>
       ${!id?`<div class="field"><label>归属 AI 身份</label><select id="fMdIdentity"><option value="new">创建一个新的 AI 身份</option>${cache.persons.map(person=>`<option value="${person.id}">${esc(person.name)}（${modelsOfPerson(person).length} 个模型）</option>`).join("")}</select><div class="hint">选择已有身份后，新模型会成为该身份的另一个型号，共用身份设定与破限文档。</div></div><div class="field"><label>新 AI 身份名称</label><input id="fMdIdentityName" placeholder="例如：DeepSeek" value=""></div>`:""}
       <div class="hint">单价以厂商官方价格页为准；保存时自动记录更新日期。
         当前记录日期：${m.priceUpdatedAt ? esc(m.priceUpdatedAt) : "未填写"}</div>`,
@@ -1290,7 +1291,7 @@ function modelForm(providerId, id){
         const cachePriceText=document.getElementById("fMdCache").value.trim();
         if(!name){ toast("模型名必填"); return; }
         const rec = id ? Object.assign({},m) : {id:uid("md"),providerId,createdAt:nowISO()};
-        rec.name=name; rec.priceInput=priceInput; rec.priceOutput=priceOutput;rec.priceCacheRead=cachePriceText===""?null:Math.max(0,Number(cachePriceText)||0);
+        rec.name=name;rec.priceInput=priceInput;rec.priceOutput=priceOutput;rec.priceCacheRead=cachePriceText===""?null:Math.max(0,Number(cachePriceText)||0);rec.modelMemory=document.getElementById("fMdMemory").value.trim();
         rec.priceUpdatedAt=todayDate(); rec.updatedAt=nowISO();
         if(id){
           await dbPut("models",rec);
@@ -1922,6 +1923,7 @@ function buildOutgoing(draft,historyOverride=null){
   const systemParts=[];
   if(s.userBio?.trim())systemParts.push("【用户个人资料】\n"+s.userBio.trim());
   if(session.summary?.trim())systemParts.push("【较早会话摘要】\n"+session.summary.trim().slice(0,8000));
+  if(m.modelMemory?.trim())systemParts.push("【当前模型专属差异】\n"+m.modelMemory.trim().slice(0,3000));
   if(pn.breakLimitEnabled && pn.breakLimitDoc?.trim()) systemParts.push("【用户提供的独立上下文文档】\n"+pn.breakLimitDoc);
   if(personaText) systemParts.push("【AI 身份设定】\n"+personaText);
   if(memLines.length) systemParts.push("【长期记忆】\n"+memLines.join("\n"));
