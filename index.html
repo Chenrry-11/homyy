@@ -1596,7 +1596,9 @@ async function regenerateFromMessage(id){
   confirmDialog("重新生成回复","保留原用户消息，撤回这条旧回复及之后的对话，再让 AI 重新回答。确定？",async()=>{
     const currentIndex=state.chatMessages.findIndex(x=>x.id===msg.id),tail=state.chatMessages.slice(currentIndex),ids=new Set(tail.map(x=>x.id));
     for(const item of tail)await dbDelete("messages",item.id);
-    state.chatMessages=state.chatMessages.filter(x=>!ids.has(x.id));closeModal();renderMessages();await sendMessage(user.id);
+    state.chatMessages=state.chatMessages.filter(x=>!ids.has(x.id));
+    const session=findById(cache.sessions,state.sessionId);if(session&&user.modelId)await dbPut("sessions",Object.assign({},session,{modelId:user.modelId,updatedAt:nowISO()}));
+    closeModal();await loadCache();await render();await sendMessage(user.id);
   });
 }
 function bindChatInput(){
