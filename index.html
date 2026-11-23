@@ -485,7 +485,7 @@ const memoriesOf = (personId)=>cache.memories.filter(m=>m.personId===personId);
 const sessionsOf = (personId)=>cache.sessions.filter(s=>s.personId===personId)
   .sort((a,b)=> (b.updatedAt||"").localeCompare(a.updatedAt||""));
 
-const ICONS={eye:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',audio:'<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>',mic:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>' ,menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'};
+const ICONS={user:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>',eye:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',audio:'<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>',mic:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>' ,menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',edit:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="M9 6l6 6-6 6"/>',back:'<path d="M15 6l-6 6 6 6"/>',panel:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 5v14"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'};
 function icon(n){return `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;}
 function avatar(n,img){return img?`<span class="avatar"><img src="${esc(img)}" alt=""></span>`:`<span class="avatar">${esc([...String(n)][0]||"?")}</span>`;}
 function latestSession(){ return [...cache.sessions].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]; }
@@ -535,6 +535,15 @@ function viewWelcome(){
       <p>选择一个 AI 身份，继续已有对话，或开启新的思路。</p>
       <div class="hero-rule"><span></span><i></i><span></span></div>
     </section>
+    <section class="home-section setup-grid-section">
+      <div class="section-heading"><div><span class="section-eyebrow">WORKSPACE SETUP</span><h3>工作空间配置</h3></div></div>
+      <div class="setup-grid">
+        <button class="setup-card" onclick="goSettings('models')"><span class="setup-card-icon">\${icon("gear")}</span><strong>语言模型</strong><small>API 连接、模型绑定与调用通道</small><span class="setup-card-link">管理模型　›</span></button>
+        <button class="setup-card" onclick="goSettings('voice')"><span class="setup-card-icon">\${icon("audio")}</span><strong>语音回复</strong><small>MiniMax 语音合成与语音输入</small><span class="setup-card-link">配置语音　›</span></button>
+        <button class="setup-card" onclick="goSettings('visual')"><span class="setup-card-icon">\${icon("eye")}</span><strong>图片与视觉</strong><small>图片识别与图片生成接口</small><span class="setup-card-link">配置图像　›</span></button>
+        <button class="setup-card" onclick="goMyPage()"><span class="setup-card-icon">\${icon("user")}</span><strong>我的</strong><small>头像、昵称与个人资料</small><span class="setup-card-link">编辑资料　›</span></button>
+      </div>
+    </section>
     ${noIdentity?`
       <section class="empty-setup">
         <div class="empty-symbol">${icon("plus")}</div>
@@ -571,13 +580,6 @@ function viewWelcome(){
     ${noKey?`<button class="setup-hint" onclick="goSettings()">检测到 API 连接尚未填写密钥，前往设置完成配置 <span>→</span></button>`:""}
     <footer class="home-footer"><span>HOMY · AI WORKSPACE</span><span>PRIVATE BY DESIGN</span></footer>
   </div>`;
-}
-async function saveWelcomeKey(){
-  const k=document.getElementById("wKey")?.value.trim();
-  if(!k){ toast("请先粘贴 API Key"); return; }
-  const p=cache.providers.find(x=>!x.apiKey);
-  await dbPut("providers",Object.assign({},p,{apiKey:k,updatedAt:nowISO()}));
-  await loadCache(); render();
 }
 async function saveWelcomeKey(){
   const k=document.getElementById("wKey").value.trim();
