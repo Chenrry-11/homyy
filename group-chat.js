@@ -109,12 +109,13 @@ function bindGroupMessageEvents(list){
 }
 function openGroupMessageActions(id){
  var m=(state.groupMessages||[]).find(x=>x.id===id);if(!m||state.groupRunning)return;
+ var anchor=Array.from(document.querySelectorAll("[data-group-msg-id]")).find(x=>x.dataset.groupMsgId===id);
  var actions=[];
- if(m.role==="user"){actions.push({label:"重新发送",onClick:()=>resendGroupUserMessage(id)});actions.push({label:"编辑并重新回答",onClick:()=>editGroupUserMessage(id)});}
- if(m.role==="assistant")actions.push({label:"重新生成",onClick:()=>regenerateGroupMessage(id)});
- actions.push({label:"复制",onClick:async()=>{closeModal();try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(m.content||"");else{var box=document.createElement("textarea");box.value=m.content||"";document.body.appendChild(box);box.select();document.execCommand("copy");box.remove();}toast("已复制");}catch(e){toast("复制失败，请手动选择文字");}}});
- actions.push({label:"删除消息",danger:true,onClick:()=>deleteGroupMessage(id)},{label:"关闭",onClick:closeModal});
- modal({title:m.role==="user"?"用户消息":(m.role==="assistant"?"AI 回复":"群聊消息"),body:'<div class="muted">长按消息可再次打开此菜单。</div>',actions});
+ if(m.role==="user"){actions.push({label:"重新发送",icon:"refresh",onClick:()=>resendGroupUserMessage(id)});actions.push({label:"编辑并重新回答",icon:"edit",onClick:()=>editGroupUserMessage(id)});}
+ if(m.role==="assistant")actions.push({label:"重新生成",icon:"refresh",onClick:()=>regenerateGroupMessage(id)});
+ actions.push({label:"复制",icon:"copy",onClick:async()=>{try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(m.content||"");else{var box=document.createElement("textarea");box.value=m.content||"";document.body.appendChild(box);box.select();document.execCommand("copy");box.remove();}toast("已复制");}catch(e){toast("复制失败，请手动选择文字");}}});
+ actions.push({label:"删除消息",icon:"trash",danger:true,onClick:()=>deleteGroupMessage(id)});
+ if(typeof showMessageActionMenu==="function")showMessageActionMenu(anchor,actions);
 }
 async function deleteGroupMessage(id){
  var index=(state.groupMessages||[]).findIndex(x=>x.id===id);if(index<0)return;
