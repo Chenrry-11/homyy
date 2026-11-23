@@ -2435,7 +2435,6 @@ function showImportPreview(parsed){
 
 (async function init(){
   try{
-    syncAppViewport();
     db = await openDB();
     await seedIfNeeded();
     await loadCache();
