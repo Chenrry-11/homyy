@@ -117,8 +117,11 @@ function openGroupMessageActions(id){
  modal({title:m.role==="user"?"用户消息":(m.role==="assistant"?"AI 回复":"群聊消息"),body:'<div class="muted">长按消息可再次打开此菜单。</div>',actions});
 }
 async function deleteGroupMessage(id){
- var m=(state.groupMessages||[]).find(x=>x.id===id);if(!m)return;
- await dbDelete("groupMessages",id);state.groupMessages=state.groupMessages.filter(x=>x.id!==id);closeModal();renderGroupMessages();toast("已删除这条群聊消息");
+ var index=(state.groupMessages||[]).findIndex(x=>x.id===id);if(index<0)return;
+ var m=state.groupMessages[index],tail=m.role==="user"?state.groupMessages.slice(index):[m];
+ for(var item of tail)await dbDelete("groupMessages",item.id);
+ var ids=new Set(tail.map(x=>x.id));state.groupMessages=state.groupMessages.filter(x=>!ids.has(x.id));
+ closeModal();renderGroupMessages();toast(m.role==="user"?"已删除这条用户消息及其后续回复":"已删除这条群聊消息");
 }
 async function resendGroupUserMessage(id){
  var index=state.groupMessages.findIndex(x=>x.id===id),m=state.groupMessages[index];if(!m||m.role!=="user")return;
@@ -231,23 +234,47 @@ async function requestGroupCandidate(g,member,turn){
  }finally{if(state.groupControllers.get(p.id)===controller)state.groupControllers.delete(p.id);}
 }
 async function runGroupTurn(g,userMsg,targetId){
- if(!g||g.autoReply===false||g.autoReplyPaused)return;if(state.groupRunning)stopGroupTurn(true);
+ if(!g||g.autoReply===false||g.autoReplyPaused)return;
+ if(state.groupRunning)stopGroupTurn(true);
  var turn=++state.groupTurnId;state.groupRunning=true;state.groupStoppedMembers.clear();
- var members=(g.members||[]).filter(m=>findById(cache.persons,m.personId));if(targetId)members=members.filter(m=>m.personId===targetId);else if(g.mode==="solo")members=members.filter(m=>m.personId===g.soloMemberId);
+ var members=(g.members||[]).filter(m=>findById(cache.persons,m.personId));
+ if(targetId)members=members.filter(m=>m.personId===targetId);
+ else if(g.mode==="solo")members=members.filter(m=>m.personId===g.soloMemberId);
  if(!members.length){state.groupRunning=false;state.groupStatus="没有可参与的群成员";renderGroupStatus();return;}
- state.groupStatus=members.length+" 位 AI 正在并行准备发言";renderGroupStatus();
- var settled=await Promise.allSettled(members.map(m=>requestGroupCandidate(g,m,turn)));if(turn!==state.groupTurnId)return;
- var candidates=settled.filter(x=>x.status==="fulfilled"&&x.value).map(x=>x.value),errors=settled.filter(x=>x.status==="rejected"&&x.reason?.name!=="AbortError").map(x=>x.reason?.message||"成员请求失败");
- candidates.sort((a,b)=>b.priority-a.priority||(a.lastSpokeAt||"").localeCompare(b.lastSpokeAt||"")||a.readyAt-b.readyAt);
- var max=targetId||g.mode==="solo"||g.allowCrossTalk===false?1:Math.max(1,Math.min(5,Number(g.maxAutoReplies)||2)),shown=0;
- for(var item of candidates){
-  if(turn!==state.groupTurnId||shown>=max)break;if(state.groupStoppedMembers.has(item.personId))continue;
+ var max=targetId||g.mode==="solo"||g.allowCrossTalk===false?1:Math.max(1,Math.min(5,Number(g.maxAutoReplies)||2));
+ var spoken=new Set(),shown=0,errors=[];
+ while(turn===state.groupTurnId&&shown<max){
+  var eligible=members.filter(m=>!spoken.has(m.personId)&&!state.groupStoppedMembers.has(m.personId));
+  if(!eligible.length)break;
+  state.groupStatus=shown===0?eligible.length+" 位 AI 正在并行判断是否发言":"第 "+(shown+1)+" 轮 · "+eligible.length+" 位 AI 正在阅读最新群聊记录";
+  renderGroupStatus();
+  var settled=await Promise.allSettled(eligible.map(m=>requestGroupCandidate(g,m,turn)));
+  if(turn!==state.groupTurnId)return;
+  var candidates=settled.filter(x=>x.status==="fulfilled"&&x.value).map(x=>x.value);
+  errors.push(...settled.filter(x=>x.status==="rejected"&&x.reason?.name!=="AbortError").map(x=>x.reason?.message||"成员请求失败"));
+  candidates.sort((a,b)=>b.priority-a.priority||(a.lastSpokeAt||"").localeCompare(b.lastSpokeAt||"")||a.readyAt-b.readyAt);
+  if(!candidates.length)break;
+  var item=candidates[0];spoken.add(item.personId);
+  if(state.groupStoppedMembers.has(item.personId))continue;
   var msg={id:uid("gm"),groupId:g.id,role:"assistant",personId:item.personId,modelId:item.modelId,providerId:item.providerId,content:item.content,reasoning:item.reasoning,promptTokens:item.promptTokens,completionTokens:item.completionTokens,totalTokens:item.totalTokens,cost:item.cost,thinkingUsed:item.thinkingUsed,turnId:turn,createdAt:nowISO()};
-  await dbPut("groupMessages",msg);state.groupMessages.push(msg);shown++;renderGroupMessages({forceBottom:true});
-  var current=groupById(g.id);if(current){await dbPut("groups",Object.assign({},current,{members:current.members.map(m=>m.personId===item.personId?Object.assign({},m,{lastSpokeAt:msg.createdAt}):m),updatedAt:msg.createdAt}));await loadCache();}
-  state.groupStatus=shown+"/"+max+" 位 AI 已发言";renderGroupStatus();await new Promise(r=>setTimeout(r,350));
+  await dbPut("groupMessages",msg);
+  if(turn!==state.groupTurnId)return;
+  state.groupMessages.push(msg);shown++;renderGroupMessages({forceBottom:true});
+  var current=groupById(g.id);
+  if(current){
+   await dbPut("groups",Object.assign({},current,{members:current.members.map(m=>m.personId===item.personId?Object.assign({},m,{lastSpokeAt:msg.createdAt}):m),updatedAt:msg.createdAt}));
+   await loadCache();
+  }
+  state.groupStatus=shown+"/"+max+" 位 AI 已发言 · 其他成员正在阅读最新回复";
+  renderGroupStatus();
+  if(shown<max)await new Promise(r=>setTimeout(r,260));
  }
  if(turn!==state.groupTurnId)return;
- if(errors.length){var note={id:uid("gm"),groupId:g.id,role:"system-note",content:errors.join("；"),createdAt:nowISO()};await dbPut("groupMessages",note);state.groupMessages.push(note);}
- state.groupRunning=false;state.groupStatus=shown?"本轮结束 · "+shown+" 位 AI 发言":"本轮结束 · 暂无成员需要补充";state.groupThinkingOverride=null;renderGroupMessages({forceBottom:true});refreshMonthPill();
+ if(errors.length){
+  var note={id:uid("gm"),groupId:g.id,role:"system-note",content:[...new Set(errors)].join("；"),createdAt:nowISO()};
+  await dbPut("groupMessages",note);state.groupMessages.push(note);
+ }
+ state.groupRunning=false;
+ state.groupStatus=shown?"本轮结束 · "+shown+" 位 AI 依次参与":"本轮结束 · 暂无成员需要补充";
+ state.groupThinkingOverride=null;renderGroupMessages({forceBottom:true});refreshMonthPill();
 }
