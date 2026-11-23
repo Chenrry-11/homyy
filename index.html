@@ -739,6 +739,7 @@ function providerForm(id){
       <div class="field"><label>API Key（只保存在本机浏览器，不会写进代码）</label>
         <input id="fPvKey" type="password" value="${esc(p.apiKey)}" placeholder="sk-...">
         <div class="hint">留空表示暂不填写，之后可再编辑。</div></div>
+      <div class="field"><label class="switch"><input type="checkbox" id="fPvEnabled" ${p.enabled!==false?"checked":""}> 启用此 API 连接</label><div class="hint">停用后，使用该连接的模型通道将暂时不可用。</div></div>
       <div class="field"><label class="switch"><input type="checkbox" id="fPvStream" ${p.streamEnabled!==false?"checked":""}> 启用流式输出</label>
         <div class="hint">适用于支持 OpenAI 兼容 SSE 流式响应的接口；如果服务商不支持，可关闭后使用普通 JSON 响应。</div></div>`,
     actions:[
@@ -747,10 +748,10 @@ function providerForm(id){
         const name = document.getElementById("fPvName").value.trim();
         const baseUrl = document.getElementById("fPvUrl").value.trim();
         const apiKey = document.getElementById("fPvKey").value.trim();
-        const streamEnabled = document.getElementById("fPvStream").checked;
+        const streamEnabled = document.getElementById("fPvStream").checked;\n        const enabled = document.getElementById("fPvEnabled").checked;
         if(!name || !baseUrl){ toast("厂商名和接口地址必填"); return; }
         const rec = id ? Object.assign({}, p) : {id:uid("pv"),createdAt:nowISO()};
-        rec.name=name; rec.baseUrl=baseUrl; rec.apiKey=apiKey; rec.streamEnabled=streamEnabled; rec.updatedAt=nowISO();
+        rec.name=name; rec.baseUrl=baseUrl; rec.apiKey=apiKey; rec.streamEnabled=streamEnabled; rec.enabled=enabled; rec.updatedAt=nowISO();
         await dbPut("providers",rec); closeModal(); await loadCache(); render();
       }}
     ]
@@ -766,14 +767,14 @@ function activeChannelOf(model){
 }
 function modelReady(model){
   const ch=activeChannelOf(model);
-  return !!model&&model.enabled!==false&&!!ch&&ch.enabled!==false&&!!findById(cache.providers,ch.providerId);
+  const pv=ch&&findById(cache.providers,ch.providerId);\n  return !!model&&model.enabled!==false&&!!ch&&ch.enabled!==false&&!!pv&&pv.enabled!==false;
 }
 function modelDetail(id){
   const m=findById(cache.models,id);if(!m)return;
   const owner=personOfModel(id),channels=channelsOfModel(m),active=activeChannelOf(m);
   const identityOptions=cache.persons.map(p=>'<option value="'+esc(p.id)+'" '+(owner&&owner.id===p.id?'selected':'')+'>'+esc(p.name)+'</option>').join('');
   const channelOptions=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId);return '<option value="'+esc(ch.id)+'" '+(active&&active.id===ch.id?'selected':'')+' '+(ch.enabled===false?'disabled':'')+'>'+esc(pv?pv.name:'连接已不存在')+' · '+esc(ch.remoteModelId||m.name)+(ch.enabled===false?'（已停用）':'')+'</option>';}).join('');
-  const channelRows=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId);return '<div class="mem-item"><div class="mem-head"><strong>'+esc(pv?pv.name:'连接已不存在')+'</strong><span class="spacer"></span><span class="muted small">'+(ch.enabled===false?'已停用':'可用')+'</span></div><div class="muted small">实际模型 ID：'+esc(ch.remoteModelId||m.name)+'</div></div>';}).join('');
+  const channelRows=channels.map(ch=>{const pv=findById(cache.providers,ch.providerId);return '<div class="mem-item"><div class="mem-head"><strong>'+esc(pv?pv.name:'连接已不存在')+'</strong><span class="spacer"></span><label class="switch"><input type="checkbox" id="channelEnabled_'+esc(ch.id)+'" '+(ch.enabled!==false?'checked':'')+'> 启用</label></div><div class="muted small">实际模型 ID：'+esc(ch.remoteModelId||m.name)+'</div></div>';}).join('');
   modal({title:"模型详情",body:
     '<div class="field"><label>官方模型名称</label><strong>'+esc(m.name)+'</strong><div class="hint">平台内部模型名称；每条调用通道可使用不同的实际模型 ID。</div></div>'+
     '<div class="field"><label>所属 AI 身份</label><select id="detailIdentity"><option value="">暂不绑定</option>'+identityOptions+'</select></div>'+
@@ -791,6 +792,12 @@ function modelDetail(id){
         if(enabled&&!valid){toast("启用模型前，请先配置并选择一条可用通道");return;}
         if(identityId&&!cache.persons.some(p=>p.id===identityId))throw new Error("所选 AI 身份不存在");
         const writes=[{store:"models",record:Object.assign({},m,{enabled,activeChannelId:valid?valid.id:m.activeChannelId,updatedAt:nowISO()})}];
+        for(const ch of channels){
+          const toggle=document.getElementById("channelEnabled_"+ch.id);
+          if(toggle && toggle.checked!==(ch.enabled!==false)){
+            writes.push({store:"modelChannels",record:Object.assign({},ch,{enabled:toggle.checked,updatedAt:nowISO()})});
+          }
+        }
         for(const p of cache.persons){
           const oldIds=Array.isArray(p.modelIds)?p.modelIds.slice():(p.modelId?[p.modelId]:[]);
           const ids=oldIds.filter(x=>x!==m.id);if(p.id===identityId)ids.push(m.id);
@@ -858,7 +865,10 @@ function modelForm(providerId, id){
         }else{
           const ts=nowISO();
           const identityId=document.getElementById("fMdIdentity").value;
-          const writes=[{store:"models",record:rec}];
+          const defaultChannel={id:uid("ch"),modelId:rec.id,providerId:rec.providerId,remoteModelId:name,
+            enabled:true,isDefault:true,createdAt:ts,updatedAt:ts};
+          rec.channelIds=[defaultChannel.id]; rec.activeChannelId=defaultChannel.id; rec.enabled=true;
+          const writes=[{store:"models",record:rec},{store:"modelChannels",record:defaultChannel}];
           if(identityId!=="new"){
             const identity=findById(cache.persons,identityId);
             if(!identity) throw new Error("选择的 AI 身份不存在，请刷新页面后重试。");
