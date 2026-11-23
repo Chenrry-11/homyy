@@ -1896,15 +1896,6 @@ function buildProviderRequest(provider,modelId,messages,options={}){
     if(model.startsWith("gemini-3.")&&options.thinkingSupport)body.generation_config={thinking_level:options.thinking===false?"low":"high"};
     return {protocol,stream:false,endpoint:base+"/interactions",headers:{"Content-Type":"application/json","x-goog-api-key":provider.apiKey},body};
   }
-  if(protocol==="gemini-interactions"){
-    const steps=Array.isArray(data.steps)?data.steps:[];
-    const textFrom=value=>Array.isArray(value)?value.map(x=>x.text||"").join(""):typeof value==="string"?value:"";
-    const content=data.output_text||steps.filter(x=>x.type==="model_output").map(x=>textFrom(x.content)).join("");
-    const reasoning=steps.filter(x=>x.type==="thought").map(x=>textFrom(x.content||x.summary)).join("");
-    const usage=data.usage||data.usage_metadata||{};
-    const pt=Number(usage.input_tokens||usage.prompt_tokens)||0,ct=Number(usage.output_tokens||usage.completion_tokens)||0;
-    return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:Number(usage.total_tokens)||(pt+ct),prompt_cache_hit_tokens:Number(usage.cached_tokens)||0},raw:data};
-  }
   if(protocol==="gemini-generate"){
     let model=String(modelId||"");if(model.startsWith("models/"))model=model.slice(7);
     const contents=turns.map(x=>({role:x.role==="assistant"?"model":"user",parts:[{text:x.content}]}));
@@ -1970,6 +1961,15 @@ async function readProviderCompletion(resp,protocol,onDelta=()=>{}){
     const reasoning=blocks.filter(x=>x.type==="thinking").map(x=>x.thinking||"").join("");
     const usage=data.usage||{},pt=Number(usage.input_tokens)||0,ct=Number(usage.output_tokens)||0;
     return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:pt+ct,prompt_cache_hit_tokens:Number(usage.cache_read_input_tokens)||0},raw:data};
+  }
+  if(protocol==="gemini-interactions"){
+    const steps=Array.isArray(data.steps)?data.steps:[];
+    const textFrom=value=>Array.isArray(value)?value.map(x=>x.text||"").join(""):typeof value==="string"?value:"";
+    const content=data.output_text||steps.filter(x=>x.type==="model_output").map(x=>textFrom(x.content)).join("");
+    const reasoning=steps.filter(x=>x.type==="thought").map(x=>textFrom(x.content||x.summary)).join("");
+    const usage=data.usage||data.usage_metadata||{};
+    const pt=Number(usage.input_tokens||usage.prompt_tokens)||0,ct=Number(usage.output_tokens||usage.completion_tokens)||0;
+    return {content,reasoning,usage:{prompt_tokens:pt,completion_tokens:ct,total_tokens:Number(usage.total_tokens)||(pt+ct),prompt_cache_hit_tokens:Number(usage.cached_tokens)||0},raw:data};
   }
   if(protocol==="gemini-generate"){
     const parts=data.candidates?.[0]?.content?.parts||[];
