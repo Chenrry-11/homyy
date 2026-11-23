@@ -437,6 +437,7 @@ let db = null;
 const state = {
   view: "tree",          // home | person | chat | settings | profile
   settingsSection:"models",
+  settingsOrigin:null,
   returnView:null,
   tab: "persona",        // persona | memory | sessions
   personId: null,
@@ -966,7 +967,8 @@ function viewWorkspaceModule(){
   const nav='<nav class="home-bottom-nav" aria-label="主导航"><button class="home-nav-item" onclick="goTree()"><span class="home-nav-symbol">'+icon("home")+'</span><small>Home</small></button><button class="home-nav-item '+(active==="code"?"active":"")+'" onclick="openWorkspaceModule(\'code\')"><span class="home-nav-symbol">'+icon("file")+'</span><small>Code</small></button><button class="home-nav-item '+(active==="projects"?"active":"")+'" onclick="openWorkspaceModule(\'projects\')"><span class="home-nav-symbol">'+icon("panel")+'</span><small>Projects</small></button><button class="home-nav-item '+(active==="artifacts"?"active":"")+'" onclick="openWorkspaceModule(\'artifacts\')"><span class="home-nav-symbol">'+icon("grid")+'</span><small>Artifacts</small></button></nav>';
   return '<section class="workspace-placeholder"><div class="workspace-placeholder-mark">'+icon(state.workspaceModule==="code"?"code":state.workspaceModule==="projects"?"folder":"layers")+'</div><h2>'+label+'</h2><p>工作区入口已建立。该模块的实际功能尚未接入，不会用空壳按钮假装已经完成。</p></section>'+nav;
 }
-function goSettings(section="models"){state.drawer=false;state.settingsSection=section;state.settingsHome=arguments.length===0&&window.matchMedia("(max-width:760px)").matches;state.view="settings";render();}
+function goSettings(section="models"){if(state.view!=="settings"&&!state.settingsOrigin)state.settingsOrigin={view:state.view,sessionId:state.sessionId,groupId:state.groupId,personId:state.personId,tab:state.tab,workspaceModule:state.workspaceModule};state.drawer=false;state.settingsSection=section;state.settingsHome=arguments.length===0&&window.matchMedia("(max-width:760px)").matches;state.view="settings";render();}
+function leaveSettings(){const origin=state.settingsOrigin;state.settingsOrigin=null;state.drawer=false;if(origin){state.view=origin.view;state.sessionId=origin.sessionId;state.groupId=origin.groupId;state.personId=origin.personId;state.tab=origin.tab;state.workspaceModule=origin.workspaceModule;}else state.view="home";render();}
 function goSettingsHome(){state.drawer=false;state.settingsHome=true;state.view="settings";render();}
 function goMyPage(){state.drawer=false;state.view="profile";render();}
 function viewSettings(){
@@ -1011,9 +1013,9 @@ function viewSettings(){
     {title:"通用设置",items:[["data","数据备份与迁移"]]}
   ];
   const directory='<div class="settings-directory">'+groups.map(group=>'<section class="settings-category"><h3>'+group.title+'</h3>'+group.items.map(item=>'<button class="settings-entry" onclick="goSettings(\''+item[0]+'\')"><span>'+item[1]+'</span><span class="settings-entry-arrow">'+icon("chev")+'</span></button>').join("")+'</section>').join("")+'</div>';
-  if(state.settingsHome)return '<div class="settings-mobile-directory"><header><button class="icon-btn" onclick="goTree()">'+icon("back")+'</button><h1>设置</h1></header><div class="settings-directory-intro"><h2>设置</h2><p>管理连接、模型与应用外观</p></div>'+directory+'</div>';
+  if(state.settingsHome)return '<div class="settings-mobile-directory"><header><button class="icon-btn" onclick="leaveSettings()">'+icon("back")+'</button><h1>设置</h1></header><div class="settings-directory-intro"><h2>设置</h2><p>管理连接、模型与应用外观</p></div>'+directory+'</div>';
   const currentLabel=groups.flatMap(group=>group.items).find(item=>item[0]===section)?.[1]||"设置";
-  return '<div class="settings-layout"><aside class="settings-side"><button class="settings-side-back" onclick="goTree()">'+icon("back")+'<span>返回工作区</span></button>'+directory+'</aside><section class="settings-detail"><header class="settings-detail-head"><button class="icon-btn settings-mobile-back" onclick="goSettingsHome()">'+icon("back")+'</button><div><h1>'+currentLabel+'</h1><p>设置更改仅影响对应功能，不会重置已有聊天与记忆。</p></div></header><div class="settings-detail-content">'+body+'</div></section></div>';
+  return '<div class="settings-layout"><aside class="settings-side"><button class="settings-side-back" onclick="leaveSettings()">'+icon("back")+'<span>返回工作区</span></button>'+directory+'</aside><section class="settings-detail"><header class="settings-detail-head"><button class="icon-btn settings-mobile-back" onclick="goSettingsHome()">'+icon("back")+'</button><div><h1>'+currentLabel+'</h1><p>设置更改仅影响对应功能，不会重置已有聊天与记忆。</p></div></header><div class="settings-detail-content">'+body+'</div></section></div>';
 }
 
 async function saveBubbleStyle(style){
