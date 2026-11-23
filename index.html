@@ -790,7 +790,7 @@ function modelDetail(id){
         const identityId=document.getElementById("detailIdentity").value;
         const enabled=document.getElementById("detailModelEnabled").checked;
         const activeId=document.getElementById("detailActiveChannel").value;
-        const valid=channels.find(ch=>ch.id===activeId&&ch.enabled!==false);
+        const valid=channels.find(ch=>ch.id===activeId&&document.getElementById("channelEnabled_"+ch.id)?.checked);
         if(enabled&&!valid){toast("启用模型前，请先配置并选择一条可用通道");return;}
         if(identityId&&!cache.persons.some(p=>p.id===identityId))throw new Error("所选 AI 身份不存在");
         const writes=[{store:"models",record:Object.assign({},m,{enabled,activeChannelId:valid?valid.id:m.activeChannelId,updatedAt:nowISO()})}];
@@ -893,7 +893,7 @@ function modelForm(providerId, id){
   });
 }
 async function deleteProvider(id){
-  if (modelsOf(id).length){ toast("该厂商下还有模型，请先删除模型"); return; }
+  if (modelsOf(id).length||cache.channels.some(ch=>ch.providerId===id)){ toast("该 API 连接仍被模型通道使用，请先移除或更换相关通道"); return; }
   confirmDialog("删除厂商","删除后不可恢复，确定？", async()=>{
     await dbDelete("providers",id); closeModal(); await loadCache(); render();
   });
@@ -910,12 +910,14 @@ async function deleteModel(id){
       const affected=cache.sessions.filter(w=>w.personId===identity.id&&w.modelId===id)
         .map(w=>Object.assign({},w,{modelId:defaultId,updatedAt:nowISO()}));
       if(affected.length) await dbBulkPut("sessions",affected);
+      for(const ch of cache.channels.filter(ch=>ch.modelId===id)) await dbDelete("modelChannels",ch.id);
       await dbDelete("models",id); closeModal(); await loadCache(); render();
     });
     return;
   }
   confirmDialog("删除模型","删除后不可恢复，确定？", async()=>{
-    await dbDelete("models",id); closeModal(); await loadCache(); render();
+    for(const ch of cache.channels.filter(ch=>ch.modelId===id)) await dbDelete("modelChannels",ch.id);
+      await dbDelete("models",id); closeModal(); await loadCache(); render();
   });
 }
 async function createDefaultPerson(modelId){
