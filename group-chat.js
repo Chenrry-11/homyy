@@ -231,13 +231,21 @@ function stopGroupMember(id){state.groupStoppedMembers.add(id);var c=state.group
 function stopGroupTurn(silent){
  state.groupTurnId++;for(var c of state.groupControllers.values())try{c.abort();}catch(e){}state.groupControllers.clear();state.groupStoppedMembers.clear();state.groupRunning=false;state.groupStatus="已停止本轮发言";if(!silent)toast("已停止群聊中的全部 AI");renderGroupStatus();
 }
-function groupTranscript(){return (state.groupMessages||[]).filter(m=>m.role==="user"||m.role==="assistant"||(m.role==="narrator"&&m.includeInContext!==false)).slice(-30).map(m=>{if(m.role==="user")return "用户："+m.content;if(m.role==="narrator")return "旁白（用户发布的第三方叙述/指令）："+m.content;var p=findById(cache.persons,m.personId);return (p?p.name:"AI")+"："+m.content;}).join("\n");}
+function groupTranscript(){
+ var rows=(state.groupMessages||[]).filter(m=>m.role==="user"||m.role==="assistant"||(m.role==="narrator"&&m.includeInContext!==false)).slice(-30);
+ var lines=rows.map(m=>{if(m.role==="user")return "用户："+m.content;if(m.role==="narrator")return "旁白（用户发布的第三方叙述/指令）："+m.content;var p=findById(cache.persons,m.personId);return (p?p.name:"AI")+"："+m.content;});
+ var budget=Number(cache.settings.recentCharCap)||6000,picked=[];
+ for(var i=lines.length-1;i>=0;i--){if(lines[i].length>budget)continue;picked.unshift(lines[i]);budget-=lines[i].length;}
+ return picked.join("\n");
+}
 async function requestGroupCandidate(g,member,turn){
  var p=findById(cache.persons,member.personId);if(!p)return null;var model=findById(cache.models,member.modelId||p.modelId||(p.modelIds||[])[0]);if(!model||!modelReady(model))throw new Error((p.name||"成员")+"没有可用模型");
  var channel=activeChannelOf(model),provider=findById(cache.providers,channel?channel.providerId:model.providerId);if(!provider?.apiKey||!provider?.baseUrl)throw new Error((p.name||"成员")+"的 API 连接尚未配置完整");
  var spend=await getMonthSpend();if(turn!==state.groupTurnId||state.groupStoppedMembers.has(p.id))return null;if(spend>=(Number(cache.settings.monthlyCap)||0))throw new Error("本月费用已达上限，群聊请求已停止");
  var persona=findById(cache.personas,p.personaId),memories=cache.memories.filter(x=>x.personId===p.id&&x.enabled).sort((a,b)=>MEM_LEVELS.indexOf(a.level)-MEM_LEVELS.indexOf(b.level)||b.importance-a.importance);
- var memoryText=memories.slice(0,20).map(x=>"["+x.level+"] "+x.content).join("\n"),mode=g.mode||"chat";
+ var memoryBudget=Number(cache.settings.memoryCharCap)||2000,memoryLines=[];
+ for(var memory of memories){var memoryLine="["+(memory.category||"持续事实")+"|"+memory.level+"] "+memory.content;if(memoryLine.length>memoryBudget)continue;memoryLines.push(memoryLine);memoryBudget-=memoryLine.length;}
+ var memoryText=memoryLines.join("\n"),mode=g.mode||"chat";
  var instruction=mode==="task"?"当前是协作讨论模式：认真分析、给出依据，允许质疑，但不要为了反驳而反驳。":"当前是自然闲聊模式：尽量用一到三句话自然回应，不要把普通聊天写成长篇报告。";
  var system=["你是群聊中的独立 AI 成员，只代表自己的身份发言。","【AI 身份】"+p.name+"\n"+(persona?.content||""),cache.settings.userBio?"【用户资料】"+cache.settings.userBio:"",p.breakLimitEnabled&&p.breakLimitDoc?"【用户补充文档】\n"+p.breakLimitDoc:"",memoryText?"【该身份自己的长期记忆】\n"+memoryText:"","【群名称】"+g.name+"\n【群公告】"+(g.announcement||"无")+"\n【交流规则】"+instruction,"【发言规则】只阅读群聊公共记录，不假设自己知道其他 AI 的私有记忆或内部思考。没有新观点时只输出 [[PASS]]。如需发言，第一行输出 [P:1] 到 [P:5] 表示优先级，第二行开始写回复。"].filter(Boolean).join("\n\n");
  var messages=[{role:"system",content:system},{role:"user",content:"【群聊公共记录】\n"+groupTranscript()+"\n\n请判断是否值得参与并按规则回复。"}];
