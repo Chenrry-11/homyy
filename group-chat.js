@@ -218,12 +218,13 @@ async function requestGroupCandidate(g,member,turn){
  var instruction=mode==="task"?"当前是协作讨论模式：认真分析、给出依据，允许质疑，但不要为了反驳而反驳。":"当前是自然闲聊模式：尽量用一到三句话自然回应，不要把普通聊天写成长篇报告。";
  var system=["你是群聊中的独立 AI 成员，只代表自己的身份发言。","【AI 身份】"+p.name+"\n"+(persona?.content||""),cache.settings.userBio?"【用户资料】"+cache.settings.userBio:"",p.breakLimitEnabled&&p.breakLimitDoc?"【用户补充文档】\n"+p.breakLimitDoc:"",memoryText?"【该身份自己的长期记忆】\n"+memoryText:"","【群名称】"+g.name+"\n【群公告】"+(g.announcement||"无")+"\n【交流规则】"+instruction,"【发言规则】只阅读群聊公共记录，不假设自己知道其他 AI 的私有记忆或内部思考。没有新观点时只输出 [[PASS]]。如需发言，第一行输出 [P:1] 到 [P:5] 表示优先级，第二行开始写回复。"].filter(Boolean).join("\n\n");
  var messages=[{role:"system",content:system},{role:"user",content:"【群聊公共记录】\n"+groupTranscript()+"\n\n请判断是否值得参与并按规则回复。"}];
- var controller=new AbortController();state.groupControllers.set(p.id,controller);var requestBody={model:channel?.remoteModelId||model.name,messages:messages,stream:provider.streamEnabled!==false};
- var supports=modelSupportsThinking(model,channel,provider),thinking=state.groupThinkingOverride===null?member.thinkingEnabled!==false:state.groupThinkingOverride;if(supports)requestBody.thinking={type:thinking?"enabled":"disabled"};
+ var controller=new AbortController();state.groupControllers.set(p.id,controller);
+ var supports=modelSupportsThinking(model,channel,provider),thinking=state.groupThinkingOverride===null?member.thinkingEnabled!==false:state.groupThinkingOverride;
+ var request=buildProviderRequest(provider,channel?.remoteModelId||model.name,messages,{stream:provider.protocol==="openai-chat"&&provider.streamEnabled!==false,thinking:thinking,thinkingSupport:supports});
  try{
-  var endpoint=provider.baseUrl.replace(/\/+$/,"")+"/chat/completions",resp=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+provider.apiKey},body:JSON.stringify(requestBody),signal:controller.signal});
+  var resp=await fetch(request.endpoint,{method:"POST",headers:request.headers,body:JSON.stringify(request.body),signal:controller.signal});
   if(!resp.ok)throw new Error(p.name+" 接口错误 HTTP "+resp.status+"："+(await resp.text()).slice(0,240));
-  var result=await readStreamingCompletion(resp,function(){}),content=String(result.content||"").trim();if(!content||/^\[\[PASS\]\]$/i.test(content))return null;
+  var result=await readProviderCompletion(resp,request.protocol,function(){}),content=String(result.content||"").trim();if(!content||/^\[\[PASS\]\]$/i.test(content))return null;
   var pm=content.match(/^\s*\[P\s*:\s*([1-5])\]\s*/i),priority=pm?Number(pm[1]):3;if(pm)content=content.slice(pm[0].length).trim();if(!content)return null;
   var usage=result.usage||{},pt=Number(usage.prompt_tokens)||0,ct=Number(usage.completion_tokens)||0;
   return {personId:p.id,modelId:model.id,providerId:provider.id,content:content,reasoning:result.reasoning||"",priority:priority,promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),cost:(pt*(Number(model.priceInput)||0)+ct*(Number(model.priceOutput)||0))/1e6,thinkingUsed:supports&&thinking,lastSpokeAt:member.lastSpokeAt||"",readyAt:Date.now()};
