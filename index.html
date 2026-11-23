@@ -336,8 +336,8 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .msg-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75}
 .msg.user .msg-body{display:inline-block;padding:10px 14px;background:#f4e4eb;border:1px solid rgba(226,202,215,.6);border-radius:18px 18px 5px 18px}
 .msg.ai .msg-body{display:block;padding:12px 15px;background:rgba(255,255,255,.78);border:1px solid rgba(232,218,225,.7);border-radius:5px 18px 18px 18px;box-shadow:0 3px 14px rgba(105,70,88,.035)}
-#app[data-bubble-style="glass"] .msg.user .msg-body{background:rgba(255,255,255,.48);backdrop-filter:blur(16px);border-color:rgba(255,255,255,.82);box-shadow:0 5px 18px rgba(110,75,93,.06)}
-#app[data-bubble-style="glass"] .msg.ai .msg-body{background:rgba(255,255,255,.52);backdrop-filter:blur(16px);border-color:rgba(255,255,255,.9)}
+#app[data-bubble-style="glass"] .msg.user .msg-body{background:rgba(255,255,255,.48);backdrop-filter:blur(14px);border-color:rgba(255,255,255,.82);box-shadow:0 5px 18px rgba(110,75,93,.06)}
+#app[data-bubble-style="glass"] .msg.ai .msg-body{background:rgba(255,255,255,.52);backdrop-filter:blur(14px);border-color:rgba(255,255,255,.9)}
 #app[data-bubble-style="minimal"] .msg.user .msg-body{background:#f8eef2;border-color:transparent;box-shadow:none}
 #app[data-bubble-style="minimal"] .msg.ai .msg-body{background:transparent;border-color:transparent;box-shadow:none;padding:5px 2px}
 .msg-actions{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-top:5px;padding:0 3px}
@@ -374,7 +374,7 @@ html,body{min-height:100%;background:#fbf6f8;color:var(--ink)}
 .single-message-avatar .avatar{width:34px;height:34px;font-size:14px;box-shadow:0 2px 8px rgba(105,70,88,.08)}
 .single-message-row .msg.ai{min-width:0;max-width:calc(100% - 43px);padding:0;background:none;box-shadow:none}
 .single-message-row .msg.user{max-width:calc(100% - 43px)}
-.single-message-row .msg.ai .msg-body{padding:10px 14px;background:rgba(255,255,255,.86);border:1px solid rgba(232,218,225,.72);border-radius:18px 18px 18px 5px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
+.single-message-row .msg.ai .msg-body{padding:10px 14px;font-size:13.5px;background:rgba(255,255,255,.86);border:1px solid rgba(232,218,225,.72);border-radius:16px 16px 16px 5px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
 .single-message-row .msg.user{background:rgba(246,232,238,.96);border:1px solid rgba(226,202,215,.62);border-radius:18px 18px 5px 18px;padding:10px 14px;box-shadow:0 2px 8px rgba(105,70,88,.045)}
 @media(max-width:520px){.single-message-row{gap:8px}.single-message-avatar,.single-message-avatar .avatar{width:32px;height:32px}}
 </style>
@@ -790,7 +790,7 @@ async function render(){
   else if (state.view === "groupDetail") main = viewGroupDetail();
   if (state.view === "tree") main = "";
   if (!main) main = viewWelcome();
-  app.dataset.bubbleStyle=cache.settings.appearance?.bubbleStyle||"soft";
+  app.dataset.bubbleStyle=cache.settings.appearance?.bubbleStyle||"glass";
   const noBottomNav=["chat","groupChat","person","settings","groupDetail"].includes(state.view);
   app.innerHTML = `<div class="shell${state.drawer?" drawer":""}${noBottomNav?" no-bottom-nav":""}"><div class="mask" onclick="toggleDrawer()"></div><aside class="side">${viewTree()}</aside><main class="main">${main}</main>${noBottomNav?"":bottomNavigation()}</div>`;
   bindDrawerSessionEvents();
