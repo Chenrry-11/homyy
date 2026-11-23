@@ -117,7 +117,7 @@ function bindGroupChatInput(){
  input.addEventListener("input",handleGroupInput);input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!("ontouchstart" in window)){e.preventDefault();sendGroupMessage();}});input.focus();
 }
 function handleGroupInput(){
- var input=document.getElementById("groupChatInput"),menu=document.getElementById("groupCommandMenu");if(!input||!menu)return;var value=input.value.trimStart(),token=value.split(/\\s/)[0];
+ var input=document.getElementById("groupChatInput"),menu=document.getElementById("groupCommandMenu");if(!input||!menu)return;var value=input.value.trimStart(),token=value.split(/\s/)[0];
  if(!value.startsWith("/")||value.includes(" ")){menu.classList.add("hidden");menu.innerHTML="";return;}
  var matches=groupCommands().filter(x=>x[0].startsWith(token.toLowerCase()));if(!matches.length){menu.classList.add("hidden");return;}
  menu.innerHTML=matches.map(x=>'<button type="button" data-command="'+x[0]+'"><code>'+x[0]+'</code><span>'+x[1]+'</span></button>').join("");menu.classList.remove("hidden");
@@ -127,7 +127,7 @@ function groupFindPerson(text,g){var key=String(text||"").replace(/^@/,"").trim(
 async function sendGroupMessage(){
  var input=document.getElementById("groupChatInput"),g=groupById(state.groupId);if(!input||!g)return;var text=input.value.trim();if(!text)return;
  if(text.startsWith("/")){input.value="";document.getElementById("groupCommandMenu").classList.add("hidden");await executeGroupCommand(text);return;}
- var target=null,mention=text.match(/^@([^\\s]+)\\s*/);if(mention){var p=groupFindPerson(mention[1],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;text=text.slice(mention[0].length).trim();}
+ var target=null,mention=text.match(/^@([^\s]+)\s*/);if(mention){var p=groupFindPerson(mention[1],g);if(!p){toast("没有找到这个群成员");return;}target=p.id;text=text.slice(mention[0].length).trim();}
  var narrator=state.groupComposerMode==="narrator";if(!text)return;if(state.groupRunning)stopGroupTurn(true);
  var msg={id:uid("gm"),groupId:g.id,role:narrator?"narrator":"user",content:text,createdAt:nowISO(),turnId:state.groupTurnId+1};
  await dbPut("groupMessages",msg);state.groupMessages.push(msg);input.value="";state.groupComposerMode="message";state.groupThinkingOverride=null;
@@ -135,7 +135,7 @@ async function sendGroupMessage(){
  await dbPut("groups",Object.assign({},g,{updatedAt:nowISO()}));await loadCache();if(!narrator)await runGroupTurn(groupById(g.id),msg,target);
 }
 async function executeGroupCommand(raw){
- var g=groupById(state.groupId);if(!g)return;var parts=raw.trim().split(/\\s+/),cmd=parts[0].toLowerCase(),arg=parts[1]||"";
+ var g=groupById(state.groupId);if(!g)return;var parts=raw.trim().split(/\s+/),cmd=parts[0].toLowerCase(),arg=parts[1]||"";
  if(cmd==="/chat"||cmd==="/task"){await changeGroupMode(cmd==="/chat"?"chat":"task");return;}
  if(cmd==="/solo"){var p=arg?groupFindPerson(arg,g):findById(cache.persons,g.soloMemberId||g.members[0]?.personId);if(!p){toast("请填写群成员名称");return;}await dbPut("groups",Object.assign({},g,{mode:"solo",soloMemberId:p.id,updatedAt:nowISO()}));await loadCache();render();return;}
  if(cmd==="/stop"){if(arg){var who=groupFindPerson(arg,g);if(who)stopGroupMember(who.id);else toast("没有找到这个群成员");}else stopGroupTurn();return;}
@@ -152,23 +152,23 @@ function stopGroupMember(id){var c=state.groupControllers.get(id);if(c){c.abort(
 function stopGroupTurn(silent){
  state.groupTurnId++;for(var c of state.groupControllers.values())try{c.abort();}catch(e){}state.groupControllers.clear();state.groupStoppedMembers.clear();state.groupRunning=false;state.groupStatus="已停止本轮发言";if(!silent)toast("已停止群聊中的全部 AI");renderGroupStatus();
 }
-function groupTranscript(){return (state.groupMessages||[]).filter(m=>["user","narrator","assistant"].includes(m.role)).slice(-30).map(m=>{if(m.role==="user")return "用户："+m.content;if(m.role==="narrator")return "旁白（用户发布的第三方叙述/指令）："+m.content;var p=findById(cache.persons,m.personId);return (p?p.name:"AI")+"："+m.content;}).join("\\n");}
+function groupTranscript(){return (state.groupMessages||[]).filter(m=>["user","narrator","assistant"].includes(m.role)).slice(-30).map(m=>{if(m.role==="user")return "用户："+m.content;if(m.role==="narrator")return "旁白（用户发布的第三方叙述/指令）："+m.content;var p=findById(cache.persons,m.personId);return (p?p.name:"AI")+"："+m.content;}).join("\n");}
 async function requestGroupCandidate(g,member,turn){
  var p=findById(cache.persons,member.personId);if(!p)return null;var model=findById(cache.models,member.modelId||p.modelId||(p.modelIds||[])[0]);if(!model||!modelReady(model))throw new Error((p.name||"成员")+"没有可用模型");
  var channel=activeChannelOf(model),provider=findById(cache.providers,channel?channel.providerId:model.providerId);if(!provider?.apiKey||!provider?.baseUrl)throw new Error((p.name||"成员")+"的 API 连接尚未配置完整");
  var spend=await getMonthSpend();if(turn!==state.groupTurnId)return null;if(spend>=(Number(cache.settings.monthlyCap)||0))throw new Error("本月费用已达上限，群聊请求已停止");
  var persona=findById(cache.personas,p.personaId),memories=cache.memories.filter(x=>x.personId===p.id&&x.enabled).sort((a,b)=>MEM_LEVELS.indexOf(a.level)-MEM_LEVELS.indexOf(b.level)||b.importance-a.importance);
- var memoryText=memories.slice(0,20).map(x=>"["+x.level+"] "+x.content).join("\\n"),mode=g.mode||"chat";
+ var memoryText=memories.slice(0,20).map(x=>"["+x.level+"] "+x.content).join("\n"),mode=g.mode||"chat";
  var instruction=mode==="task"?"当前是协作讨论模式：认真分析、给出依据，允许质疑，但不要为了反驳而反驳。":"当前是自然闲聊模式：尽量用一到三句话自然回应，不要把普通聊天写成长篇报告。";
- var system=["你是群聊中的独立 AI 成员，只代表自己的身份发言。","【AI 身份】"+p.name+"\\n"+(persona?.content||""),cache.settings.userBio?"【用户资料】"+cache.settings.userBio:"",p.breakLimitEnabled&&p.breakLimitDoc?"【用户补充文档】\\n"+p.breakLimitDoc:"",memoryText?"【该身份自己的长期记忆】\\n"+memoryText:"","【群名称】"+g.name+"\\n【群公告】"+(g.announcement||"无")+"\\n【交流规则】"+instruction,"【发言规则】只阅读群聊公共记录，不假设自己知道其他 AI 的私有记忆或内部思考。没有新观点时只输出 [[PASS]]。如需发言，第一行输出 [P:1] 到 [P:5] 表示优先级，第二行开始写回复。"].filter(Boolean).join("\\n\\n");
- var messages=[{role:"system",content:system},{role:"user",content:"【群聊公共记录】\\n"+groupTranscript()+"\\n\\n请判断是否值得参与并按规则回复。"}];
+ var system=["你是群聊中的独立 AI 成员，只代表自己的身份发言。","【AI 身份】"+p.name+"\n"+(persona?.content||""),cache.settings.userBio?"【用户资料】"+cache.settings.userBio:"",p.breakLimitEnabled&&p.breakLimitDoc?"【用户补充文档】\n"+p.breakLimitDoc:"",memoryText?"【该身份自己的长期记忆】\n"+memoryText:"","【群名称】"+g.name+"\n【群公告】"+(g.announcement||"无")+"\n【交流规则】"+instruction,"【发言规则】只阅读群聊公共记录，不假设自己知道其他 AI 的私有记忆或内部思考。没有新观点时只输出 [[PASS]]。如需发言，第一行输出 [P:1] 到 [P:5] 表示优先级，第二行开始写回复。"].filter(Boolean).join("\n\n");
+ var messages=[{role:"system",content:system},{role:"user",content:"【群聊公共记录】\n"+groupTranscript()+"\n\n请判断是否值得参与并按规则回复。"}];
  var controller=new AbortController();state.groupControllers.set(p.id,controller);var requestBody={model:channel?.remoteModelId||model.name,messages:messages,stream:provider.streamEnabled!==false};
  var supports=modelSupportsThinking(model,channel,provider),thinking=state.groupThinkingOverride===null?member.thinkingEnabled!==false:state.groupThinkingOverride;if(supports)requestBody.thinking={type:thinking?"enabled":"disabled"};
  try{
-  var endpoint=provider.baseUrl.replace(/\\/+$/,"")+"/chat/completions",resp=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+provider.apiKey},body:JSON.stringify(requestBody),signal:controller.signal});
+  var endpoint=provider.baseUrl.replace(/\/+$/,"")+"/chat/completions",resp=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+provider.apiKey},body:JSON.stringify(requestBody),signal:controller.signal});
   if(!resp.ok)throw new Error(p.name+" 接口错误 HTTP "+resp.status+"："+(await resp.text()).slice(0,240));
-  var result=await readStreamingCompletion(resp,function(){}),content=String(result.content||"").trim();if(!content||/^\\[\\[PASS\\]\\]$/i.test(content))return null;
-  var pm=content.match(/^\\s*\\[P\\s*:\\s*([1-5])\\]\\s*/i),priority=pm?Number(pm[1]):3;if(pm)content=content.slice(pm[0].length).trim();if(!content)return null;
+  var result=await readStreamingCompletion(resp,function(){}),content=String(result.content||"").trim();if(!content||/^\[\[PASS\]\]$/i.test(content))return null;
+  var pm=content.match(/^\s*\[P\s*:\s*([1-5])\]\s*/i),priority=pm?Number(pm[1]):3;if(pm)content=content.slice(pm[0].length).trim();if(!content)return null;
   var usage=result.usage||{},pt=Number(usage.prompt_tokens)||0,ct=Number(usage.completion_tokens)||0;
   return {personId:p.id,modelId:model.id,providerId:provider.id,content:content,reasoning:result.reasoning||"",priority:priority,promptTokens:pt,completionTokens:ct,totalTokens:Number(usage.total_tokens)||(pt+ct),cost:(pt*(Number(model.priceInput)||0)+ct*(Number(model.priceOutput)||0))/1e6,thinkingUsed:supports&&thinking,lastSpokeAt:member.lastSpokeAt||"",readyAt:Date.now()};
  }finally{if(state.groupControllers.get(p.id)===controller)state.groupControllers.delete(p.id);}
