@@ -88,7 +88,7 @@ async function deleteGroup(id){
 
 function loadGroupMessages(){return idbReq(tx("groupMessages").index("groupId").getAll(state.groupId)).then(rows=>{state.groupMessages=rows.sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));renderGroupMessages({forceBottom:true});});}
 function groupMessageHTML(m){
- if(m.role==="user")return '<div class="group-user-row"><div class="msg group-user-message"><div class="msg-body">'+esc(m.content)+'</div><div class="group-msg-meta"><span>你</span><span>'+fmtTime(m.createdAt)+'</span></div></div><span class="msg-avatar">'+avatar(cache.settings.userName||"我",cache.settings.userAvatar)+'</span></div>';
+ if(m.role==="user")return '<div class="group-user-row"><span class="msg-avatar">'+avatar(cache.settings.userName||"我",cache.settings.userAvatar)+'</span><div class="msg group-user-message"><div class="msg-body">'+esc(m.content)+'</div><div class="group-msg-meta"><span>你</span><span>'+fmtTime(m.createdAt)+'</span></div></div></div>';
  if(m.role==="narrator")return '<div class="group-narrator"><span class="group-narrator-label">旁白 · 用户发布</span>'+esc(m.content)+'</div>';
  if(m.role==="system-note")return '<div class="msg sysnote">'+esc(m.content)+'</div>';
  if(m.role==="error")return '<div class="msg err">'+esc(m.content)+'</div>';
