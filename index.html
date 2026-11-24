@@ -438,6 +438,7 @@ const state = {
   view: "tree",          // home | person | chat | settings | profile
   settingsSection:"models",
   settingsOrigin:null,
+  conversationOrigin:null,
   returnView:null,
   tab: "persona",        // persona | memory | sessions
   personId: null,
@@ -789,7 +790,7 @@ function viewTree(){
   }).join("");
   const groupRows=[...(cache.groups||[])].sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||"")).map(g=>`<button class="drawer-session drawer-group-session${state.view==="groupChat"&&state.groupId===g.id?" active":""}" onclick="openGroup('${g.id}')"><span class="session-mark"></span><span>${esc(g.name||"未命名群聊")}</span></button>`).join("");
   return `<div class="drawer-shell">
-    <div class="side-head"><button class="drawer-brand" onclick="goTree()" title="返回 Home"><span class="brand-mark">H</span><span>HOMY</span></button><button class="icon-btn drawer-close" title="关闭导航" onclick="toggleDrawer()">${icon("x")}</button></div>
+    <div class="side-head"><button class="drawer-brand" onclick="closeConversation()" title="返回进入聊天前的页面"><span class="brand-mark">H</span><span>HOMY</span></button><button class="icon-btn drawer-close" title="关闭导航" onclick="toggleDrawer()">${icon("x")}</button></div>
     <button class="drawer-new" onclick="${cache.persons.length?"newWindow('"+(cache.persons[0]?.id||"")+"')":"goSettings()"}">${icon("plus")}<span>新建聊天</span></button>
     <div class="side-list"><div class="drawer-label">单聊</div>${rows||`<p class="muted pad">还没有单聊。</p>`}<div class="drawer-group-heading"><span class="drawer-label">群聊</span><button class="drawer-group-add" onclick="createGroupDialog()" aria-label="新建群聊">${icon("plus")}</button></div>${groupRows||`<div class="drawer-no-session">还没有群聊</div>`}</div>
     <div class="side-foot"><button class="my-entry" onclick="goMyPage()"><span class="avatar-btn">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><span class="drawer-user-label">${esc(cache.settings.userName||"我的")}</span><span class="my-entry-arrow">›</span></button><button class="btn btn-ghost" onclick="goSettings()">${icon("gear")}设置</button></div>
@@ -1409,8 +1410,10 @@ async function createSession(){
   await dbPut("sessions",rec); await loadCache();
   openChat(rec.id);
 }
+function captureConversationOrigin(){if(state.view!=="chat"&&state.view!=="groupChat"&&state.view!=="groupDetail"&&!state.conversationOrigin){state.conversationOrigin={view:state.view,sessionId:state.sessionId,groupId:state.groupId,personId:state.personId,tab:state.tab,workspaceModule:state.workspaceModule};}}
+function closeConversation(){if(state.sending&&state.controller){try{state.controller.abort();}catch(e){}}state.sending=false;if(state.groupRunning&&typeof stopGroupTurn==="function")stopGroupTurn(true);const origin=state.conversationOrigin;state.conversationOrigin=null;state.drawer=false;if(origin){state.view=origin.view;state.sessionId=origin.sessionId;state.groupId=origin.groupId;state.personId=origin.personId;state.tab=origin.tab;state.workspaceModule=origin.workspaceModule;}else{state.view="home";state.sessionId=null;state.groupId=null;}render();}
 function openChat(id){
-  state.drawer=false; state.view="chat"; state.sessionId=id; state.sending=false;
+  captureConversationOrigin();state.drawer=false; state.view="chat"; state.sessionId=id; state.sending=false;
   render();
 }
 async function changeSessionModel(modelId){
