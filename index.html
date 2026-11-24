@@ -719,7 +719,7 @@ function viewWelcome(){
       }).join("")}</div>`:`<div class="recent-empty">还没有聊天记录。开始一段新对话吧。</div>`}
     </section>
     <nav class="home-bottom-nav" aria-label="主导航">
-      <button class="home-nav-item active" aria-current="page" onclick="goTree()"><span class="home-nav-symbol">${icon("home")}</span><small>Home</small></button>
+      <button class="home-nav-item active" aria-current="page" onclick="goHome()"><span class="home-nav-symbol">${icon("home")}</span><small>Home</small></button>
       <button class="home-nav-item" onclick="openWorkspaceModule('code')"><span class="home-nav-symbol">${icon("file")}</span><small>Code</small></button>
       <button class="home-nav-item" onclick="openWorkspaceModule('projects')"><span class="home-nav-symbol">${icon("panel")}</span><small>Projects</small></button>
       <button class="home-nav-item" onclick="openWorkspaceModule('artifacts')"><span class="home-nav-symbol">${icon("grid")}</span><small>Artifacts</small></button>
@@ -778,6 +778,8 @@ function restoreNavigationSnapshot(snapshot){
 }
 function handleNavigationPop(event){
   const entry=event.state;if(!entry||entry.homyNav!==true||!entry.snapshot)return;
+  if(state.view==="chat"&&state.sending&&state.controller){try{state.controller.abort();}catch(e){}state.sending=false;}
+  if(state.view==="groupChat"&&state.groupRunning&&typeof stopGroupTurn==="function")stopGroupTurn(true);
   state.navRestoring=true;state.navIndex=Number(entry.index)||0;restoreNavigationSnapshot(entry.snapshot);state.navKey=navigationKey();
   render().finally(()=>{state.navRestoring=false;});
 }
@@ -1024,7 +1026,8 @@ function memItem(mem){
 function switchTab(t){ state.tab=t; render(); }
 function openPerson(id){ state.drawer=false; state.returnView=null; state.personId=id; state.view="person"; state.tab="persona"; render(); }
 function openPersonFromSettings(id,tab){ state.returnView={view:"settings",section:state.settingsSection||"models",settingsHome:!!state.settingsHome}; state.drawer=false; state.personId=id; state.view="person"; state.tab=tab==="memory"?"memory":"persona"; render(); }
-function goTree(){if(navigateBack())return;if(state.returnView){const back=state.returnView;state.returnView=null;state.view=back.view;state.settingsSection=back.section;state.settingsHome=back.settingsHome;state.drawer=false;render();return;}state.view="home";state.drawer=false;render();}
+function goHome(){state.returnView=null;state.view="home";state.drawer=false;render();}
+function goTree(){if(navigateBack())return;if(state.returnView){const back=state.returnView;state.returnView=null;state.view=back.view;state.settingsSection=back.section;state.settingsHome=back.settingsHome;state.drawer=false;render();return;}goHome();}
 function openWorkspaceModule(module){
   const labels={code:"Code",projects:"Projects",artifacts:"Artifacts"};
   if(!labels[module])return;
@@ -1034,7 +1037,7 @@ function viewWorkspaceModule(){
   const labels={code:"Code",projects:"Projects",artifacts:"Artifacts"};
   const label=labels[state.workspaceModule]||"Workspace";
   const active=state.workspaceModule;
-  const nav='<nav class="home-bottom-nav" aria-label="主导航"><button class="home-nav-item" onclick="goTree()"><span class="home-nav-symbol">'+icon("home")+'</span><small>Home</small></button><button class="home-nav-item '+(active==="code"?"active":"")+'" onclick="openWorkspaceModule(\'code\')"><span class="home-nav-symbol">'+icon("file")+'</span><small>Code</small></button><button class="home-nav-item '+(active==="projects"?"active":"")+'" onclick="openWorkspaceModule(\'projects\')"><span class="home-nav-symbol">'+icon("panel")+'</span><small>Projects</small></button><button class="home-nav-item '+(active==="artifacts"?"active":"")+'" onclick="openWorkspaceModule(\'artifacts\')"><span class="home-nav-symbol">'+icon("grid")+'</span><small>Artifacts</small></button></nav>';
+  const nav='<nav class="home-bottom-nav" aria-label="主导航"><button class="home-nav-item" onclick="goHome()"><span class="home-nav-symbol">'+icon("home")+'</span><small>Home</small></button><button class="home-nav-item '+(active==="code"?"active":"")+'" onclick="openWorkspaceModule(\'code\')"><span class="home-nav-symbol">'+icon("file")+'</span><small>Code</small></button><button class="home-nav-item '+(active==="projects"?"active":"")+'" onclick="openWorkspaceModule(\'projects\')"><span class="home-nav-symbol">'+icon("panel")+'</span><small>Projects</small></button><button class="home-nav-item '+(active==="artifacts"?"active":"")+'" onclick="openWorkspaceModule(\'artifacts\')"><span class="home-nav-symbol">'+icon("grid")+'</span><small>Artifacts</small></button></nav>';
   return '<section class="workspace-placeholder"><div class="workspace-placeholder-mark">'+icon(state.workspaceModule==="code"?"code":state.workspaceModule==="projects"?"folder":"layers")+'</div><h2>'+label+'</h2><p>工作区入口已建立。该模块的实际功能尚未接入，不会用空壳按钮假装已经完成。</p></section>'+nav;
 }
 function goSettings(section="models"){if(state.view!=="settings"&&!state.settingsOrigin)state.settingsOrigin={view:state.view,sessionId:state.sessionId,groupId:state.groupId,personId:state.personId,tab:state.tab,workspaceModule:state.workspaceModule};state.drawer=false;state.settingsSection=section;state.settingsHome=arguments.length===0&&window.matchMedia("(max-width:760px)").matches;state.view="settings";render();}
@@ -1044,7 +1047,7 @@ function leaveSettings(){
   if(origin){state.view=origin.view;state.sessionId=origin.sessionId;state.groupId=origin.groupId;state.personId=origin.personId;state.tab=origin.tab;state.workspaceModule=origin.workspaceModule;}
   else state.view="home";render();
 }
-function goSettingsHome(){state.drawer=false;state.settingsHome=true;state.view="settings";render();}
+function goSettingsHome(){if(navigateBack())return;state.drawer=false;state.settingsHome=true;state.view="settings";render();}
 function goMyPage(){state.drawer=false;state.view="profile";render();}
 function viewSettings(){
   const section=state.settingsSection||"models";
