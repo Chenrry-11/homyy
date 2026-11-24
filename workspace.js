@@ -82,6 +82,15 @@ function editWorkspaceProject(id){
     await dbPut("workspaceItems",rec);closeModal();await loadCache();render();toast("项目已保存");
   }}]});
 }
+async function deleteWorkspaceProject(id){
+  const p=findById(workspaceItems("project"),id);if(!p)return;
+  modal({title:"删除项目",body:'删除项目「'+esc(p.name)+'」？关联文件不会删除，只会解除项目关联。',actions:[{label:"取消",onClick:closeModal},{label:"删除项目",danger:true,onClick:async()=>{
+    const related=(cache.workspaceItems||[]).filter(x=>x.projectId===id);
+    await dbDelete("workspaceItems",id);
+    for(const item of related)await dbPut("workspaceItems",Object.assign({},item,{projectId:null,updatedAt:nowISO()}));
+    closeModal();await loadCache();render();toast("项目已删除，关联文件已保留");
+  }}]});
+}
 function viewWorkspaceArtifacts(){
   const items=workspaceItems("artifact");
   const cards=items.map(x=>'<article class="workspace-artifact-row"><div class="workspace-artifact-icon">'+icon(x.mime?.startsWith("image/")?"image":"file")+'</div><div class="workspace-artifact-copy"><strong>'+esc(x.name)+'</strong><small>'+esc(x.source||"本地文件")+' · '+esc(workspaceProjectName(x.projectId))+' · '+fmtTime(x.updatedAt)+'</small><p>'+esc((x.content||x.description||"").slice(0,120))+'</p></div><div class="workspace-artifact-actions"><button class="icon-btn" onclick="downloadWorkspaceArtifact(\''+x.id+'\')" aria-label="下载">'+icon("download")+'</button>'+(x.dataUrl?'':'<button class="icon-btn" onclick="editWorkspaceArtifact(\''+x.id+'\')" aria-label="编辑">'+icon("edit")+'</button>')+'<button class="icon-btn danger-text" onclick="deleteWorkspaceArtifact(\''+x.id+'\')" aria-label="删除">'+icon("trash")+'</button></div></article>').join("");
