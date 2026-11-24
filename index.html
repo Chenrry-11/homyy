@@ -319,6 +319,9 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 .bubble-preview i,.bubble-preview b{display:block;height:10px;border-radius:8px}.bubble-preview i{width:70%;align-self:flex-end;background:#ead5df}.bubble-preview b{width:78%;background:#fff;border:1px solid #eee2e8}
 .bubble-preview.glass{background:linear-gradient(130deg,#f8edf2,#eee3eb)}.bubble-preview.glass i,.bubble-preview.glass b{background:rgba(255,255,255,.65)}
 .bubble-preview.minimal{background:transparent}.bubble-preview.minimal i{background:#f0e0e8}.bubble-preview.minimal b{background:transparent;border-color:transparent}
+.bubble-live-card{display:block;margin-top:14px;padding:15px}.bubble-live-preview{display:flex;flex-direction:column;gap:12px;margin-top:14px;padding:14px;border:1px solid rgba(231,214,223,.65);border-radius:15px;background:rgba(250,244,247,.72)}.bubble-live-caption{margin:3px 0 0;color:#a18d97;font-size:10px;letter-spacing:.08em}.bubble-live-preview .msg-row{align-items:flex-start}.bubble-live-preview .msg{font-size:12px;line-height:1.6}.bubble-live-preview .msg-body{overflow-wrap:anywhere}.bubble-live-preview .msg-meta{font-size:9px}.bubble-live-preview .msg-actions{display:none}.bubble-live-preview .group-ai-message{max-width:82%;min-width:0}.bubble-live-preview .group-user-message{max-width:78%;min-width:0}.bubble-live-preview .group-ai-message .msg-body{padding:12px 15px;background:rgba(255,255,255,.78);border:1px solid rgba(232,218,225,.7);border-radius:5px 18px 18px 18px;box-shadow:0 3px 14px rgba(105,70,88,.035);font-size:12px}.bubble-live-preview .group-user-message .msg-body{padding:10px 14px;background:#f4e4eb;border:1px solid rgba(226,202,215,.6);border-radius:18px 18px 5px 18px;font-size:12px}
+#app[data-bubble-style="glass"] .bubble-live-preview .group-ai-message .msg-body,#app[data-bubble-style="glass"] .bubble-live-preview .group-user-message .msg-body{background:rgba(255,255,255,.52);backdrop-filter:blur(16px);border-color:rgba(255,255,255,.9)}
+#app[data-bubble-style="minimal"] .bubble-live-preview .group-ai-message .msg-body,#app[data-bubble-style="minimal"] .bubble-live-preview .group-user-message .msg-body{background:transparent;border-color:transparent;box-shadow:none;padding:5px 2px}
 .theme-import-reserved{display:flex;align-items:flex-start;gap:13px;margin-top:18px;padding:15px}.theme-reserved-mark{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:12px;background:#f7edf2;color:#b17f96}.theme-import-reserved p{margin:5px 0 8px}
 .msg-actions{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-top:5px;padding:0 3px}.msg-actions button{font-size:11px;color:#9a8791;padding:3px 0}.msg-actions button.danger{color:#b77d91}
 .msg.user{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}.drawer-session{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
@@ -441,6 +444,7 @@ const state = {
   conversationOrigin:null,
   viewScroll:{},
   renderedViewKey:null,
+  navReady:false,navRestoring:false,navIndex:0,navKey:"",
   returnView:null,
   tab: "persona",        // persona | memory | sessions
   personId: null,
@@ -749,6 +753,39 @@ function currentViewKey(){
   if(state.view==="groupChat"||state.view==="groupDetail")return state.view+":"+state.groupId;
   return state.view;
 }
+function navigationSnapshot(){
+  return {view:state.view,sessionId:state.sessionId,groupId:state.groupId,personId:state.personId,tab:state.tab,
+    workspaceModule:state.workspaceModule,settingsSection:state.settingsSection,settingsHome:!!state.settingsHome,
+    settingsOrigin:state.settingsOrigin?Object.assign({},state.settingsOrigin):null,
+    conversationOrigin:state.conversationOrigin?Object.assign({},state.conversationOrigin):null,
+    returnView:state.returnView?Object.assign({},state.returnView):null};
+}
+function navigationKey(snapshot=navigationSnapshot()){return JSON.stringify(snapshot);}
+function syncNavigationHistory(){
+  const snapshot=navigationSnapshot(),key=navigationKey(snapshot);
+  if(!state.navReady){history.replaceState({homyNav:true,index:0,snapshot},"",location.href);state.navReady=true;state.navIndex=0;state.navKey=key;return;}
+  if(state.navRestoring){state.navKey=key;return;}
+  if(key===state.navKey)return;
+  const index=state.navIndex+1;history.pushState({homyNav:true,index,snapshot},"",location.href);state.navIndex=index;state.navKey=key;
+}
+function restoreNavigationSnapshot(snapshot){
+  if(!snapshot)return;
+  for(const key of ["view","sessionId","groupId","personId","tab","workspaceModule","settingsSection","settingsHome","settingsOrigin","conversationOrigin","returnView"])
+    if(Object.prototype.hasOwnProperty.call(snapshot,key))state[key]=snapshot[key];
+  state.drawer=false;
+  if(state.view==="chat"&&!findById(cache.sessions,state.sessionId)){state.view="home";state.sessionId=null;}
+  if((state.view==="groupChat"||state.view==="groupDetail")&&!findById(cache.groups,state.groupId))state.view="groups";
+}
+function handleNavigationPop(event){
+  const entry=event.state;if(!entry||entry.homyNav!==true||!entry.snapshot)return;
+  state.navRestoring=true;state.navIndex=Number(entry.index)||0;restoreNavigationSnapshot(entry.snapshot);state.navKey=navigationKey();
+  render().finally(()=>{state.navRestoring=false;});
+}
+window.addEventListener("popstate",handleNavigationPop);
+function navigateBack(fallback){
+  if(state.navReady&&state.navIndex>0&&history.state?.homyNav===true){history.back();return true;}
+  if(typeof fallback==="function"){fallback();return true;}return false;
+}
 function captureViewScroll(){
   const key=state.renderedViewKey;if(!key)return;
   const main=document.querySelector(".main");if(!main)return;
@@ -767,6 +804,7 @@ function restoreViewScroll(key){
 async function render(){
   if (state.view === "chat" && !findById(cache.sessions, state.sessionId)) state.view = "tree";
   if ((state.view === "groupChat" || state.view === "groupDetail") && !findById(cache.groups,state.groupId)) state.view="groups";
+  syncNavigationHistory();
   captureViewScroll();
   const targetViewKey=currentViewKey();
   const app = document.getElementById("app");
@@ -986,7 +1024,7 @@ function memItem(mem){
 function switchTab(t){ state.tab=t; render(); }
 function openPerson(id){ state.drawer=false; state.returnView=null; state.personId=id; state.view="person"; state.tab="persona"; render(); }
 function openPersonFromSettings(id,tab){ state.returnView={view:"settings",section:state.settingsSection||"models",settingsHome:!!state.settingsHome}; state.drawer=false; state.personId=id; state.view="person"; state.tab=tab==="memory"?"memory":"persona"; render(); }
-function goTree(){ if(state.returnView){const back=state.returnView;state.returnView=null;state.view=back.view;state.settingsSection=back.section;state.settingsHome=back.settingsHome;state.drawer=false;render();return;} state.view="home"; state.drawer=false; render(); }
+function goTree(){if(navigateBack())return;if(state.returnView){const back=state.returnView;state.returnView=null;state.view=back.view;state.settingsSection=back.section;state.settingsHome=back.settingsHome;state.drawer=false;render();return;}state.view="home";state.drawer=false;render();}
 function openWorkspaceModule(module){
   const labels={code:"Code",projects:"Projects",artifacts:"Artifacts"};
   if(!labels[module])return;
@@ -1000,7 +1038,12 @@ function viewWorkspaceModule(){
   return '<section class="workspace-placeholder"><div class="workspace-placeholder-mark">'+icon(state.workspaceModule==="code"?"code":state.workspaceModule==="projects"?"folder":"layers")+'</div><h2>'+label+'</h2><p>工作区入口已建立。该模块的实际功能尚未接入，不会用空壳按钮假装已经完成。</p></section>'+nav;
 }
 function goSettings(section="models"){if(state.view!=="settings"&&!state.settingsOrigin)state.settingsOrigin={view:state.view,sessionId:state.sessionId,groupId:state.groupId,personId:state.personId,tab:state.tab,workspaceModule:state.workspaceModule};state.drawer=false;state.settingsSection=section;state.settingsHome=arguments.length===0&&window.matchMedia("(max-width:760px)").matches;state.view="settings";render();}
-function leaveSettings(){const origin=state.settingsOrigin;state.settingsOrigin=null;state.drawer=false;if(origin){state.view=origin.view;state.sessionId=origin.sessionId;state.groupId=origin.groupId;state.personId=origin.personId;state.tab=origin.tab;state.workspaceModule=origin.workspaceModule;}else state.view="home";render();}
+function leaveSettings(){
+  if(navigateBack())return;
+  const origin=state.settingsOrigin;state.settingsOrigin=null;state.drawer=false;
+  if(origin){state.view=origin.view;state.sessionId=origin.sessionId;state.groupId=origin.groupId;state.personId=origin.personId;state.tab=origin.tab;state.workspaceModule=origin.workspaceModule;}
+  else state.view="home";render();
+}
 function goSettingsHome(){state.drawer=false;state.settingsHome=true;state.view="settings";render();}
 function goMyPage(){state.drawer=false;state.view="profile";render();}
 function viewSettings(){
@@ -1034,6 +1077,15 @@ function viewSettings(){
     const styles=[{id:"soft",name:"柔和",desc:"浅粉底色，圆润气泡"},{id:"glass",name:"轻玻璃",desc:"半透明白色，轻微模糊"},{id:"minimal",name:"简洁",desc:"弱化气泡，突出文字"}];
     body=`<h2 class="sec">聊天美化</h2><p class="muted small">先提供几种简单的气泡样式。之后可以扩展为主题文件导入，不影响聊天数据。</p>
       <div class="bubble-style-grid">${styles.map(x=>`<button class="bubble-style-option ${current===x.id?"selected":""}" data-style="${x.id}" onclick="saveBubbleStyle(this.dataset.style)"><span class="bubble-preview ${x.id}"><i></i><b></b></span><strong>${x.name}</strong><small>${x.desc}</small><span class="bubble-style-check">${current===x.id?"当前使用":"选择样式"}</span></button>`).join("")}</div>
+      <section class="card bubble-live-card"><div class="row"><strong>实时预览</strong><span class="spacer"></span><span class="muted small">使用聊天中的实际气泡样式</span></div>
+        <div class="bubble-live-preview"><div class="bubble-live-caption">单聊</div>
+          <div class="msg-row user"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="msg user"><div class="msg-body">今天把 HOMY 的界面再整理了一遍。</div><div class="msg-meta"><span>刚刚</span></div></div></div>
+          <div class="msg-row assistant"><span class="msg-avatar">${avatar("Zeya","")}</span><div class="msg ai"><div class="msg-body">我看到了。导航和聊天终于开始像同一个产品了。</div><div class="msg-meta"><span>GPT</span><span>刚刚</span></div></div></div>
+          <div class="bubble-live-caption">群聊</div>
+          <div class="group-ai-row"><span class="msg-avatar">${avatar("Zeya","")}</span><div class="group-ai-message"><div class="group-ai-head">Zeya</div><div class="msg-body">群聊保留独立的头像与消息排布。</div></div></div>
+          <div class="group-user-row"><div class="group-user-message"><div class="msg-body">明白，继续。</div></div></div>
+        </div>
+      </section>
       <div class="card theme-import-reserved"><div class="theme-reserved-mark">${icon("image")}</div><div><strong>主题文件导入</strong><p class="muted small">预留位置。未来可上传主题包，识别后统一替换颜色、气泡、背景与装饰素材。</p><span class="badge">后续开放</span></div></div>`;
   }else{
     body=`<h2 class="sec">图片与视觉</h2><p class="muted small">图片识别和图片生成是两项独立服务，所有 AI 身份共享配置。</p><div class="card service-hub">${serviceRow("vision","图片视觉理解","Vision API · 读取图片并转换为上下文","eye")}${serviceRow("image","图片生成","OpenAI Images 兼容接口","image")}<div class="hint">公益站必须明确支持对应接口协议。仅支持文字聊天的站点不能自动获得视觉或生图能力。</div></div>`;
@@ -1052,6 +1104,7 @@ function viewSettings(){
 
 async function saveBubbleStyle(style){
   if(!["soft","glass","minimal"].includes(style))return;
+  const app=document.getElementById("app");if(app)app.dataset.bubbleStyle=style;
   const settings=Object.assign({},cache.settings,{appearance:Object.assign({},cache.settings.appearance||{},{bubbleStyle:style}),updatedAt:nowISO()});
   await dbPut("settings",settings);await loadCache();render();toast("聊天气泡样式已更新");
 }
@@ -1442,7 +1495,15 @@ async function createSession(){
   openChat(rec.id);
 }
 function captureConversationOrigin(){if(state.view!=="chat"&&state.view!=="groupChat"&&state.view!=="groupDetail"&&!state.conversationOrigin){state.conversationOrigin={view:state.view,sessionId:state.sessionId,groupId:state.groupId,personId:state.personId,tab:state.tab,workspaceModule:state.workspaceModule};}}
-function closeConversation(){if(state.sending&&state.controller){try{state.controller.abort();}catch(e){}}state.sending=false;if(state.groupRunning&&typeof stopGroupTurn==="function")stopGroupTurn(true);const origin=state.conversationOrigin;state.conversationOrigin=null;state.drawer=false;if(origin){state.view=origin.view;state.sessionId=origin.sessionId;state.groupId=origin.groupId;state.personId=origin.personId;state.tab=origin.tab;state.workspaceModule=origin.workspaceModule;}else{state.view="home";state.sessionId=null;state.groupId=null;}render();}
+function closeConversation(){
+  if(navigateBack())return;
+  if(state.sending&&state.controller){try{state.controller.abort();}catch(e){}}
+  state.sending=false;if(state.groupRunning&&typeof stopGroupTurn==="function")stopGroupTurn(true);
+  const origin=state.conversationOrigin;state.conversationOrigin=null;state.drawer=false;
+  if(origin){state.view=origin.view;state.sessionId=origin.sessionId;state.groupId=origin.groupId;state.personId=origin.personId;state.tab=origin.tab;state.workspaceModule=origin.workspaceModule;}
+  else{state.view="home";state.sessionId=null;state.groupId=null;}
+  render();
+}
 function openChat(id){
   captureConversationOrigin();state.drawer=false; state.view="chat"; state.sessionId=id; state.sending=false;
   render();
