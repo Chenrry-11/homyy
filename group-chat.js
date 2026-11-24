@@ -26,7 +26,7 @@ async function createGroupFromDialog(){
  autoReply:true,autoReplyPaused:false,allowCrossTalk:true,maxAutoReplies:2,createdAt:ts,updatedAt:ts};
  await dbPut("groups",g);closeModal();await loadCache();openGroup(g.id);
 }
-function openGroup(id){if(state.groupRunning)stopGroupTurn(true);state.groupId=id;state.view="groupChat";state.groupComposerMode="message";state.groupThinkingOverride=null;state.groupIconDraft="";state.groupMessages=[];state.drawer=false;render();}
+function openGroup(id){if(state.groupRunning)stopGroupTurn(true);if(typeof captureConversationOrigin==="function")captureConversationOrigin();state.groupId=id;state.view="groupChat";state.groupComposerMode="message";state.groupThinkingOverride=null;state.groupIconDraft="";state.groupMessages=[];state.drawer=false;render();}
 function openGroupDetail(){state.groupIconDraft="";state.view="groupDetail";render();}
 function viewGroupDetail(){
  var g=groupById(state.groupId);if(!g)return "";
