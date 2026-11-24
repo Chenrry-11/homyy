@@ -448,6 +448,41 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 .msg-row.user .msg.user{border-radius:18px 18px 18px 4px}
 .composer-style-link{display:none!important}
 @media(max-width:520px){.home-poke-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.home-poke-card{padding:12px 5px 10px}.home-poke-avatar{width:48px;height:48px}.home-music-card{gap:8px;padding:11px}.music-art{width:38px;height:38px}.music-add{padding:6px 7px}.music-toggle{width:31px;height:31px}.home-daily-card{padding:14px;gap:11px}}
+
+/* Unified vertical message anatomy: avatar/time first, thinking and bubble below */
+.msg-row,.group-ai-row,.group-user-row{display:block!important;width:100%;min-width:0}
+.msg-stack,.group-stack{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:min(100%,760px);min-width:0}
+.msg-head,.group-head{display:flex;align-items:center;gap:9px;min-height:30px}
+.msg-head-meta,.group-head-meta{display:flex;align-items:center;gap:8px;min-width:0;color:var(--sub);font-size:11px;line-height:1.35}
+.msg-head-meta strong,.group-head-meta strong{color:var(--ink);font-size:12px;font-weight:600}
+.msg-stack>.msg,.group-stack>.msg{width:100%;max-width:100%;min-width:0}
+.msg-stack>.msg.ai,.msg-stack>.msg.user,.group-stack>.msg{margin:0}
+.msg-stack .reason-box,.group-stack .reason-box{margin:0 0 5px;padding:9px 11px;border:1px solid rgba(226,202,215,.62);border-radius:13px;background:rgba(248,238,243,.72);font-size:12px;line-height:1.55}
+.msg-stack .reason-box summary,.group-stack .reason-box summary{display:flex;align-items:center;gap:8px;font-size:11px;color:#967c89}
+.msg-stack .reason-box pre,.group-stack .reason-box pre{margin:7px 0 0;padding:9px 10px;border-left:2px solid rgba(190,139,162,.55);border-radius:0 9px 9px 0;background:rgba(255,255,255,.55);white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:11px;line-height:1.6}
+.msg-stack .reasoning-pending{display:flex;align-items:center;gap:8px}
+.msg-stack .msg-body,.group-stack .msg-body{overflow-wrap:anywhere}
+.msg-stack .msg-meta,.group-stack .group-msg-meta{margin-top:5px}
+.msg-stack .msg-actions{display:none!important}
+.message-action-list{display:flex;flex-direction:column;gap:3px}
+.message-action-row{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:9px 11px;border-radius:11px;text-align:left;color:var(--ink);font-size:13px}
+.message-action-row:active{background:var(--hover)}
+.message-action-icon{display:grid;place-items:center;width:22px;height:22px;flex:none;color:var(--sub)}
+.message-action-icon .i{width:18px;height:18px}
+.message-action-row.danger{color:#b77d91}.message-action-row.danger .message-action-icon{color:#b77d91}
+.bubble-live-preview{gap:13px}
+.bubble-live-preview .msg-stack,.bubble-live-preview .group-stack{width:100%;gap:5px}
+.bubble-live-preview .msg-head,.bubble-live-preview .group-head{gap:7px}
+.bubble-live-preview .msg-avatar{width:25px;height:25px}
+.bubble-live-preview .msg-head-meta,.bubble-live-preview .group-head-meta{font-size:9px}
+.bubble-live-preview .msg-stack .msg{max-width:100%;font-size:12px}
+.bubble-live-preview .msg-stack .reason-box,.bubble-live-preview .group-stack .reason-box{font-size:10px;padding:7px 9px;margin-bottom:3px}
+.bubble-live-preview .msg-stack .reason-box pre,.bubble-live-preview .group-stack .reason-box pre{font-size:9px;padding:7px}
+.bubble-live-preview .group-ai-row,.bubble-live-preview .group-user-row{width:100%}
+.bubble-live-preview .group-stack .msg{max-width:100%;font-size:12px}
+.bubble-live-preview .preview-group-user .group-stack{margin-left:0}
+@media(max-width:640px){.msg-stack,.group-stack{width:100%}.msg-head-meta,.group-head-meta{font-size:10px}.message-action-row{min-height:46px}}
+
 </style>
   <link rel="stylesheet" href="./group-chat.css">
   <link rel="stylesheet" href="./workspace.css">
@@ -1132,12 +1167,13 @@ function viewSettings(){
     body=`<h2 class="sec">聊天美化</h2><p class="muted small">先提供几种简单的气泡样式。之后可以扩展为主题文件导入，不影响聊天数据。</p>
       <div class="bubble-style-grid">${styles.map(x=>`<button class="bubble-style-option ${current===x.id?"selected":""}" data-style="${x.id}" onclick="saveBubbleStyle(this.dataset.style)"><span class="bubble-preview ${x.id}"><i></i><b></b></span><strong>${x.name}</strong><small>${x.desc}</small><span class="bubble-style-check">${current===x.id?"当前使用":"选择样式"}</span></button>`).join("")}</div>
       <section class="card bubble-live-card"><div class="row"><strong>实时预览</strong><span class="spacer"></span><span class="muted small">使用聊天中的实际气泡样式</span></div>
-        <div class="bubble-live-preview"><div class="bubble-live-caption">单聊</div>
-          <div class="msg-row user"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="msg user"><div class="msg-body">今天把 HOMY 的界面再整理了一遍。</div><div class="msg-meta"><span>刚刚</span></div></div></div>
-          <div class="msg-row assistant"><span class="msg-avatar">${avatar("Zeya","")}</span><div class="msg ai"><div class="msg-body">我看到了。导航和聊天终于开始像同一个产品了。</div><div class="msg-meta"><span>GPT</span><span>刚刚</span></div></div></div>
-          <div class="bubble-live-caption">群聊</div>
-          <div class="group-ai-row"><span class="msg-avatar">${avatar("Zeya","")}</span><div class="group-ai-message"><div class="group-ai-head">Zeya</div><div class="msg-body">群聊保留独立的头像与消息排布。</div></div></div>
-          <div class="group-user-row"><div class="group-user-message"><div class="msg-body">明白，继续。</div></div></div>
+        <div class="bubble-live-preview"><div class="bubble-live-caption">单聊 · 用户消息</div>
+          <div class="msg-row user preview-user"><div class="msg-stack"><div class="msg-head"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="msg-head-meta"><span>刚刚</span></div></div><div class="msg user"><div class="msg-body">今天把 HOMY 的界面再整理了一遍。</div></div></div></div>
+          <div class="bubble-live-caption">单聊 · AI 回复与深度思考</div>
+          <div class="msg-row assistant preview-assistant"><div class="msg-stack"><div class="msg-head"><span class="msg-avatar">${avatar("Zeya","")}</span><div class="msg-head-meta"><strong>Zeya · GPT</strong><span>刚刚</span></div></div><div class="msg ai"><details class="reason-box" open><summary><span>深度思考过程</span><span class="reason-hint">点击收起</span></summary><pre>先理解这句话的语气和上下文，再决定怎样自然回应。这里展示的是思考区真实样式。</pre></details><div class="msg-body">我看到了。我们把消息结构统一起来，预览和真实聊天就不会各说各话了。</div></div></div></div>
+          <div class="bubble-live-caption">群聊 · AI 与用户消息</div>
+          <div class="group-ai-row preview-group"><div class="group-stack"><div class="group-head"><span class="msg-avatar">${avatar("Zeya","")}</span><div class="group-head-meta"><strong>Zeya</strong><span>刚刚</span></div></div><div class="msg group-ai-message"><details class="reason-box" open><summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre>结合群聊上下文，整理这一轮的回应。</pre></details><div class="msg-body">群聊中的 AI 也使用相同的头像、时间、思考和正文顺序。</div></div></div></div>
+          <div class="group-user-row preview-group-user"><div class="group-stack"><div class="group-head"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="group-head-meta"><span>刚刚 · 你</span></div></div><div class="msg group-user-message"><div class="msg-body">明白，继续。</div></div></div></div>
         </div>
       </section>
       <div class="card theme-import-reserved"><div class="theme-reserved-mark">${icon("image")}</div><div><strong>主题文件导入</strong><p class="muted small">预留位置。未来可上传主题包，识别后统一替换颜色、气泡、背景与装饰素材。</p><span class="badge">后续开放</span></div></div>`;
@@ -1805,22 +1841,17 @@ async function saveGlobalService(key,value){
 function msgHTML(msg){
   if(msg.role==="user"){
     const files=(msg.attachments||[]).map(a=>a.type?.startsWith("image/")?`<img class="message-image" src="${a.dataUrl}" alt="${esc(a.name)}">`:`<div class="message-file">${icon("file")} ${esc(a.name)}</div>`).join("");
-    return `<div class="msg-row user"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}
-      ${!state.sending?`<div class="msg-actions"><button onclick="editUserMessage('${msg.id}')">编辑并重新回答</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回</button></div>`:""}
-      <div class="msg-meta"><span>${fmtTime(msg.createdAt)}</span></div></div></div>`;
+    return `<div class="msg-row user"><div class="msg-stack"><div class="msg-head"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="msg-head-meta"><span>${fmtTime(msg.createdAt)}</span></div></div><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}</div></div></div>`;
   }
   if(msg.role==="error")return `<div class="msg err">${esc(msg.content)}</div>`;
   if(msg.role==="system-note")return `<div class="msg sysnote">${esc(msg.content)}</div>`;
   const m=findById(cache.models,msg.modelId),session=findById(cache.sessions,state.sessionId),person=findById(cache.persons,session?.personId);
   const reason=msg.reasoning?`<details class="reason-box" open><summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre>${esc(msg.reasoning)}</pre></details>`:(msg.streaming&&session?.thinkingEnabled!==false?`<div class="reason-box reasoning-pending"><span class="reason-pulse"></span><span>正在等待模型返回思考过程…</span></div>`:"");
-  const speakOn=!!cache.settings.globalServices?.tts?.enabled;
-  return `<div class="msg-row assistant"><span class="msg-avatar">${avatar(person?.name||"AI",person?.avatar)}</span><div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
+  return `<div class="msg-row assistant"><div class="msg-stack"><div class="msg-head"><span class="msg-avatar">${avatar(person?.name||"AI",person?.avatar)}</span><div class="msg-head-meta"><strong>${esc(m?m.name:msg.modelId||"AI")}</strong><span>${fmtTime(msg.createdAt)}</span>${msg.streaming?`<span>生成中…</span>`:msg.partial?`<span>部分回复</span>`:""}</div></div><div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
     <div class="msg-body">${esc(msg.content)}</div>
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
-    ${!state.sending&&!msg.streaming?`<div class="msg-actions"><button onclick="regenerateFromMessage('${msg.id}')">重新生成</button><button class="danger" onclick="deleteOneMessage('${msg.id}')">撤回回复</button><button onclick="copyMessageText('${msg.id}')">复制</button>${speakOn?`<button data-speak-id="${msg.id}" onclick="speakMessage('${msg.id}')">朗读</button>`:""}</div>`:""}
-    <div class="msg-meta"><span>${esc(m?m.name:msg.modelId)}</span><span>${msg.streaming?"生成中…":(msg.partial?"部分回复":"")}</span><span>${fmtTime(msg.createdAt)}</span></div>
-  </div></div>`;
+  </div></div></div>`;
 }
 async function copyMessageText(id){
   const msg=state.chatMessages.find(x=>x.id===id); if(!msg) return;
@@ -1837,15 +1868,17 @@ async function copyMessageText(id){
 function openMessageActions(id){
   const msg=state.chatMessages.find(x=>x.id===id);if(!msg||state.sending)return;
   const isUser=msg.role==="user",actions=[];
-  if(isUser)actions.push({label:"编辑并重新发送",onClick:()=>editUserMessage(id)});
+  if(isUser)actions.push({icon:"edit",label:"编辑并重新回答",run:()=>editUserMessage(id)});
   else{
-    if(htmlCodeFromMessage(msg.content))actions.push({label:"网页预览",onClick:()=>{closeModal();openCodePreview(id);}});
-    if(cache.settings.globalServices?.tts?.enabled)actions.push({label:"朗读",onClick:()=>{closeModal();speakMessage(id);}});
-    actions.push({label:"重新生成",onClick:()=>regenerateFromMessage(id)});
+    if(htmlCodeFromMessage(msg.content))actions.push({icon:"code",label:"网页预览",run:()=>{closeModal();openCodePreview(id);}});
+    if(cache.settings.globalServices?.tts?.enabled)actions.push({icon:"audio",label:"朗读",run:()=>{closeModal();speakMessage(id);}});
+    actions.push({icon:"refresh",label:"重新生成",run:()=>regenerateFromMessage(id)});
   }
-  actions.push({label:"复制",onClick:()=>copyMessageText(id)},{label:isUser?"撤回消息":"撤回回复",danger:true,onClick:()=>deleteOneMessage(id)},{label:"关闭",onClick:closeModal});
-  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="muted">${isUser?"编辑后会清除旧回复，并根据修改后的内容重新回答。":"撤回后，这条回复将不再进入后续聊天上下文。"}</div>`,actions});
+  actions.push({icon:"copy",label:"复制",run:()=>copyMessageText(id)},{icon:"trash",label:isUser?"撤回消息":"撤回回复",danger:true,run:()=>deleteOneMessage(id)});
+  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="message-action-list">${actions.map((item,index)=>`<button type="button" class="message-action-row ${item.danger?"danger":""}" onclick="runMessageAction('${id}',${index})"><span class="message-action-icon">${icon(item.icon)}</span><span>${item.label}</span></button>`).join("")}</div>`,actions:[{label:"取消",onClick:closeModal}]});
+  window.__homyMessageActions=actions;
 }
+function runMessageAction(id,index){const actions=window.__homyMessageActions||[];const action=actions[index];if(action&&state.chatMessages.some(m=>m.id===id))action.run();}
 async function deleteOneMessage(id){
   const index=state.chatMessages.findIndex(x=>x.id===id);if(index<0)return;
   const msg=state.chatMessages[index],tail=msg.role==="user"?state.chatMessages.slice(index):[msg];
