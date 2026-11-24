@@ -68,3 +68,18 @@
 .avatar-btn:active{transform:scale(.9);box-shadow:0 1px 4px rgba(105,70,88,.12)}
 .avatar-frame{display:flex;padding:3px;border-radius:50%;background:linear-gradient(145deg,#fff,#e9d3de)}
 .avatar-frame .avatar{width:34px;height:34px}
+
+/* Layered drawer hierarchy and framed profile touch feedback */
+.drawer-shell{position:relative;isolation:isolate}
+.drawer-side-stack{position:relative}
+.drawer-identity{position:relative;margin:0 0 10px;padding:5px 6px 3px;border:1px solid rgba(233,218,226,.72);border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(249,240,245,.78));box-shadow:0 5px 16px rgba(83,54,69,.055)}
+.drawer-identity+.drawer-identity{margin-top:-2px}
+.drawer-identity-head{position:relative;z-index:2}
+.drawer-sessions{position:relative;margin:0 0 8px 28px;padding:7px 0 4px 18px;border-left:1px solid #e6d2dd}
+.drawer-sessions:before{content:"";position:absolute;left:-1px;top:0;width:12px;height:12px;border-left:1px solid #e6d2dd;border-bottom:1px solid #e6d2dd;border-radius:0 0 0 9px}
+.drawer-session-line{position:relative;margin:1px 0}
+.drawer-session-line:before{content:"";position:absolute;left:-18px;top:50%;width:11px;border-top:1px solid #e6d2dd}
+.drawer-group-heading{margin-top:12px;padding-top:14px;border-top:1px solid rgba(231,214,223,.75)}
+.side-foot{background:linear-gradient(180deg,rgba(255,255,255,0),rgba(249,241,245,.82));backdrop-filter:blur(12px)}
+.avatar-btn{position:relative;overflow:visible}
+.avatar-btn:after{content:"";position:absolute;inset:-2px;border:1px solid rgba(195,145,168,.45);border-radius:50%;pointer-events:none}
