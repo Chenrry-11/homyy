@@ -439,6 +439,8 @@ const state = {
   settingsSection:"models",
   settingsOrigin:null,
   conversationOrigin:null,
+  viewScroll:{},
+  renderedViewKey:null,
   returnView:null,
   tab: "persona",        // persona | memory | sessions
   personId: null,
@@ -739,9 +741,34 @@ async function quickStart(){
   await render();
   document.getElementById("chatInput").value=text; refreshEstimate(); sendMessage();
 }
+function currentViewKey(){
+  if(state.view==="workspace")return "workspace:"+state.workspaceModule;
+  if(state.view==="settings")return "settings:"+state.settingsSection+":"+(state.settingsHome?"home":"detail");
+  if(state.view==="person")return "person:"+state.personId+":"+state.tab;
+  if(state.view==="chat")return "chat:"+state.sessionId;
+  if(state.view==="groupChat"||state.view==="groupDetail")return state.view+":"+state.groupId;
+  return state.view;
+}
+function captureViewScroll(){
+  const key=state.renderedViewKey;if(!key)return;
+  const main=document.querySelector(".main");if(!main)return;
+  const read=sel=>{const el=main.querySelector(sel);return el?el.scrollTop:null;};
+  const side=document.querySelector(".side-list");
+  state.viewScroll[key]={main:main.scrollTop,content:read(".content"),settings:read(".settings-detail-content"),messages:read("#msgList"),groupMessages:read("#groupMsgList"),groups:read(".group-list"),side:side?side.scrollTop:null};
+}
+function restoreViewScroll(key){
+  const saved=state.viewScroll[key];if(!saved)return;
+  const main=document.querySelector(".main");if(!main)return;
+  main.scrollTop=saved.main||0;
+  const write=(sel,value)=>{const el=main.querySelector(sel);if(el&&value!==null)el.scrollTop=value;};
+  write(".content",saved.content);write(".settings-detail-content",saved.settings);write("#msgList",saved.messages);write("#groupMsgList",saved.groupMessages);write(".group-list",saved.groups);
+  const side=document.querySelector(".side-list");if(side&&saved.side!==null)side.scrollTop=saved.side;
+}
 async function render(){
   if (state.view === "chat" && !findById(cache.sessions, state.sessionId)) state.view = "tree";
   if ((state.view === "groupChat" || state.view === "groupDetail") && !findById(cache.groups,state.groupId)) state.view="groups";
+  captureViewScroll();
+  const targetViewKey=currentViewKey();
   const app = document.getElementById("app");
   let main = "";
   if (state.view === "person") main = viewPerson();
@@ -757,14 +784,18 @@ async function render(){
   app.dataset.bubbleStyle=cache.settings.appearance?.bubbleStyle||"soft";
   app.innerHTML = `<div class="shell${state.drawer?" drawer":""}"><div class="mask" onclick="toggleDrawer()"></div><aside class="side">${viewTree()}</aside><main class="main">${main}</main></div>`;
   bindDrawerSessionEvents();
+  restoreViewScroll(targetViewKey);
   if (state.view === "chat"){
     await loadChatMessages();
     bindChatInput();
+    restoreViewScroll(targetViewKey);
   }
   if (state.view === "groupChat"){
     await loadGroupMessages();
     bindGroupChatInput();
+    restoreViewScroll(targetViewKey);
   }
+  state.renderedViewKey=targetViewKey;
   if (state.view === "person" && state.tab === "memory") bindMemoryEvents();
 }
 
