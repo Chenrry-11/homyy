@@ -329,7 +329,7 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 @media(max-width:640px){.bubble-style-grid{gap:7px}.bubble-style-option{padding:8px}.bubble-style-option strong{font-size:12px}.bubble-style-option small{font-size:9px}.modal-mask{padding:16px}.modal{border-radius:18px;max-height:82dvh}}
 /* HOMY chat surface refinements */
 .msg-row{display:flex;align-items:flex-start;gap:9px;width:100%;min-width:0}
-.msg-row.user{justify-content:flex-end}
+.msg-row.user{justify-content:flex-start}
 .msg-avatar{width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-top:1px;border-radius:50%;overflow:hidden;background:linear-gradient(145deg,#f4e2ea,#e8cfdb);box-shadow:0 2px 7px rgba(105,70,88,.08)}
 .msg-avatar .avatar{width:100%;height:100%;font-size:13px}
 .msg-row .msg.ai{width:auto;max-width:min(82%,760px);min-width:0}
@@ -1601,7 +1601,16 @@ function renderMessages(options={}){
 let streamPaintPending=false,streamPaintMessage=null;
 function scheduleStreamingPaint(msg){
   streamPaintMessage=msg;if(streamPaintPending)return;streamPaintPending=true;
-  requestAnimationFrame(()=>{streamPaintPending=false;const current=streamPaintMessage;if(!current)return;const node=document.querySelector('.msg[data-msg-id="'+current.id+'"]');const body=node?.querySelector(".msg-body");if(body)body.textContent=current.content||"";});
+  requestAnimationFrame(()=>{
+    streamPaintPending=false;const current=streamPaintMessage;if(!current)return;
+    const node=document.querySelector('.msg[data-msg-id="'+current.id+'"]');
+    const body=node?.querySelector('.msg-body');if(body)body.textContent=current.content||'';
+    let reason=node?.querySelector('.reason-box');
+    if(current.reasoning){
+      if(!reason){reason=document.createElement('details');reason.className='reason-box';reason.open=true;reason.innerHTML='<summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre></pre>';node.insertBefore(reason,node.firstChild);}
+      const pre=reason.querySelector('pre');if(pre)pre.textContent=current.reasoning;
+    }
+  });
 }
 function fileToDataURL(file){
   return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(reader.error||new Error("文件读取失败"));reader.readAsDataURL(file);});
@@ -1748,7 +1757,7 @@ function msgHTML(msg){
   if(msg.role==="error")return `<div class="msg err">${esc(msg.content)}</div>`;
   if(msg.role==="system-note")return `<div class="msg sysnote">${esc(msg.content)}</div>`;
   const m=findById(cache.models,msg.modelId),session=findById(cache.sessions,state.sessionId),person=findById(cache.persons,session?.personId);
-  const reason=msg.reasoning?`<details class="reason-box"><summary><span>深度思考</span><span class="reason-hint">模型提供 · 点击展开</span></summary><pre>${esc(msg.reasoning)}</pre></details>`:"";
+  const reason=msg.reasoning?`<details class="reason-box" open><summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre>${esc(msg.reasoning)}</pre></details>`:(msg.streaming&&session?.thinkingEnabled!==false?`<div class="reason-box reasoning-pending"><span class="reason-pulse"></span><span>正在等待模型返回思考过程…</span></div>`:"");
   const speakOn=!!cache.settings.globalServices?.tts?.enabled;
   return `<div class="msg-row assistant"><span class="msg-avatar">${avatar(person?.name||"AI",person?.avatar)}</span><div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
     <div class="msg-body">${esc(msg.content)}</div>
