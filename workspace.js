@@ -13,12 +13,13 @@ function viewWorkspaceModule(){
 }
 function viewWorkspaceCode(){
   const files=workspaceItems("code"),current=findById(files,state.workspaceEditorId)||files[0]||null;
+  const projectOptions=workspaceItems("project").map(p=>'<option value="'+esc(p.id)+'" '+(current?.projectId===p.id?"selected":"")+' >'+esc(p.name)+'</option>').join("");
   if(current&&state.workspaceEditorId!==current.id)state.workspaceEditorId=current.id;
   const list='<aside class="workspace-file-list"><div class="workspace-list-head"><strong>文件</strong><button class="icon-btn" onclick="createWorkspaceCode()" aria-label="新建文件">'+icon("plus")+'</button></div>'+
     (files.map(f=>'<button class="workspace-file-row '+(current&&f.id===current.id?"active":"")+'" onclick="openWorkspaceCode(\''+f.id+'\')"><span class="workspace-file-icon">'+icon("file")+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.language||"text")+' · '+fmtTime(f.updatedAt)+'</small></span></button>').join("")||'<div class="workspace-empty-mini">还没有文件</div>')+'</aside>';
   let editor='';
   if(current){
-    editor='<section class="workspace-editor"><div class="workspace-editor-toolbar"><input id="workspaceCodeName" value="'+esc(current.name)+'" aria-label="文件名"><span class="spacer"></span><button class="btn" onclick="downloadWorkspaceCode(\''+current.id+'\')">'+icon("download")+' 下载</button><button class="btn btn-primary" onclick="saveWorkspaceCode()">'+icon("check")+' 保存</button></div><textarea id="workspaceCodeContent" class="workspace-code-input" spellcheck="false" autocapitalize="off" autocomplete="off">'+esc(current.content||"")+'</textarea><div class="workspace-editor-foot"><span>'+esc(current.language||"text")+'</span><span>'+String((current.content||"").length)+' 字符</span><span class="spacer"></span>'+(current.language==="html"||/\.html?$/i.test(current.name)?'<button class="text-action" onclick="previewWorkspaceCode(\''+current.id+'\')">预览网页</button>':'')+'<button class="text-action danger-text" onclick="deleteWorkspaceCode(\''+current.id+'\')">删除文件</button></div></section>';
+    editor='<section class="workspace-editor"><div class="workspace-editor-toolbar"><input id="workspaceCodeName" value="'+esc(current.name)+'" aria-label="文件名"><select id="workspaceCodeProject" aria-label="关联项目"><option value="">不关联项目</option>'+projectOptions+'</select><span class="spacer"></span><button class="btn" onclick="downloadWorkspaceCode(\''+current.id+'\')">'+icon("download")+' 下载</button><button class="btn btn-primary" onclick="saveWorkspaceCode()">'+icon("check")+' 保存</button></div><textarea id="workspaceCodeContent" class="workspace-code-input" spellcheck="false" autocapitalize="off" autocomplete="off">'+esc(current.content||"")+'</textarea><div class="workspace-editor-foot"><span>'+esc(current.language||"text")+'</span><span>'+String((current.content||"").length)+' 字符</span><span class="spacer"></span>'+(current.language==="html"||/\.html?$/i.test(current.name)?'<button class="text-action" onclick="previewWorkspaceCode(\''+current.id+'\')">预览网页</button>':'')+'<button class="text-action danger-text" onclick="deleteWorkspaceCode(\''+current.id+'\')">删除文件</button></div></section>';
   }else editor='<section class="workspace-editor workspace-editor-empty"><div class="workspace-empty-mark">'+icon("code")+'</div><h2>本地代码工作区</h2><p>创建文件后，可以在这里编辑、保存、下载。HTML 文件还可以直接预览。</p><button class="btn btn-primary" onclick="createWorkspaceCode()">新建文件</button></section>';
   return workspaceHeader("Code","本地文件编辑器 · 内容保存在当前设备",'<button class="btn btn-primary" onclick="createWorkspaceCode()">'+icon("plus")+' 新建文件</button>')+'<div class="workspace-code-layout">'+list+editor+'</div>';
 }
@@ -41,7 +42,7 @@ async function saveWorkspaceCode(){
   if(!name||/[\\/]/.test(name)){toast("文件名无效");return;}
   const ts=nowISO(),versions=Array.isArray(file.versions)?file.versions.slice():[];
   if(content!==file.content)versions.push({content:file.content||"",savedAt:file.updatedAt||file.createdAt});
-  Object.assign(file,{name,content,language:workspaceCodeLanguage(name),versions:versions.slice(-20),updatedAt:ts});
+  Object.assign(file,{name,content,language:workspaceCodeLanguage(name),projectId:document.getElementById("workspaceCodeProject")?.value||null,versions:versions.slice(-20),updatedAt:ts});
   await dbPut("workspaceItems",file);await loadCache();render();toast("已保存到本机");
 }
 function downloadWorkspaceCode(id){
