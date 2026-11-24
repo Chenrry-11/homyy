@@ -83,3 +83,17 @@
 .side-foot{background:linear-gradient(180deg,rgba(255,255,255,0),rgba(249,241,245,.82));backdrop-filter:blur(12px)}
 .avatar-btn{position:relative;overflow:visible}
 .avatar-btn:after{content:"";position:absolute;inset:-2px;border:1px solid rgba(195,145,168,.45);border-radius:50%;pointer-events:none}
+
+
+/* Group messages share the same vertical anatomy as direct messages */
+.group-ai-row,.group-user-row{display:block;width:100%;min-width:0}
+.group-stack{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:min(100%,760px);min-width:0}
+.group-head{display:flex;align-items:center;gap:9px;min-height:30px}
+.group-head-meta{display:flex;align-items:center;gap:8px;min-width:0;color:var(--sub);font-size:11px;line-height:1.35}
+.group-head-meta strong{color:var(--ink);font-size:12px;font-weight:600}
+.group-stack>.msg{width:100%;max-width:100%;min-width:0;margin:0}
+.group-stack .reason-box{margin:0 0 5px;padding:9px 11px;border:1px solid rgba(226,202,215,.62);border-radius:13px;background:rgba(248,238,243,.72);font-size:12px;line-height:1.55}
+.group-stack .reason-box summary{display:flex;align-items:center;gap:8px;font-size:11px;color:#967c89}
+.group-stack .reason-box pre{margin:7px 0 0;padding:9px 10px;border-left:2px solid rgba(190,139,162,.55);border-radius:0 9px 9px 0;background:rgba(255,255,255,.55);white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:11px;line-height:1.6}
+.group-stack .msg-body{overflow-wrap:anywhere}
+@media(max-width:640px){.group-stack{width:100%}.group-head-meta{font-size:10px}}
