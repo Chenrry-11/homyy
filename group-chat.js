@@ -94,7 +94,7 @@ function groupMessageHTML(m){
  if(m.role==="error")return '<div class="msg err">'+esc(m.content)+'</div>';
  var p=findById(cache.persons,m.personId),model=findById(cache.models,m.modelId);
  var reason=m.reasoning?'<details class="reason-box" open><summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre>'+esc(m.reasoning)+'</pre></details>':(m.thinkingUsed?'<div class="reason-box reasoning-pending"><span class="reason-pulse"></span><span>本轮已启用深度思考，模型未返回可展示的思考内容</span></div>':"");
- return '<div class="group-ai-row"><div class="group-stack"><div class="group-head"><span class="msg-avatar">'+(p?avatar(p.name,p.avatar):avatar("AI",""))+'</span><div class="group-head-meta"><strong>'+esc(p?p.name:"AI")+'</strong><span>'+esc(model?model.name:m.modelId||"模型")+'</span><span>'+fmtTime(m.createdAt)+'</span></div></div><div class="msg group-ai-message">'+reason+'<div class="msg-body">'+esc(m.content)+'</div></div></div></div>';
+ return '<div class="group-ai-row"><div class="group-stack"><div class="group-head"><span class="msg-avatar">'+(p?avatar(p.name,p.avatar):avatar("AI",""))+'</span><div class="group-head-meta"><strong>'+esc(p?p.name:"AI")+'</strong><span>'+esc(model?model.name:m.modelId||"模型")+'</span><span>'+fmtTime(m.createdAt)+'</span></div></div>'+reason+'<div class="msg group-ai-message"><div class="msg-body">'+esc(m.content)+'</div></div></div></div>';
 }
 function renderGroupMessages(options){
  var list=document.getElementById("groupMsgList");if(!list)return;var near=list.scrollHeight-list.scrollTop-list.clientHeight<150;
