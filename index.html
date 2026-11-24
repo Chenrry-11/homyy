@@ -696,6 +696,8 @@ function pickAvatar(who){
   inp.click();
 }
 function newWindow(id){state.personId=id;createSession();}
+function homePokeHTML(){const people=cache.persons||[];if(!people.length)return '<div class="home-poke-empty">还没有 AI 身份。到设置中创建身份后，它们会出现在这里。</div>';return '<div class="home-poke-list">'+people.map(p=>'<button class="home-poke-card" data-person-id="'+p.id+'" onclick="pokeIdentity(this.dataset.personId)"><span class="home-poke-avatar">'+avatar(p.name,p.avatar)+'</span><strong>'+esc(p.name)+'</strong><small>'+esc((findById(cache.models,p.modelId)||{}).name||'AI 身份')+'</small><span class="poke-hint">戳一下</span></button>').join('')+'</div><div class="poke-reaction" id="pokeReaction" aria-live="polite"></div>';}
+function pokeIdentity(id){const p=findById(cache.persons,id);if(!p)return;const lines=['嗯？我在。','这一下算你先打招呼。','怎么了，想起我了？','收到。现在轮到我注意你了。'];const box=document.getElementById('pokeReaction'),card=document.querySelector('.home-poke-card[data-person-id="'+id+'"]');if(card){card.classList.remove('poked');void card.offsetWidth;card.classList.add('poked');}if(box){box.textContent=p.name+'：'+lines[Math.floor(Math.random()*lines.length)];box.classList.remove('show');void box.offsetWidth;box.classList.add('show');}}
 function viewWelcome(){
   const recent=[...cache.sessions].sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||"")).slice(0,3);
   const noIdentity=!cache.persons.length;
@@ -712,11 +714,7 @@ function viewWelcome(){
       <p>继续已有对话，或开启新的思路。</p>
       <div class="hero-rule"><span></span><i></i><span></span></div>
     </section>
-    <section class="home-section home-shortcuts">
-      <button class="home-shortcut" onclick="${noIdentity?"goSettings()":"toggleDrawer()"}"><span class="home-shortcut-icon">${icon("message")}</span><span>开始聊天</span></button>
-      <button class="home-shortcut" onclick="goSettings('models')"><span class="home-shortcut-icon">${icon("grid")}</span><span>模型管理</span></button>
-      <button class="home-shortcut" onclick="goMyPage()"><span class="home-shortcut-icon">${icon("user")}</span><span>我的资料</span></button>
-    </section>
+    <section class="home-section home-poke-section"><div class="section-heading"><div><div class="section-eyebrow">SAY HELLO</div><h3>戳戳谁</h3></div><span class="section-note">点一下头像试试看</span></div>${homePokeHTML()}</section>
     <section class="home-section recent-section">
       <div class="section-heading"><div><h3>最近对话</h3></div></div>
       ${recent.length?`<div class="recent-list">${recent.map(w=>{
@@ -1560,7 +1558,7 @@ function viewChatShell(){
       <textarea id="chatInput" rows="1" placeholder="发消息给 ${esc(pn.name)}…" oninput="refreshEstimate()"></textarea>
       <button class="btn icon-btn composer-mic" id="micBtn" title="语音转文字" onclick="toggleBrowserDictation()">${icon("mic")}</button>
       <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">发送</button>
-    </div><div class="composer-style-link"><button onclick="goSettings('appearance')">气泡与聊天外观</button></div>
+    </div>
   </div></div>`;
 }
 async function toggleThinkingMode(){
@@ -1633,11 +1631,15 @@ function renderPendingAttachments(){
 }
 function removePendingAttachment(id){state.pendingAttachments=state.pendingAttachments.filter(a=>a.id!==id);renderPendingAttachments();}
 function openComposerMenu(){
-  modal({title:"添加内容",body:`<div class="muted">选择要放进这条消息的内容。</div>`,actions:[
-    {label:"选择附件",primary:true,onClick:()=>{closeModal();document.getElementById("chatFiles")?.click();}},
-    {label:"生成图片",onClick:()=>{closeModal();generateImagePrompt();}},
-    {label:"取消",onClick:closeModal}
-  ]});
+  const row=document.querySelector('.input-row');if(!row)return;
+  const old=document.getElementById('composerCommandMenu');if(old){old.remove();return;}
+  const menu=document.createElement('div');menu.id='composerCommandMenu';menu.className='composer-command-menu';
+  const add=(title,detail,run)=>{const button=document.createElement('button');button.type='button';const strong=document.createElement('strong');strong.textContent=title;const small=document.createElement('small');small.textContent=detail;const copy=document.createElement('span');copy.className='composer-menu-copy';copy.append(strong,small);button.append(copy);button.addEventListener('click',()=>{menu.remove();run();});menu.append(button);};
+  add('添加附件','图片、文档或文本',()=>document.getElementById('chatFiles')?.click());
+  add('生成图片','根据描述创建图像',()=>generateImagePrompt());
+  row.append(menu);
+  const close=e=>{if(!menu.contains(e.target)&&!e.target.closest('.composer-attach')){menu.remove();document.removeEventListener('pointerdown',close,true);}};
+  document.addEventListener('pointerdown',close,true);
 }
 function generateImagePrompt(){
   modal({title:"生成图片",body:`<div class="field"><label>图片描述</label><textarea id="imagePrompt" rows="5" placeholder="描述你想生成的图片、风格、构图和文字内容……"></textarea></div><div class="hint">将使用设置中的全局图片生成服务。请确认公益站支持 OpenAI Images API。</div>`,actions:[
