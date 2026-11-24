@@ -1755,7 +1755,7 @@ function scheduleStreamingPaint(msg){
     streamPaintPending=false;const current=streamPaintMessage;if(!current)return;
     const node=document.querySelector('.msg[data-msg-id="'+current.id+'"]');
     const body=node?.querySelector('.msg-body');if(body)body.textContent=current.content||'';
-    let reason=node?.querySelector('.reason-box');
+    let reason=node?.parentElement?.querySelector(':scope > .reason-box');
     if(current.reasoning){
       if(!reason){reason=document.createElement('details');reason.className='reason-box';reason.open=true;reason.innerHTML='<summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre></pre>';node.parentElement.insertBefore(reason,node);}
       const pre=reason.querySelector('pre');if(pre)pre.textContent=current.reasoning;
