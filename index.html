@@ -505,6 +505,37 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 .bubble-live-preview .preview-group-user .group-head-meta{text-align:right;align-items:flex-end}
 .bubble-live-preview .preview-group-user .group-user-message{align-self:flex-end;margin-left:auto}
 
+
+/* Message alignment is applied to the complete avatar + bubble stack */
+.msg-row{display:flex!important;justify-content:flex-start!important;width:100%;min-width:0}
+.msg-row .msg-stack{display:flex;flex:0 1 min(82%,760px);width:min(82%,760px);min-width:0;align-items:stretch;gap:3px;margin:0}
+.msg-row.assistant .msg-stack{margin-right:auto;margin-left:0}
+.msg-row.user .msg-stack{margin-left:auto;margin-right:0;align-items:flex-end}
+.msg-row.user .msg-head{width:100%;justify-content:flex-end;flex-direction:row-reverse}
+.msg-row.user .msg-head-meta{justify-content:flex-end;text-align:right}
+.msg-row .msg-stack>.msg{width:auto;max-width:100%;min-width:0;margin:0}
+.msg-row.assistant .msg-stack>.msg.ai{align-self:stretch;width:100%}
+.msg-row.user .msg-stack>.msg.user{align-self:flex-end;width:auto;max-width:100%}
+.msg-row .msg-stack>.reason-box{width:100%;margin:0!important;padding:8px 10px}
+.msg-row .msg-stack>.msg-actions{display:flex!important;align-self:flex-end;gap:12px;margin:0;padding:1px 5px 0}
+.msg-row.user .msg-stack>.msg-actions{align-self:flex-end}
+.msg-actions button{display:grid;place-items:center;width:26px;height:25px;color:#a18d97;padding:3px;border-radius:7px}
+.msg-actions button .i{width:16px;height:16px}
+.msg-actions button.danger{color:#b77d91}
+.msg-stack .reason-box pre{margin:4px 0 0!important}
+.msg-stack .reason-box summary{margin:0!important}
+.msg-row .msg-stack>.msg.ai .msg-body{margin-top:0!important}
+.bubble-live-preview .msg-row.user .msg-stack{margin-left:auto!important;margin-right:0!important;align-items:flex-end!important}
+.bubble-live-preview .msg-row.user .msg-head{justify-content:flex-end!important;flex-direction:row-reverse!important}
+.bubble-live-preview .msg-row.user .msg-head-meta{justify-content:flex-end!important;text-align:right!important}
+.bubble-live-preview .msg-row.user .msg.user{align-self:flex-end!important}
+.message-action-layer{position:fixed;inset:0;z-index:120;background:transparent}
+.message-action-popover{position:fixed;display:flex;flex-direction:column;gap:1px;padding:7px;background:rgba(255,252,254,.97);border:1px solid rgba(222,201,212,.8);border-radius:15px;box-shadow:0 12px 38px rgba(70,43,57,.2);backdrop-filter:blur(20px);transform-origin:top left;animation:message-pop-in .2s cubic-bezier(.2,.8,.2,1) both}
+.message-action-popover.user{transform-origin:top right}
+.message-action-popover .message-action-row{display:flex;align-items:center;gap:11px;width:100%;min-height:43px;padding:8px 10px;border:0;border-radius:9px;background:transparent;text-align:left;color:var(--ink);font-size:13px}
+.message-action-popover .message-action-row:active{background:rgba(190,139,162,.12)}
+@keyframes message-pop-in{from{opacity:0;transform:translateY(9px) scale(.88)}to{opacity:1;transform:translateY(0) scale(1)}}
+
 </style>
   <link rel="stylesheet" href="./group-chat.css">
   <link rel="stylesheet" href="./workspace.css">
@@ -1726,7 +1757,7 @@ function scheduleStreamingPaint(msg){
     const body=node?.querySelector('.msg-body');if(body)body.textContent=current.content||'';
     let reason=node?.querySelector('.reason-box');
     if(current.reasoning){
-      if(!reason){reason=document.createElement('details');reason.className='reason-box';reason.open=true;reason.innerHTML='<summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre></pre>';node.insertBefore(reason,node.firstChild);}
+      if(!reason){reason=document.createElement('details');reason.className='reason-box';reason.open=true;reason.innerHTML='<summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre></pre>';node.parentElement.insertBefore(reason,node);}
       const pre=reason.querySelector('pre');if(pre)pre.textContent=current.reasoning;
     }
   });
@@ -1873,17 +1904,17 @@ async function saveGlobalService(key,value){
 function msgHTML(msg){
   if(msg.role==="user"){
     const files=(msg.attachments||[]).map(a=>a.type?.startsWith("image/")?`<img class="message-image" src="${a.dataUrl}" alt="${esc(a.name)}">`:`<div class="message-file">${icon("file")} ${esc(a.name)}</div>`).join("");
-    return `<div class="msg-row user"><div class="msg-stack"><div class="msg-head"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="msg-head-meta"><span>${fmtTime(msg.createdAt)}</span></div></div><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}</div></div></div>`;
+    return `<div class="msg-row user"><div class="msg-stack"><div class="msg-head"><span class="msg-avatar">${avatar(cache.settings.userName||"我",cache.settings.userAvatar)}</span><div class="msg-head-meta"><span>${fmtTime(msg.createdAt)}</span></div></div><div class="msg user" data-msg-id="${msg.id}" data-role="user"><div class="msg-body">${esc(msg.content)}</div>${files}</div><div class="msg-actions" aria-label="消息快捷操作"><button type="button" title="编辑并重新回答" aria-label="编辑并重新回答" onclick="event.stopPropagation();editUserMessage('${msg.id}')">${icon("edit")}</button><button type="button" class="danger" title="撤回消息" aria-label="撤回消息" onclick="event.stopPropagation();deleteOneMessage('${msg.id}')">${icon("trash")}</button></div></div></div>`;
   }
   if(msg.role==="error")return `<div class="msg err">${esc(msg.content)}</div>`;
   if(msg.role==="system-note")return `<div class="msg sysnote">${esc(msg.content)}</div>`;
   const m=findById(cache.models,msg.modelId),session=findById(cache.sessions,state.sessionId),person=findById(cache.persons,session?.personId);
   const reason=msg.reasoning?`<details class="reason-box" open><summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre>${esc(msg.reasoning)}</pre></details>`:(msg.streaming&&session?.thinkingEnabled!==false?`<div class="reason-box reasoning-pending"><span class="reason-pulse"></span><span>正在等待模型返回思考过程…</span></div>`:"");
-  return `<div class="msg-row assistant"><div class="msg-stack"><div class="msg-head"><span class="msg-avatar">${avatar(person?.name||"AI",person?.avatar)}</span><div class="msg-head-meta"><strong>${esc(m?m.name:msg.modelId||"AI")}</strong><span>${fmtTime(msg.createdAt)}</span>${msg.streaming?`<span>生成中…</span>`:msg.partial?`<span>部分回复</span>`:""}</div></div><div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">${reason}
+  return `<div class="msg-row assistant"><div class="msg-stack"><div class="msg-head"><span class="msg-avatar">${avatar(person?.name||"AI",person?.avatar)}</span><div class="msg-head-meta"><strong>${esc(m?m.name:msg.modelId||"AI")}</strong><span>${fmtTime(msg.createdAt)}</span>${msg.streaming?`<span>生成中…</span>`:msg.partial?`<span>部分回复</span>`:""}</div></div>${reason}<div class="msg ai" data-msg-id="${msg.id}" data-role="assistant">
     <div class="msg-body">${esc(msg.content)}</div>
     ${msg.generatedImage?`<img class="message-image generated-image" src="${esc(msg.generatedImage)}" alt="AI 生成图片" onclick="window.open('${esc(msg.generatedImage)}','_blank','noopener')">`:""}
     ${msg.generating?`<div class="muted small">图片生成中……</div>`:""}
-  </div></div></div>`;
+  </div><div class="msg-actions" aria-label="消息快捷操作"><button type="button" title="重新生成" aria-label="重新生成" onclick="event.stopPropagation();regenerateFromMessage('${msg.id}')">${icon("refresh")}</button><button type="button" class="danger" title="撤回回复" aria-label="撤回回复" onclick="event.stopPropagation();deleteOneMessage('${msg.id}')">${icon("trash")}</button></div></div></div>`;
 }
 async function copyMessageText(id){
   const msg=state.chatMessages.find(x=>x.id===id); if(!msg) return;
@@ -1897,20 +1928,39 @@ async function copyMessageText(id){
   }catch(e){toast("复制失败，请手动选择文字");}
   closeModal();
 }
+function closeMessageActionPopover(){
+  const layer=document.getElementById("messageActionLayer");if(layer)layer.remove();
+  window.__homyMessageActions=null;
+}
 function openMessageActions(id){
   const msg=state.chatMessages.find(x=>x.id===id);if(!msg||state.sending)return;
+  const target=document.querySelector('.msg[data-msg-id="'+id+'"]');if(!target)return;
+  closeMessageActionPopover();
   const isUser=msg.role==="user",actions=[];
   if(isUser)actions.push({icon:"edit",label:"编辑并重新回答",run:()=>editUserMessage(id)});
   else{
-    if(htmlCodeFromMessage(msg.content))actions.push({icon:"code",label:"网页预览",run:()=>{closeModal();openCodePreview(id);}});
-    if(cache.settings.globalServices?.tts?.enabled)actions.push({icon:"audio",label:"朗读",run:()=>{closeModal();speakMessage(id);}});
+    if(htmlCodeFromMessage(msg.content))actions.push({icon:"code",label:"网页预览",run:()=>openCodePreview(id)});
+    if(cache.settings.globalServices?.tts?.enabled)actions.push({icon:"audio",label:"朗读",run:()=>speakMessage(id)});
     actions.push({icon:"refresh",label:"重新生成",run:()=>regenerateFromMessage(id)});
   }
   actions.push({icon:"copy",label:"复制",run:()=>copyMessageText(id)},{icon:"trash",label:isUser?"撤回消息":"撤回回复",danger:true,run:()=>deleteOneMessage(id)});
-  modal({title:isUser?"用户消息":"AI 回复",body:`<div class="message-action-list">${actions.map((item,index)=>`<button type="button" class="message-action-row ${item.danger?"danger":""}" onclick="runMessageAction('${id}',${index})"><span class="message-action-icon">${icon(item.icon)}</span><span>${item.label}</span></button>`).join("")}</div>`,actions:[{label:"取消",onClick:closeModal}]});
   window.__homyMessageActions=actions;
+  const rect=target.getBoundingClientRect(),layer=document.createElement("div");
+  layer.id="messageActionLayer";layer.className="message-action-layer";
+  layer.innerHTML=`<div class="message-action-popover ${isUser?"user":"assistant"}">${actions.map((item,index)=>`<button type="button" class="message-action-row ${item.danger?"danger":""}" data-action-index="${index}"><span class="message-action-icon">${icon(item.icon)}</span><span>${item.label}</span></button>`).join("")}</div>`;
+  document.body.appendChild(layer);
+  const pop=layer.querySelector(".message-action-popover"),width=Math.min(248,window.innerWidth-28);
+  const left=isUser?Math.max(14,Math.min(window.innerWidth-width-14,rect.right-width)):Math.max(14,Math.min(window.innerWidth-width-14,rect.left));
+  const estimatedHeight=actions.length*48+16;
+  const top=rect.bottom+8+estimatedHeight<window.innerHeight?rect.bottom+8:Math.max(12,rect.top-estimatedHeight-8);
+  pop.style.left=left+"px";pop.style.top=top+"px";pop.style.width=width+"px";
+  layer.addEventListener("click",e=>{if(e.target===layer)closeMessageActionPopover();});
+  layer.querySelectorAll("[data-action-index]").forEach(btn=>btn.addEventListener("click",()=>{
+    const action=window.__homyMessageActions?.[Number(btn.dataset.actionIndex)];
+    closeMessageActionPopover();if(action&&state.chatMessages.some(m=>m.id===id))action.run();
+  }));
 }
-function runMessageAction(id,index){const actions=window.__homyMessageActions||[];const action=actions[index];if(action&&state.chatMessages.some(m=>m.id===id))action.run();}
+function runMessageAction(id,index){const actions=window.__homyMessageActions||[];const action=actions[index];closeMessageActionPopover();if(action&&state.chatMessages.some(m=>m.id===id))action.run();}
 async function deleteOneMessage(id){
   const index=state.chatMessages.findIndex(x=>x.id===id);if(index<0)return;
   const msg=state.chatMessages[index],tail=msg.role==="user"?state.chatMessages.slice(index):[msg];
