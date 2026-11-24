@@ -105,3 +105,13 @@
 .group-user-row .group-head-meta{text-align:right;align-items:flex-end}
 .group-user-row .group-user-message{align-self:flex-end;margin-left:auto}
 .group-ai-row .group-stack{margin-right:auto;align-items:flex-start}
+
+
+/* Keep group user avatar and message together on the right */
+.group-user-row .group-stack{width:min(82%,760px);margin-left:auto;margin-right:0;align-items:stretch;gap:3px}
+.group-user-row .group-head{width:100%;justify-content:flex-end;flex-direction:row-reverse}
+.group-user-row .group-head-meta{justify-content:flex-end;text-align:right}
+.group-user-row .group-user-message{align-self:flex-end;width:auto;max-width:100%}
+.group-ai-row .group-stack{width:min(82%,760px);margin-right:auto;margin-left:0;gap:3px}
+.group-ai-row .group-stack>.reason-box{width:100%;margin:0!important;padding:8px 10px}
+.group-ai-row .group-stack>.group-ai-message{width:100%;margin:0}
