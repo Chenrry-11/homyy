@@ -503,7 +503,7 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 @media(max-width:640px){.msg-stack,.group-stack{flex-basis:82%;width:82%}.msg-avatar{width:28px;height:28px}.msg-head-meta,.group-head-meta{font-size:10px}.message-action-row{min-height:46px}.bubble-live-preview{padding:11px}.bubble-live-preview .msg-stack,.bubble-live-preview .group-stack{flex-basis:88%;width:88%}}
 </style>
   <style>
-/* Embedded from group-chat.css */
+/* bundled from group-chat.css */
 .drawer-group-link{margin-top:8px;background:rgba(255,255,255,.68);color:#8d6b7c;border:1px solid #f0e3e9;box-shadow:none}
 .groups-page,.group-detail-page{width:100%;max-width:900px;margin:0 auto;padding:18px 18px 30px;min-height:100%;overflow:auto}
 .groups-head,.group-detail-head{display:flex;align-items:center;gap:10px;margin-bottom:18px}
@@ -616,7 +616,7 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 
 </style>
   <style>
-/* Embedded from workspace.css */
+/* bundled from workspace.css */
 .workspace-page{position:relative;display:flex;min-height:100%;height:100%;min-width:0;flex-direction:column;padding:24px 24px calc(100px + env(safe-area-inset-bottom));overflow:auto}
 .workspace-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;max-width:1180px;width:100%;margin:0 auto 22px}
 .workspace-head h1{font-size:26px;letter-spacing:.01em}.workspace-head p{margin:5px 0 0;color:var(--sub);font-size:12px}.workspace-eyebrow{color:#b18a9c;font-size:9px;letter-spacing:.14em;font-weight:650;margin-bottom:4px}.workspace-head-action{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.workspace-head-action .btn{height:36px;font-size:12px}.workspace-head-action .i{width:15px;height:15px}
@@ -654,7 +654,7 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 <div class="wrap" id="app"></div>
 
 <script>
-/* Embedded from group-chat.js */
+/* bundled from group-chat.js */
 function openGroups(){state.drawer=false;state.view="groups";render();}
 function groupById(id){return findById(cache.groups||[],id);}
 function groupAvatar(g){return '<span class="group-avatar">'+(g&&g.iconDataUrl?'<img src="'+esc(g.iconDataUrl)+'" alt="">':esc([...(g&&g.name||"群聊")][0]||"群"))+'</span>';}
@@ -904,7 +904,7 @@ async function runGroupTurn(g,userMsg,targetId){
 
 </script>
 <script>
-/* Embedded from workspace.js */
+/* bundled from workspace.js */
 function workspaceNav(active){
   return '<nav class="home-bottom-nav" aria-label="主导航"><button class="home-nav-item" onclick="goHome()"><span class="home-nav-symbol">'+icon("home")+'</span><small>Home</small></button><button class="home-nav-item '+(active==="code"?"active":"")+'" onclick="openWorkspaceModule(\'code\')"><span class="home-nav-symbol">'+icon("code")+'</span><small>Code</small></button><button class="home-nav-item '+(active==="projects"?"active":"")+'" onclick="openWorkspaceModule(\'projects\')"><span class="home-nav-symbol">'+icon("folder")+'</span><small>Projects</small></button><button class="home-nav-item '+(active==="artifacts"?"active":"")+'" onclick="openWorkspaceModule(\'artifacts\')"><span class="home-nav-symbol">'+icon("layers")+'</span><small>Artifacts</small></button></nav>';
 }
