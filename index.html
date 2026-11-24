@@ -410,6 +410,44 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 .drawer-group-add .i{width:17px;height:17px}
 .drawer-group-session{display:flex;align-items:center;gap:8px;width:100%;margin:2px 0;text-align:left}
 .drawer-group-session.active{background:var(--accent-soft);color:var(--accent)}
+/* Home interactions, vertical composer and live reasoning */
+.home-poke-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px}
+.home-poke-card{display:flex;min-width:0;flex-direction:column;align-items:center;gap:5px;padding:15px 9px 12px;border:1px solid rgba(231,214,223,.82);border-radius:18px;background:rgba(255,255,255,.68);box-shadow:0 8px 24px rgba(105,70,88,.045);transition:transform .2s,box-shadow .2s}
+.home-poke-card:active,.home-poke-card.poked{transform:translateY(-3px) scale(1.025);box-shadow:0 10px 26px rgba(105,70,88,.12)}
+.home-poke-avatar{display:grid;place-items:center;width:54px;height:54px;margin-bottom:3px;border:1px solid #ead6e0;border-radius:50%;padding:4px;background:linear-gradient(145deg,#fff,#f0dfe7);box-shadow:0 4px 12px rgba(105,70,88,.1)}
+.home-poke-avatar .avatar{width:100%;height:100%;font-size:18px}
+.home-poke-card strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.home-poke-card small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sub);font-size:10px}
+.poke-hint{color:#b07b94;font-size:10px}
+.poke-reaction{min-height:0;margin-top:0;color:#916d80;font-size:12px;text-align:center;opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s}
+.poke-reaction.show{margin-top:12px;opacity:1;transform:translateY(0)}
+.home-poke-empty{padding:18px;border:1px dashed var(--line);border-radius:16px;color:var(--sub);font-size:12px;text-align:center}
+.home-profile-entry{display:flex;align-items:center;justify-content:center;padding:4px;border-radius:50%;transition:transform .18s}
+.home-profile-entry:active{transform:scale(.9)}
+.home-profile-frame{display:flex;padding:3px;border:1px solid #ead6e0;border-radius:50%;background:linear-gradient(145deg,#fff,#f0dfe7);box-shadow:0 4px 12px rgba(105,70,88,.1)}
+.home-profile-frame .avatar{width:34px;height:34px}
+.home-daily-card{display:flex;align-items:center;gap:15px;padding:18px;border:1px solid rgba(231,214,223,.82);border-radius:18px;background:linear-gradient(120deg,rgba(255,255,255,.8),rgba(247,234,240,.78));box-shadow:0 8px 25px rgba(105,70,88,.045)}
+.daily-orbit{display:grid;place-items:center;width:42px;height:42px;flex:none;border:1px solid #e9d6e0;border-radius:15px;background:#f8edf2;color:#a87891;font-family:Georgia,serif;font-size:20px}
+.home-daily-card h3{margin:3px 0 4px;font-size:15px}.home-daily-card p{margin:0;color:#887780;font-size:12px;line-height:1.7}
+.home-music-card{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid rgba(231,214,223,.82);border-radius:18px;background:rgba(255,255,255,.76);box-shadow:0 8px 25px rgba(105,70,88,.045)}
+.music-art{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;gap:3px;border-radius:14px;background:linear-gradient(145deg,#f7eaf0,#ead6e0)}
+.music-art span{width:3px;border-radius:4px;background:#b9829b;animation:musicWave 1.1s ease-in-out infinite alternate}.music-art span:nth-child(1){height:12px}.music-art span:nth-child(2){height:22px;animation-delay:.15s}.music-art span:nth-child(3){height:16px;animation-delay:.3s}.music-art span:nth-child(4){height:9px;animation-delay:.45s}
+@keyframes musicWave{to{transform:scaleY(.45);opacity:.55}}
+.music-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}.music-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.music-copy small{color:var(--sub);font-size:10px}
+.music-add{padding:7px 9px;border:1px solid var(--line);border-radius:10px;color:#986d82;font-size:10px;white-space:nowrap}
+.music-toggle{display:grid;width:34px;height:34px;flex:none;place-items:center;border-radius:50%;background:#bd829b;color:white}.music-toggle:disabled{opacity:.35}.music-toggle.playing{background:#8e6379}
+.home-music-card audio{display:none}
+.composer-command-menu{position:absolute;left:8px;bottom:calc(100% + 10px);z-index:24;display:flex;width:min(250px,calc(100vw - 32px));flex-direction:column;gap:4px;padding:7px;border:1px solid rgba(226,202,215,.9);border-radius:16px;background:rgba(255,252,253,.97);backdrop-filter:blur(20px);box-shadow:0 14px 36px rgba(72,45,60,.17);animation:composerRise .18s cubic-bezier(.2,.75,.25,1)}
+.composer-command-menu button{display:flex;align-items:center;width:100%;padding:11px 12px;border-radius:11px;text-align:left}.composer-command-menu button:active{background:#f7eaf0}
+.composer-menu-copy{display:flex;flex-direction:column;gap:2px}.composer-menu-copy strong{font-size:12px}.composer-menu-copy small{color:var(--sub);font-size:10px}
+@keyframes composerRise{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.reason-box[open]{padding:8px 10px;border:1px solid rgba(226,202,215,.55);border-radius:12px;background:rgba(248,238,243,.65)}
+.reason-box pre{max-height:260px;overflow:auto}.reasoning-pending{display:flex;align-items:center;gap:8px;color:#9a7b8a;font-size:11px}
+.reason-pulse{width:6px;height:6px;border-radius:50%;background:#bd829b;box-shadow:0 0 0 4px rgba(189,130,155,.13);animation:reasonPulse 1s infinite alternate}@keyframes reasonPulse{to{opacity:.35;transform:scale(.8)}}
+.msg-row.user{justify-content:flex-start}
+.msg-row.user .msg.user{border-radius:18px 18px 18px 4px}
+.composer-style-link{display:none!important}
+@media(max-width:520px){.home-poke-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.home-poke-card{padding:12px 5px 10px}.home-poke-avatar{width:48px;height:48px}.home-music-card{gap:8px;padding:11px}.music-art{width:38px;height:38px}.music-add{padding:6px 7px}.music-toggle{width:31px;height:31px}.home-daily-card{padding:14px;gap:11px}}
 </style>
   <link rel="stylesheet" href="./group-chat.css">
   <link rel="stylesheet" href="./workspace.css">
