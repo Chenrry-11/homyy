@@ -19,7 +19,7 @@ function viewWorkspaceCode(){
     (files.map(f=>'<button class="workspace-file-row '+(current&&f.id===current.id?"active":"")+'" onclick="openWorkspaceCode(\''+f.id+'\')"><span class="workspace-file-icon">'+icon("file")+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.language||"text")+' · '+fmtTime(f.updatedAt)+'</small></span></button>').join("")||'<div class="workspace-empty-mini">还没有文件</div>')+'</aside>';
   let editor='';
   if(current){
-    editor='<section class="workspace-editor"><div class="workspace-editor-toolbar"><input id="workspaceCodeName" value="'+esc(current.name)+'" aria-label="文件名"><select id="workspaceCodeProject" aria-label="关联项目"><option value="">不关联项目</option>'+projectOptions+'</select><span class="spacer"></span><button class="btn" onclick="downloadWorkspaceCode(\''+current.id+'\')">'+icon("download")+' 下载</button><button class="btn btn-primary" onclick="saveWorkspaceCode()">'+icon("check")+' 保存</button></div><textarea id="workspaceCodeContent" class="workspace-code-input" spellcheck="false" autocapitalize="off" autocomplete="off">'+esc(current.content||"")+'</textarea><div class="workspace-editor-foot"><span>'+esc(current.language||"text")+'</span><span>'+String((current.content||"").length)+' 字符</span><span class="spacer"></span>'+(current.language==="html"||/\.html?$/i.test(current.name)?'<button class="text-action" onclick="previewWorkspaceCode(\''+current.id+'\')">预览网页</button>':'')+'<button class="text-action danger-text" onclick="deleteWorkspaceCode(\''+current.id+'\')">删除文件</button></div></section>';
+    editor='<section class="workspace-editor"><div class="workspace-editor-toolbar"><input id="workspaceCodeName" value="'+esc(current.name)+'" aria-label="文件名"><select id="workspaceCodeProject" aria-label="关联项目"><option value="">不关联项目</option>'+projectOptions+'</select><span class="spacer"></span><button class="btn" onclick="downloadWorkspaceCode(\''+current.id+'\')">'+icon("download")+' 下载</button><button class="btn btn-primary" onclick="saveWorkspaceCode()">'+icon("check")+' 保存</button></div><textarea id="workspaceCodeContent" class="workspace-code-input" spellcheck="false" autocapitalize="off" autocomplete="off">'+esc(current.content||"")+'</textarea><div class="workspace-editor-foot"><span>'+esc(current.language||"text")+'</span><span>'+String((current.content||"").length)+' 字符</span><span class="spacer"></span>'+(current.language==="html"||/\.html?$/i.test(current.name)?'<button class="text-action" onclick="previewWorkspaceCode(\''+current.id+'\')">预览网页</button>':'')+'<button class="text-action" onclick="showWorkspaceCodeVersions(\\''+current.id+'\\')">历史版本（'+(current.versions||[]).length+'）</button>'+'<button class="text-action danger-text" onclick="deleteWorkspaceCode(\''+current.id+'\')">删除文件</button></div></section>';
   }else editor='<section class="workspace-editor workspace-editor-empty"><div class="workspace-empty-mark">'+icon("code")+'</div><h2>本地代码工作区</h2><p>创建文件后，可以在这里编辑、保存、下载。HTML 文件还可以直接预览。</p><button class="btn btn-primary" onclick="createWorkspaceCode()">新建文件</button></section>';
   return workspaceHeader("Code","本地文件编辑器 · 内容保存在当前设备",'<button class="btn btn-primary" onclick="createWorkspaceCode()">'+icon("plus")+' 新建文件</button>')+'<div class="workspace-code-layout">'+list+editor+'</div>';
 }
@@ -48,6 +48,22 @@ async function saveWorkspaceCode(){
 function downloadWorkspaceCode(id){
   const f=findById(workspaceItems("code"),id);if(!f)return;
   downloadTextFile(f.name||"code.txt",f.content||"",f.language==="html"?"text/html;charset=utf-8":"text/plain;charset=utf-8");
+}
+
+function showWorkspaceCodeVersions(id){
+  const file=findById(workspaceItems("code"),id);if(!file)return;
+  const versions=Array.isArray(file.versions)?file.versions:[];
+  const rows=versions.map((v,index)=>({v,index})).reverse().map(({v,index})=>
+    '<div class="workspace-version-row"><div><strong>版本 '+(versions.length-index)+'</strong><small>'+esc(fmtTime(v.savedAt||""))+' · '+String((v.content||"").length)+' 字符</small></div><button class="btn" onclick="restoreWorkspaceCodeVersion(\''+id+'\','+index+')">恢复此版本</button></div>'
+  ).join("");
+  modal({title:"文件历史版本",body:rows?'<div class="workspace-version-list">'+rows+'</div>':'<div class="workspace-empty-mini">还没有历史版本。修改文件并保存后，旧内容会自动留档。</div>',actions:[{label:"关闭",onClick:closeModal}]});
+}
+async function restoreWorkspaceCodeVersion(id,index){
+  const file=findById(workspaceItems("code"),id);if(!file)return;
+  const versions=Array.isArray(file.versions)?file.versions.slice():[],version=versions[index];if(!version)return;
+  versions.push({content:file.content||"",savedAt:file.updatedAt||nowISO()});
+  Object.assign(file,{content:version.content||"",versions:versions.slice(-20),updatedAt:nowISO()});
+  await dbPut("workspaceItems",file);state.workspaceEditorId=id;closeModal();await loadCache();render();toast("已恢复历史版本，原内容也已留档");
 }
 function previewWorkspaceCode(id){
   const f=findById(workspaceItems("code"),id);if(!f)return;
@@ -93,7 +109,7 @@ async function deleteWorkspaceProject(id){
 }
 function viewWorkspaceArtifacts(){
   const items=workspaceItems("artifact");
-  const cards=items.map(x=>'<article class="workspace-artifact-row"><div class="workspace-artifact-icon">'+icon(x.mime?.startsWith("image/")?"image":"file")+'</div><div class="workspace-artifact-copy"><strong>'+esc(x.name)+'</strong><small>'+esc(x.source||"本地文件")+' · '+esc(workspaceProjectName(x.projectId))+' · '+fmtTime(x.updatedAt)+'</small><p>'+esc((x.content||x.description||"").slice(0,120))+'</p></div><div class="workspace-artifact-actions"><button class="icon-btn" onclick="downloadWorkspaceArtifact(\''+x.id+'\')" aria-label="下载">'+icon("download")+'</button>'+(x.dataUrl?'':'<button class="icon-btn" onclick="editWorkspaceArtifact(\''+x.id+'\')" aria-label="编辑">'+icon("edit")+'</button>')+'<button class="icon-btn danger-text" onclick="deleteWorkspaceArtifact(\''+x.id+'\')" aria-label="删除">'+icon("trash")+'</button></div></article>').join("");
+  const cards=items.map(x=>'<article class="workspace-artifact-row"><div class="workspace-artifact-icon">'+icon(x.mime?.startsWith("image/")?"image":"file")+'</div><div class="workspace-artifact-copy"><strong>'+(x.mime?.startsWith("image/")&&x.dataUrl?'<button class="workspace-artifact-preview-link" onclick="previewWorkspaceArtifact(\\''+x.id+'\\')">'+esc(x.name)+'</button>':esc(x.name))+'</strong><small>'+esc(x.source||"本地文件")+' · '+esc(workspaceProjectName(x.projectId))+' · '+fmtTime(x.updatedAt)+'</small><p>'+esc((x.content||x.description||"").slice(0,120))+'</p></div><div class="workspace-artifact-actions"><button class="icon-btn" onclick="editWorkspaceArtifactProject(\\''+x.id+'\\')" aria-label="关联项目">'+icon("folder")+'</button><button class="icon-btn" onclick="downloadWorkspaceArtifact(\''+x.id+'\')" aria-label="下载">'+icon("download")+'</button>'+(x.dataUrl?'':'<button class="icon-btn" onclick="editWorkspaceArtifact(\''+x.id+'\')" aria-label="编辑">'+icon("edit")+'</button>')+'<button class="icon-btn danger-text" onclick="deleteWorkspaceArtifact(\''+x.id+'\')" aria-label="删除">'+icon("trash")+'</button></div></article>').join("");
   return workspaceHeader("Artifacts","集中保存文档、图片、代码片段与 AI 产物",'<button class="btn" onclick="chooseWorkspaceArtifactFile()">'+icon("plus")+' 上传文件</button><button class="btn btn-primary" onclick="editWorkspaceArtifact()">'+icon("edit")+' 新建笔记</button>')+'<div class="workspace-artifact-list">'+(cards||'<div class="workspace-empty"><div class="workspace-empty-mark">'+icon("layers")+'</div><h2>还没有产物</h2><p>上传文件、记录笔记，或把最近的 AI 回复保存到这里。内容保存在本机。</p><button class="btn" onclick="saveLatestAssistantArtifact()">保存最近一条 AI 回复</button></div>')+'</div><div class="workspace-artifact-footer"><button class="text-action" onclick="saveLatestAssistantArtifact()">＋ 保存最近一条 AI 回复</button></div>';
 }
 function editWorkspaceArtifact(id){
@@ -119,6 +135,24 @@ async function saveLatestAssistantArtifact(){
   if(!latest){toast("还没有可保存的 AI 回复");return;}
   const session=findById(cache.sessions,latest.sessionId),ts=nowISO(),rec={id:uid("artifact"),kind:"artifact",name:(session?.title||"AI 回复")+" · "+fmtTime(latest.createdAt),mime:"text/markdown",content:latest.content,source:"AI 对话",sessionId:latest.sessionId,projectId:null,createdAt:ts,updatedAt:ts};
   await dbPut("workspaceItems",rec);await loadCache();render();toast("最近一条 AI 回复已保存");
+}
+
+function editWorkspaceArtifactProject(id){
+  const item=findById(workspaceItems("artifact"),id);if(!item)return;
+  const projects=workspaceItems("project");
+  modal({title:"关联项目",body:'<div class="field"><label>选择项目</label><select id="artifactProjectLink"><option value="">不关联项目</option>'+projects.map(p=>'<option value="'+esc(p.id)+'" '+(item.projectId===p.id?"selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>',actions:[{label:"取消",onClick:closeModal},{label:"保存",primary:true,onClick:async()=>{
+    item.projectId=document.getElementById("artifactProjectLink").value||null;item.updatedAt=nowISO();
+    await dbPut("workspaceItems",item);closeModal();await loadCache();render();toast("项目关联已更新");
+  }}]});
+}
+function previewWorkspaceArtifact(id){
+  const item=findById(workspaceItems("artifact"),id);if(!item||!item.mime?.startsWith("image/")||!item.dataUrl)return;
+  const mask=document.createElement("div");mask.className="artifact-preview-mask";
+  mask.innerHTML='<section class="artifact-preview-panel"><header><strong></strong><span class="spacer"></span><button class="btn icon-btn" aria-label="关闭">'+icon("x")+'</button></header><div class="artifact-preview-stage"><img alt=""></div></section>';
+  mask.querySelector("header strong").textContent=item.name||"图片预览";
+  const img=mask.querySelector("img");img.src=item.dataUrl;img.alt=item.name||"图片预览";
+  const close=()=>mask.remove();mask.querySelector("header button").onclick=close;
+  mask.addEventListener("click",event=>{if(event.target===mask)close();});document.body.appendChild(mask);
 }
 function downloadWorkspaceArtifact(id){
   const x=findById(workspaceItems("artifact"),id);if(!x)return;
