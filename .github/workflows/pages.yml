@@ -2,7 +2,7 @@ name: Deploy static site to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "work/homy-workspace-shell-settings"]
   workflow_dispatch:
 
 permissions:
@@ -12,23 +12,49 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Validate JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.active=False; self.parts=[]; self.blocks=[]
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'script' and not dict(attrs).get('src'):
+                      self.active=True; self.parts=[]
+              def handle_data(self, data):
+                  if self.active: self.parts.append(data)
+              def handle_endtag(self, tag):
+                  if tag == 'script' and self.active:
+                      self.blocks.append(''.join(self.parts)); self.active=False
+          parser=Scripts()
+          with open('index.html', encoding='utf-8') as source: parser.feed(source.read())
+          for index, block in enumerate(parser.blocks):
+              with open(f'/tmp/homy-inline-{index}.js', 'w', encoding='utf-8') as target: target.write(block)
+          PY
+          for file in /tmp/homy-inline-*.js group-chat.js workspace.js; do node --check "$file"; done
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "."
+
+  deploy:
+    needs: build
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'github-pages' || 'github-pages-preview' }}
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

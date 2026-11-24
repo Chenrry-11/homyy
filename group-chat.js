@@ -26,12 +26,14 @@ async function createGroupFromDialog(){
  autoReply:true,autoReplyPaused:false,allowCrossTalk:true,maxAutoReplies:2,createdAt:ts,updatedAt:ts};
  await dbPut("groups",g);closeModal();await loadCache();openGroup(g.id);
 }
-function openGroup(id){if(state.groupRunning)stopGroupTurn(true);state.groupId=id;state.view="groupChat";state.groupComposerMode="message";state.groupThinkingOverride=null;state.groupIconDraft="";state.groupMessages=[];state.drawer=false;render();}
+function openGroup(id){if(state.groupRunning)stopGroupTurn(true);if(typeof captureConversationOrigin==="function")captureConversationOrigin();state.groupId=id;state.view="groupChat";state.groupComposerMode="message";state.groupThinkingOverride=null;state.groupIconDraft="";state.groupMessages=[];state.drawer=false;render();}
 function openGroupDetail(){state.groupIconDraft="";state.view="groupDetail";render();}
+function backFromGroupDetail(){if(typeof navigateBack==="function"&&navigateBack())return;openGroup(state.groupId);}
+function backToGroups(){if(typeof navigateBack==="function"&&navigateBack())return;openGroups();}
 function viewGroupDetail(){
  var g=groupById(state.groupId);if(!g)return "";
  var members=(g.members||[]).map(m=>{var p=findById(cache.persons,m.personId),model=findById(cache.models,m.modelId);if(!p)return "";return '<div class="group-member-setting">'+avatar(p.name,p.avatar)+'<div class="group-member-setting-copy"><strong>'+esc(p.name)+'</strong><small>'+esc(model?model.name:"未选择模型")+' · 深度思考'+(m.thinkingEnabled===false?"关闭":"开启")+'</small></div><button class="btn" onclick="openGroupMemberSettings(\''+m.personId+'\')">模型与思考</button><button class="icon-btn" onclick="removeGroupMember(\''+m.personId+'\')">'+icon("x")+'</button></div>';}).join("");
- return '<div class="group-detail-page"><header class="group-detail-head"><button class="icon-btn" onclick="openGroup(\''+g.id+'\')">'+icon("back")+'</button><div><h2>群聊详情</h2><div class="muted small">群资料、成员与发言规则</div></div><span class="spacer"></span><button class="btn btn-danger" onclick="deleteGroup(\''+g.id+'\')">删除群聊</button></header>'+
+ return '<div class="group-detail-page"><header class="group-detail-head"><button class="icon-btn" onclick="backFromGroupDetail()">'+icon("back")+'</button><div><h2>群聊详情</h2><div class="muted small">群资料、成员与发言规则</div></div><span class="spacer"></span><button class="btn btn-danger" onclick="deleteGroup(\''+g.id+'\')">删除群聊</button></header>'+
  '<div class="card"><div class="group-icon-preview">'+groupAvatar(g)+'<div><strong>'+esc(g.name)+'</strong><div class="muted small">群图标与名称只影响这个群聊</div></div></div><div class="field"><label>更换群图标</label><input id="groupDetailIcon" type="file" accept="image/*" onchange="previewGroupIcon(this)"></div><div class="field"><label>群名称</label><input id="groupDetailName" maxlength="40" value="'+esc(g.name)+'"></div><div class="field"><label>群公告 / 群聊目的</label><textarea id="groupDetailAnnouncement" rows="4">'+esc(g.announcement||"")+'</textarea></div><button class="btn btn-primary" onclick="saveGroupDetail()">保存群资料</button></div>'+
  '<div class="card"><div class="row"><strong>群成员（'+(g.members||[]).length+'）</strong><span class="spacer"></span><button class="btn" onclick="addGroupMembersDialog()">添加成员</button></div>'+members+'</div>'+
  '<div class="card"><strong>群聊行为</strong><div class="field"><label>默认交流模式</label><select id="groupDetailMode"><option value="chat" '+(g.mode==="chat"?"selected":"")+'>闲聊</option><option value="solo" '+(g.mode==="solo"?"selected":"")+'>单人交流</option><option value="task" '+(g.mode==="task"?"selected":"")+'>协作讨论</option></select></div><div class="field"><label>单人交流对象</label><select id="groupDetailSolo">'+(g.members||[]).map(m=>{var p=findById(cache.persons,m.personId);return p?'<option value="'+p.id+'" '+(g.soloMemberId===p.id?"selected":"")+'>'+esc(p.name)+'</option>':"";}).join("")+'</select></div><label class="switch"><input id="groupDetailAuto" type="checkbox" '+(g.autoReply!==false?"checked":"")+'>允许 AI 自动接话</label><br><label class="switch"><input id="groupDetailCross" type="checkbox" '+(g.allowCrossTalk!==false?"checked":"")+'>允许 AI 之间继续接话</label><div class="field" style="margin-top:12px"><label>每条用户消息最多自动接话次数</label><input id="groupDetailMax" type="number" min="1" max="5" value="'+(Number(g.maxAutoReplies)||2)+'"></div><button class="btn btn-primary" onclick="saveGroupBehavior()">保存群聊规则</button></div></div>';
@@ -85,24 +87,71 @@ async function deleteGroup(id){
 }
 
 function loadGroupMessages(){return idbReq(tx("groupMessages").index("groupId").getAll(state.groupId)).then(rows=>{state.groupMessages=rows.sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));renderGroupMessages({forceBottom:true});});}
-function groupMessageHTML(m){
- if(m.role==="user")return '<div class="group-user-row"><div class="msg group-user-message"><div class="msg-body">'+esc(m.content)+'</div><div class="group-msg-meta"><span>你</span><span>'+fmtTime(m.createdAt)+'</span></div></div><span class="msg-avatar">'+avatar(cache.settings.userName||"我",cache.settings.userAvatar)+'</span></div>';
+function groupMessageHTML(m,options={}){
  if(m.role==="narrator")return '<div class="group-narrator"><span class="group-narrator-label">旁白 · 用户发布</span>'+esc(m.content)+'</div>';
  if(m.role==="system-note")return '<div class="msg sysnote">'+esc(m.content)+'</div>';
  if(m.role==="error")return '<div class="msg err">'+esc(m.content)+'</div>';
- var p=findById(cache.persons,m.personId),model=findById(cache.models,m.modelId);
- var reason=m.reasoning?'<details class="reason-box"><summary><span>深度思考</span><span class="reason-hint">模型提供 · 点击展开</span></summary><pre>'+esc(m.reasoning)+'</pre></details>':"";
- return '<div class="group-ai-row"><span class="msg-avatar">'+(p?avatar(p.name,p.avatar):avatar("AI",""))+'</span><div class="msg group-ai-message">'+reason+'<div class="group-ai-head"><strong>'+esc(p?p.name:"AI")+'</strong></div><div class="msg-body">'+esc(m.content)+'</div><div class="group-msg-meta"><span>'+esc(model?model.name:m.modelId||"模型")+'</span><span>'+(m.thinkingUsed?"深度思考":"")+'</span><span>'+fmtTime(m.createdAt)+'</span></div></div></div>';
+ if(m.role==="user"){
+  var userBubble='<div class="msg group-user-message" '+(options.preview?'':'data-group-msg-id="'+m.id+'" data-role="user"')+'><div class="msg-body">'+esc(m.content)+'</div></div>';
+  return messageAnatomyHTML({rowClass:"group-user-row",stackClass:"group-stack",headClass:"group-head",metaClass:"group-head-meta",avatarHTML:avatar(cache.settings.userName||"我",cache.settings.userAvatar),metaHTML:'<span>'+fmtTime(m.createdAt)+'</span>',bubbleHTML:userBubble,actionsHTML:messageActionButtonsHTML(m.id,"user",true,options.preview),preview:options.preview});
+ }
+ var p=options.person||findById(cache.persons,m.personId),reason=messageReasoningHTML(m.reasoning,!!m.thinkingUsed);
+ var bubble='<div class="msg group-ai-message" '+(options.preview?'':'data-group-msg-id="'+m.id+'" data-role="assistant"')+'><div class="msg-body">'+esc(m.content)+'</div></div>';
+ var meta='<strong>'+esc(p?p.name:"AI")+'</strong><span>'+fmtTime(m.createdAt)+'</span>';
+ return messageAnatomyHTML({rowClass:"group-ai-row",stackClass:"group-stack",headClass:"group-head",metaClass:"group-head-meta",avatarHTML:p?avatar(p.name,p.avatar):avatar("AI",""),metaHTML:meta,reasonHTML:reason,bubbleHTML:bubble,actionsHTML:messageActionButtonsHTML(m.id,"assistant",true,options.preview),preview:options.preview});
 }
+function bindGroupMessageEvents(list){
+ if(list.dataset.eventsBound==="1")return;list.dataset.eventsBound="1";
+ var timer=null,targetId=null,moved=false;
+ var clear=function(){if(timer)clearTimeout(timer);timer=null;targetId=null;};
+ list.addEventListener("contextmenu",function(e){var node=e.target.closest(".msg[data-group-msg-id]");if(!node)return;e.preventDefault();openGroupMessageActions(node.dataset.groupMsgId);});
+ list.addEventListener("pointerdown",function(e){var node=e.target.closest(".msg[data-group-msg-id]");if(!node)return;targetId=node.dataset.groupMsgId;moved=false;timer=setTimeout(function(){if(!moved&&targetId)openGroupMessageActions(targetId);clear();},560);});
+ list.addEventListener("pointermove",function(){moved=true;if(timer)clearTimeout(timer);timer=null;});
+ ["pointerup","pointercancel","pointerleave"].forEach(function(type){list.addEventListener(type,clear);});
+}
+function openGroupMessageActions(id){
+ var msg=(state.groupMessages||[]).find(function(x){return x.id===id;});if(!msg)return;
+ var target=document.querySelector('.msg[data-group-msg-id="'+id+'"]');if(!target)return;
+ closeMessageActionPopover();
+ var isUser=msg.role==="user",actions=isUser
+  ? [{icon:"copy",label:"复制",run:function(){copyGroupMessageText(id);}},{icon:"trash",label:"撤回消息",danger:true,run:function(){deleteGroupMessage(id);}}]
+  : [{icon:"refresh",label:"重新生成",run:function(){regenerateGroupMessage(id);}},{icon:"copy",label:"复制",run:function(){copyGroupMessageText(id);}},{icon:"trash",label:"撤回回复",danger:true,run:function(){deleteGroupMessage(id);}}];
+ window.__homyGroupMessageActions=actions;
+ var rect=target.getBoundingClientRect(),layer=document.createElement("div");layer.id="messageActionLayer";layer.className="message-action-layer";
+ layer.innerHTML='<div class="message-action-popover '+(isUser?"user":"assistant")+'">'+actions.map(function(item,index){return '<button type="button" class="message-action-row '+(item.danger?"danger":"")+'" data-action-index="'+index+'"><span class="message-action-icon">'+icon(item.icon)+'</span><span>'+item.label+'</span></button>';}).join("")+'</div>';
+ document.body.appendChild(layer);
+ var pop=layer.querySelector(".message-action-popover"),width=Math.min(248,window.innerWidth-28),left=isUser?Math.max(14,Math.min(window.innerWidth-width-14,rect.right-width)):Math.max(14,Math.min(window.innerWidth-width-14,rect.left)),estimatedHeight=actions.length*48+16,top=rect.bottom+8+estimatedHeight<window.innerHeight?rect.bottom+8:Math.max(12,rect.top-estimatedHeight-8);
+ pop.style.left=left+"px";pop.style.top=top+"px";pop.style.width=width+"px";
+ layer.addEventListener("click",function(e){if(e.target===layer)closeMessageActionPopover();});
+ layer.querySelectorAll("[data-action-index]").forEach(function(btn){btn.addEventListener("click",function(){var action=window.__homyGroupMessageActions?.[Number(btn.dataset.actionIndex)];closeMessageActionPopover();if(action)action.run();});});
+}
+async function copyGroupMessageText(id){
+ var msg=(state.groupMessages||[]).find(function(x){return x.id===id;});if(!msg)return;
+ try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(msg.content||"");else{var box=document.createElement("textarea");box.value=msg.content||"";document.body.appendChild(box);box.select();document.execCommand("copy");box.remove();}toast("已复制");}catch(e){toast("复制失败，请手动选择文字");}
+}
+async function deleteGroupMessage(id){
+ var msg=(state.groupMessages||[]).find(function(x){return x.id===id;});if(!msg)return;
+ await dbDelete("groupMessages",id);state.groupMessages=state.groupMessages.filter(function(x){return x.id!==id;});closeMessageActionPopover();renderGroupMessages();toast("群聊消息已撤回");
+}
+async function regenerateGroupMessage(id){
+ var index=(state.groupMessages||[]).findIndex(function(x){return x.id===id;}),msg=state.groupMessages[index];if(!msg||msg.role!=="assistant")return;
+ var userMsg=null;for(var i=index-1;i>=0;i--){if(state.groupMessages[i].role==="user"){userMsg=state.groupMessages[i];break;}}
+ if(!userMsg){toast("找不到对应的群聊用户消息");return;}
+ var group=groupById(state.groupId);if(!group)return;
+ var tail=state.groupMessages.slice(index);for(var item of tail)await dbDelete("groupMessages",item.id);
+ state.groupMessages=state.groupMessages.filter(function(item){return !tail.some(function(x){return x.id===item.id;});});
+ closeMessageActionPopover();renderGroupMessages({forceBottom:true});await runGroupTurn(group,userMsg,msg.personId);
+}
+
 function renderGroupMessages(options){
  var list=document.getElementById("groupMsgList");if(!list)return;var near=list.scrollHeight-list.scrollTop-list.clientHeight<150;
- list.innerHTML=(state.groupMessages||[]).map(groupMessageHTML).join("");if((options&&options.forceBottom)||near)list.scrollTop=list.scrollHeight;renderGroupStatus();
+ list.innerHTML=(state.groupMessages||[]).map(groupMessageHTML).join("");bindGroupMessageEvents(list);if((options&&options.forceBottom)||near)list.scrollTop=list.scrollHeight;renderGroupStatus();
 }
 function renderGroupStatus(){var el=document.getElementById("groupStatus");if(el)el.textContent=state.groupStatus||"";var stop=document.getElementById("groupStopBtn");if(stop)stop.disabled=!state.groupRunning;}
 function viewGroupChat(){
  var g=groupById(state.groupId);if(!g)return "";var members=(g.members||[]).filter(m=>findById(cache.persons,m.personId));
  var chips=members.map(m=>{var p=findById(cache.persons,m.personId);return '<button class="group-member-chip '+(state.groupControllers.has(m.personId)?"running":"")+'" onclick="openGroupMemberSettings(\''+m.personId+'\')" title="'+esc(p.name)+' · 模型与思考设置">'+avatar(p.name,p.avatar)+'<span>'+esc(p.name)+'</span></button>';}).join("");
- return '<div class="chat-page"><div class="topbar group-topbar"><button class="btn icon-btn" onclick="openGroups()">'+icon("back")+'</button><button class="group-title-button" onclick="openGroupDetail()">'+groupAvatar(g)+'<span class="group-title-copy"><strong>'+esc(g.name)+'</strong><small>群聊详情</small></span></button><select class="group-mode-select" onchange="changeGroupMode(this.value)"><option value="chat" '+(g.mode==="chat"?"selected":"")+'>闲聊</option><option value="solo" '+(g.mode==="solo"?"selected":"")+'>单人</option><option value="task" '+(g.mode==="task"?"selected":"")+'>讨论</option></select><div class="group-member-strip">'+chips+'</div><button class="btn" onclick="toggleGroupPause()">'+(g.autoReplyPaused?"恢复":"暂停")+'</button><button class="btn btn-stop" id="groupStopBtn" onclick="stopGroupTurn()" '+(state.groupRunning?"":"disabled")+'>停止</button></div>'+
+ return '<div class="chat-page"><div class="topbar group-topbar"><button class="btn icon-btn" onclick="backToGroups()">'+icon("back")+'</button><button class="group-title-button" onclick="openGroupDetail()">'+groupAvatar(g)+'<span class="group-title-copy"><strong>'+esc(g.name)+'</strong><small>群聊详情</small></span></button><select class="group-mode-select" onchange="changeGroupMode(this.value)"><option value="chat" '+(g.mode==="chat"?"selected":"")+'>闲聊</option><option value="solo" '+(g.mode==="solo"?"selected":"")+'>单人</option><option value="task" '+(g.mode==="task"?"selected":"")+'>讨论</option></select><div class="group-member-strip">'+chips+'</div><button class="btn" onclick="toggleGroupPause()">'+(g.autoReplyPaused?"恢复":"暂停")+'</button><button class="btn btn-stop" id="groupStopBtn" onclick="stopGroupTurn()" '+(state.groupRunning?"":"disabled")+'>停止</button></div>'+
  '<div class="group-status" id="groupStatus">'+esc(state.groupStatus||"")+'</div><div class="msg-list" id="groupMsgList"></div><div class="chat-input"><div class="group-composer-mode" id="groupComposerMode">'+(state.groupComposerMode==="narrator"?"旁白模式 · 第三方视角发布，不触发 AI 回复":"")+'</div><div class="input-row group-chat-input"><button class="btn icon-btn composer-attach" onclick="openGroupComposerMenu()">'+icon("plus")+'</button><div class="group-command-menu hidden" id="groupCommandMenu"></div><textarea id="groupChatInput" rows="1" placeholder="'+(state.groupComposerMode==="narrator"?"编写旁白内容……":"发消息给群聊……")+'"></textarea><button class="btn icon-btn" title="本轮深度思考设置" onclick="cycleGroupThinkingOverride()">脑</button><button class="btn btn-primary" onclick="sendGroupMessage()">发送</button></div><div class="composer-style-link"><button onclick="openGroupDetail()">群聊设置与成员模型</button></div></div></div>';
 }
 async function changeGroupMode(mode){var g=groupById(state.groupId);if(!g)return;await dbPut("groups",Object.assign({},g,{mode:mode,updatedAt:nowISO()}));await loadCache();render();}
