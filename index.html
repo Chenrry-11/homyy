@@ -703,6 +703,15 @@ function openSessionActions(id){
     {label:"保存名称",primary:true,onClick:async()=>{const title=document.getElementById("sessionTitleEdit").value.trim();if(!title){toast("窗口名称不能为空");return;}await dbPut("sessions",Object.assign({},session,{title:title.slice(0,40),updatedAt:nowISO()}));closeModal();await loadCache();render();}}
   ]});
 }
+function bindDrawerSwipe(){
+  const app=document.getElementById('app');if(!app||app.dataset.drawerSwipe==='1')return;app.dataset.drawerSwipe='1';
+  let start=null;
+  app.addEventListener('touchstart',e=>{const t=e.touches&&e.touches[0];if(!t)return;start={x:t.clientX,y:t.clientY};},{passive:true});
+  app.addEventListener('touchend',e=>{if(!start)return;const t=e.changedTouches&&e.changedTouches[0],origin=start;start=null;if(!t)return;const dx=t.clientX-origin.x,dy=t.clientY-origin.y;if(Math.abs(dx)<68||Math.abs(dx)<Math.abs(dy)*1.25)return;
+    if(!state.drawer&&origin.x<=22&&dx>0){state.drawer=true;render();return;}
+    if(state.drawer&&origin.x<=Math.min(340,window.innerWidth*.88)&&dx<0){state.drawer=false;render();}
+  },{passive:true});
+}
 function bindDrawerSessionEvents(){
   const drawer=document.querySelector(".drawer-shell");if(!drawer||drawer.dataset.sessionEvents==="1")return;
   drawer.dataset.sessionEvents="1";let timer=null,target=null,moved=false,longPressed=false;
@@ -869,6 +878,7 @@ async function render(){
   app.dataset.bubbleStyle=cache.settings.appearance?.bubbleStyle||"soft";
   app.innerHTML = `<div class="shell${state.drawer?" drawer":""}"><div class="mask" onclick="toggleDrawer()"></div><aside class="side">${viewTree()}</aside><main class="main">${main}</main></div>`;
   bindDrawerSessionEvents();
+  bindDrawerSwipe();
   restoreViewScroll(targetViewKey);
   if (state.view === "chat"){
     await loadChatMessages();
