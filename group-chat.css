@@ -97,3 +97,11 @@
 .group-stack .reason-box pre{margin:7px 0 0;padding:9px 10px;border-left:2px solid rgba(190,139,162,.55);border-radius:0 9px 9px 0;background:rgba(255,255,255,.55);white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:11px;line-height:1.6}
 .group-stack .msg-body{overflow-wrap:anywhere}
 @media(max-width:640px){.group-stack{width:100%}.group-head-meta{font-size:10px}}
+
+
+/* User messages mirror the assistant layout on the opposite side */
+.group-user-row .group-stack{margin-left:auto;align-items:flex-end}
+.group-user-row .group-head{align-self:flex-end;flex-direction:row-reverse;justify-content:flex-start}
+.group-user-row .group-head-meta{text-align:right;align-items:flex-end}
+.group-user-row .group-user-message{align-self:flex-end;margin-left:auto}
+.group-ai-row .group-stack{margin-right:auto;align-items:flex-start}
