@@ -492,6 +492,19 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 .bubble-preview.glass em{background:rgba(255,255,255,.38);backdrop-filter:blur(6px)}
 .bubble-preview.minimal em{background:transparent;border-left-color:#bd829b}
 
+
+/* Message ownership alignment: assistant left, current user right */
+.msg-row.user{justify-content:flex-end!important}
+.msg-row.user .msg-stack{margin-left:auto;align-items:flex-end!important}
+.msg-row.user .msg-head{align-self:flex-end;flex-direction:row-reverse;justify-content:flex-start}
+.msg-row.user .msg-head-meta{align-items:flex-end;text-align:right}
+.msg-row.user .msg.user{align-self:flex-end;margin-left:auto;max-width:min(78%,720px)}
+.msg-row.assistant .msg-stack{margin-right:auto;align-items:flex-start}
+.bubble-live-preview .preview-group-user .group-stack{margin-left:auto!important;align-items:flex-end!important}
+.bubble-live-preview .preview-group-user .group-head{align-self:flex-end;flex-direction:row-reverse;justify-content:flex-start}
+.bubble-live-preview .preview-group-user .group-head-meta{text-align:right;align-items:flex-end}
+.bubble-live-preview .preview-group-user .group-user-message{align-self:flex-end;margin-left:auto}
+
 </style>
   <link rel="stylesheet" href="./group-chat.css">
   <link rel="stylesheet" href="./workspace.css">
@@ -738,7 +751,7 @@ const ICONS={check:'<path d="m5 12 4 4L19 6"/>',code:'<path d="M8 5 3 12l5 7M16 
 function icon(n){return `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;}
 function avatar(n,img){return img?`<span class="avatar"><img src="${esc(img)}" alt=""></span>`:`<span class="avatar">${esc([...String(n)][0]||"?")}</span>`;}
 function latestSession(){ return [...cache.sessions].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]; }
-function toggleDrawer(){ state.drawer=!state.drawer; render(); }
+function toggleDrawer(){if(state.drawer&&history.state?.homyNav===true&&history.state.drawerOverlay){history.back();return;}state.drawer=!state.drawer;render();}
 function openSessionActions(id){
   const session=findById(cache.sessions,id);if(!session)return;
   modal({title:"聊天窗口",body:`<div class="field"><label>窗口名称</label><input id="sessionTitleEdit" maxlength="40" value="${esc(session.title||"新窗口")}"></div><div class="muted small">长按窗口可再次打开此菜单。</div>`,actions:[
@@ -753,7 +766,7 @@ function bindDrawerSwipe(){
   app.addEventListener('touchstart',e=>{const t=e.touches&&e.touches[0];if(!t)return;start={x:t.clientX,y:t.clientY};},{passive:true});
   app.addEventListener('touchend',e=>{if(!start)return;const t=e.changedTouches&&e.changedTouches[0],origin=start;start=null;if(!t)return;const dx=t.clientX-origin.x,dy=t.clientY-origin.y;if(Math.abs(dx)<68||Math.abs(dx)<Math.abs(dy)*1.25)return;
     if(!state.drawer&&origin.x<=22&&dx>0){state.drawer=true;render();return;}
-    if(state.drawer&&origin.x<=Math.min(340,window.innerWidth*.88)&&dx<0){state.drawer=false;render();}
+    if(state.drawer&&origin.x<=Math.min(340,window.innerWidth*.88)&&dx<0){toggleDrawer();}
   },{passive:true});
 }
 function bindDrawerSessionEvents(){
@@ -855,24 +868,32 @@ function currentViewKey(){
 }
 function navigationSnapshot(){
   return {view:state.view,sessionId:state.sessionId,groupId:state.groupId,personId:state.personId,tab:state.tab,
-    workspaceModule:state.workspaceModule,workspaceEditorId:state.workspaceEditorId,workspaceProjectFilter:state.workspaceProjectFilter,settingsSection:state.settingsSection,settingsHome:!!state.settingsHome,
+    workspaceModule:state.workspaceModule,settingsSection:state.settingsSection,settingsHome:!!state.settingsHome,drawer:!!state.drawer,
     settingsOrigin:state.settingsOrigin?Object.assign({},state.settingsOrigin):null,
     conversationOrigin:state.conversationOrigin?Object.assign({},state.conversationOrigin):null,
     returnView:state.returnView?Object.assign({},state.returnView):null};
 }
 function navigationKey(snapshot=navigationSnapshot()){return JSON.stringify(snapshot);}
+function isWorkspaceRoot(snapshot){return !!snapshot&&(snapshot.view==="home"||snapshot.view==="workspace")&&!snapshot.drawer;}
 function syncNavigationHistory(){
-  const snapshot=navigationSnapshot(),key=navigationKey(snapshot);
-  if(!state.navReady){history.replaceState({homyNav:true,index:0,snapshot},"",location.href);state.navReady=true;state.navIndex=0;state.navKey=key;return;}
+  const snapshot=navigationSnapshot(),key=navigationKey(snapshot),current=history.state;
+  if(!state.navReady){history.replaceState({homyNav:true,index:0,snapshot,drawerOverlay:!!snapshot.drawer},"",location.href);state.navReady=true;state.navIndex=0;state.navKey=key;return;}
   if(state.navRestoring){state.navKey=key;return;}
   if(key===state.navKey)return;
-  const index=state.navIndex+1;history.pushState({homyNav:true,index,snapshot},"",location.href);state.navIndex=index;state.navKey=key;
+  const index=Number(current?.index??state.navIndex)||0;
+  if(state.navReplaceNext||(isWorkspaceRoot(current?.snapshot)&&isWorkspaceRoot(snapshot))){
+    history.replaceState({homyNav:true,index,snapshot,drawerOverlay:!!snapshot.drawer},"",location.href);
+    state.navReplaceNext=false;state.navIndex=index;state.navKey=key;return;
+  }
+  const next=index+1;
+  history.pushState({homyNav:true,index:next,snapshot,drawerOverlay:!!snapshot.drawer},"",location.href);
+  state.navIndex=next;state.navKey=key;
 }
 function restoreNavigationSnapshot(snapshot){
   if(!snapshot)return;
-  for(const key of ["view","sessionId","groupId","personId","tab","workspaceModule","workspaceEditorId","workspaceProjectFilter","settingsSection","settingsHome","settingsOrigin","conversationOrigin","returnView"])
+  for(const key of ["view","sessionId","groupId","personId","tab","workspaceModule","settingsSection","settingsHome","settingsOrigin","conversationOrigin","returnView"])
     if(Object.prototype.hasOwnProperty.call(snapshot,key))state[key]=snapshot[key];
-  state.drawer=false;
+  state.drawer=!!snapshot.drawer;
   if(state.view==="chat"&&!findById(cache.sessions,state.sessionId)){state.view="home";state.sessionId=null;}
   if((state.view==="groupChat"||state.view==="groupDetail")&&!findById(cache.groups,state.groupId))state.view="groups";
 }
@@ -1604,7 +1625,9 @@ function closeConversation(){
   render();
 }
 function openChat(id){
-  captureConversationOrigin();state.drawer=false; state.view="chat"; state.sessionId=id; state.sending=false;
+  const replacingDrawer=!!state.drawer||!!history.state?.drawerOverlay;
+  captureConversationOrigin();state.drawer=false;state.view="chat";state.sessionId=id;state.sending=false;
+  if(replacingDrawer)state.navReplaceNext=true;
   render();
 }
 async function changeSessionModel(modelId){
@@ -1641,7 +1664,7 @@ function viewChatShell(){
   const canThink=modelSupportsThinking(m,channel,pv),thinkingEnabled=session.thinkingEnabled!==false;
   return `
   <div class="chat-page"><div class="topbar chat-topbar">
-    <button class="btn icon-btn chat-nav-btn" title="返回聊天列表" aria-label="返回聊天列表" onclick="state.drawer=true;render()">${icon("menu")}</button>
+    <button class="btn icon-btn chat-nav-btn" title="返回聊天列表" aria-label="返回聊天列表" onclick="toggleDrawer()">${icon("menu")}</button>
     <select aria-label="切换模型型号" title="切换此 AI 身份的模型型号" onchange="changeSessionModel(this.value)" class="chat-model-select">${identityModels.map(x=>`<option value="${x.id}" ${x.id===m.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
     <span class="spacer"></span>
     ${canThink?`<button class="thinking-toggle ${thinkingEnabled?"active":""}" id="thinkingToggle" onclick="toggleThinkingMode()" aria-pressed="${thinkingEnabled}"><span class="thinking-toggle-dot"></span><span>深度思考</span><strong>${thinkingEnabled?"开":"关"}</strong></button>`:""}
