@@ -421,8 +421,8 @@ html,body,#app{width:100%;min-height:100%;margin:0;overflow-x:hidden}
 "use strict";
 
 const DB_NAME = "multi_ai_chat_v1";
-const DB_VERSION = 4;
-const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages","groups","groupMessages"];
+const DB_VERSION = 5;
+const STORES = ["settings","providers","models","modelChannels","personas","persons","memories","sessions","messages","groups","groupMessages","workspaceItems"];
 const MEM_LEVELS = ["L0","L1","L2","L3"];
 const DEFAULT_SETTINGS = {
   id:"app",monthlyCap:50,personaCharCap:1500,memoryCharCap:2000,recentCharCap:6000,
@@ -456,9 +456,10 @@ const state = {
   pendingAttachments: [],
   recognition: null,
   groupId:null, groupMessages:[], groupControllers:new Map(), groupTurnId:0,
-  groupRunning:false, groupStatus:"", groupComposerMode:"message", groupThinkingOverride:null, groupStoppedMembers:new Set()
+  groupRunning:false, groupStatus:"", groupComposerMode:"message", groupThinkingOverride:null, groupStoppedMembers:new Set(),
+  workspaceModule:"code",workspaceEditorId:null,workspaceProjectFilter:"all"
 };
-let cache = { settings:null, providers:[], models:[], personas:[], persons:[], memories:[], sessions:[], groups:[] };
+let cache = { settings:null, providers:[], models:[], personas:[], persons:[], memories:[], sessions:[], groups:[], workspaceItems:[] };
 
 function openDB(){
   if (dbPromise) return dbPromise;
@@ -504,6 +505,9 @@ function openDB(){
       }
       if (!d.objectStoreNames.contains("groupMessages")){
         const s=d.createObjectStore("groupMessages",{keyPath:"id"});s.createIndex("groupId","groupId",{unique:false});s.createIndex("createdAt","createdAt",{unique:false});
+      }
+      if (!d.objectStoreNames.contains("workspaceItems")){
+        const s=d.createObjectStore("workspaceItems",{keyPath:"id"});s.createIndex("kind","kind",{unique:false});s.createIndex("projectId","projectId",{unique:false});s.createIndex("updatedAt","updatedAt",{unique:false});
       }
     };
     req.onsuccess = ()=>resolve(req.result);
@@ -583,13 +587,13 @@ async function seedIfNeeded(){
 }
 
 async function loadCache(){
-  const [settings,providers,models,channels,personas,persons,memories,sessions,groups] = await Promise.all([
+  const [settings,providers,models,channels,personas,persons,memories,sessions,groups,workspaceItems] = await Promise.all([
     dbGet("settings","app"), dbAll("providers"), dbAll("models"), dbAll("modelChannels"),
-    dbAll("personas"), dbAll("persons"), dbAll("memories"), dbAll("sessions"), dbAll("groups")
+    dbAll("personas"), dbAll("persons"), dbAll("memories"), dbAll("sessions"), dbAll("groups"),dbAll("workspaceItems")
   ]);
   cache = {
     settings: settings || Object.assign({}, DEFAULT_SETTINGS),
-    providers, models, channels, personas, persons, memories, sessions, groups
+    providers, models, channels, personas, persons, memories, sessions, groups, workspaceItems
   };
   cache.settings.globalServices=Object.assign({},DEFAULT_SETTINGS.globalServices,cache.settings.globalServices||{});
   for(const key of ["vision","tts","stt","image"]){
@@ -755,7 +759,7 @@ function currentViewKey(){
 }
 function navigationSnapshot(){
   return {view:state.view,sessionId:state.sessionId,groupId:state.groupId,personId:state.personId,tab:state.tab,
-    workspaceModule:state.workspaceModule,settingsSection:state.settingsSection,settingsHome:!!state.settingsHome,
+    workspaceModule:state.workspaceModule,workspaceEditorId:state.workspaceEditorId,workspaceProjectFilter:state.workspaceProjectFilter,settingsSection:state.settingsSection,settingsHome:!!state.settingsHome,
     settingsOrigin:state.settingsOrigin?Object.assign({},state.settingsOrigin):null,
     conversationOrigin:state.conversationOrigin?Object.assign({},state.conversationOrigin):null,
     returnView:state.returnView?Object.assign({},state.returnView):null};
@@ -770,7 +774,7 @@ function syncNavigationHistory(){
 }
 function restoreNavigationSnapshot(snapshot){
   if(!snapshot)return;
-  for(const key of ["view","sessionId","groupId","personId","tab","workspaceModule","settingsSection","settingsHome","settingsOrigin","conversationOrigin","returnView"])
+  for(const key of ["view","sessionId","groupId","personId","tab","workspaceModule","workspaceEditorId","workspaceProjectFilter","settingsSection","settingsHome","settingsOrigin","conversationOrigin","returnView"])
     if(Object.prototype.hasOwnProperty.call(snapshot,key))state[key]=snapshot[key];
   state.drawer=false;
   if(state.view==="chat"&&!findById(cache.sessions,state.sessionId)){state.view="home";state.sessionId=null;}
