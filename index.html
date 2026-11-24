@@ -1190,11 +1190,11 @@ function viewSettings(){
   }else if(section==="appearance"){
     const current=cache.settings.appearance?.bubbleStyle||"soft";
     const styles=[{id:"soft",name:"柔和",desc:"浅粉底色，圆润气泡"},{id:"glass",name:"轻玻璃",desc:"半透明白色，轻微模糊"},{id:"minimal",name:"简洁",desc:"弱化气泡，突出文字"}];
-    const stamp=nowISO(),previewModel=cache.models[0]||null,previewPerson=cache.persons[0]||null;
+    const stamp=nowISO(),previewSession=findById(cache.sessions,state.sessionId),previewModel=findById(cache.models,previewSession?.modelId)||cache.models[0]||null,previewPerson=findById(cache.persons,previewSession?.personId)||cache.persons[0]||null,previewPerson2=cache.persons.find(p=>p.id!==previewPerson?.id)||{id:"preview-member-2",name:"另一位成员",avatar:""};
     const singleUserPreview=msgHTML({id:"preview-single-user",role:"user",content:"今天把 HOMY 的界面再整理了一遍。",createdAt:stamp},{preview:true});
     const singleAIPreview=msgHTML({id:"preview-single-ai",role:"assistant",modelId:previewModel?.id,content:"我看到了。我们把消息结构统一起来，预览和真实聊天就不会各说各话了。",reasoning:"先理解这句话的语气和上下文，再决定怎样自然回应。这里展示的思考区会紧贴正式回复。",createdAt:stamp},{preview:true,person:previewPerson,model:previewModel});
     const groupAI1=groupMessageHTML({id:"preview-group-ai-1",role:"assistant",personId:previewPerson?.id,modelId:previewModel?.id,content:"群聊中的 AI 也使用同一套头像、时间、思考和正文顺序。",reasoning:"结合群聊上下文，整理这一轮的回应。",createdAt:stamp},{preview:true,person:previewPerson,model:previewModel});
-    const groupAI2=groupMessageHTML({id:"preview-group-ai-2",role:"assistant",personId:previewPerson?.id,modelId:previewModel?.id,content:"每个成员的快捷操作都贴在自己的消息下面。",createdAt:stamp},{preview:true,person:previewPerson,model:previewModel});
+    const groupAI2=groupMessageHTML({id:"preview-group-ai-2",role:"assistant",personId:previewPerson2.id,modelId:previewModel?.id,content:"每个成员的快捷操作都贴在自己的消息下面。",createdAt:stamp},{preview:true,person:previewPerson2,model:previewModel});
     const groupUser=groupMessageHTML({id:"preview-group-user",role:"user",content:"明白，继续。",createdAt:stamp},{preview:true});
     body=`<h2 class="sec">聊天美化</h2><p class="muted small">主题预览直接使用单聊与群聊的消息渲染结构，预览和真实聊天保持一致。</p>
       <div class="bubble-style-grid">${styles.map(x=>`<button class="bubble-style-option ${current===x.id?"selected":""}" data-style="${x.id}" onclick="saveBubbleStyle(this.dataset.style)"><span class="bubble-preview ${x.id}"><em>深度思考 · 展开</em><i></i><b></b></span><strong>${x.name}</strong><small>${x.desc}</small><span class="bubble-style-check">${current===x.id?"当前使用":"选择样式"}</span></button>`).join("")}</div>
