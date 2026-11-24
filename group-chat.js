@@ -87,18 +87,65 @@ async function deleteGroup(id){
 }
 
 function loadGroupMessages(){return idbReq(tx("groupMessages").index("groupId").getAll(state.groupId)).then(rows=>{state.groupMessages=rows.sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));renderGroupMessages({forceBottom:true});});}
-function groupMessageHTML(m){
- if(m.role==="user")return '<div class="group-user-row"><div class="group-stack"><div class="group-head"><span class="msg-avatar">'+avatar(cache.settings.userName||"我",cache.settings.userAvatar)+'</span><div class="group-head-meta"><span>你</span><span>'+fmtTime(m.createdAt)+'</span></div></div><div class="msg group-user-message"><div class="msg-body">'+esc(m.content)+'</div></div></div></div>';
+function groupMessageHTML(m,options={}){
  if(m.role==="narrator")return '<div class="group-narrator"><span class="group-narrator-label">旁白 · 用户发布</span>'+esc(m.content)+'</div>';
  if(m.role==="system-note")return '<div class="msg sysnote">'+esc(m.content)+'</div>';
  if(m.role==="error")return '<div class="msg err">'+esc(m.content)+'</div>';
- var p=findById(cache.persons,m.personId),model=findById(cache.models,m.modelId);
- var reason=m.reasoning?'<details class="reason-box" open><summary><span>深度思考过程</span><span class="reason-hint">模型返回 · 可收起</span></summary><pre>'+esc(m.reasoning)+'</pre></details>':(m.thinkingUsed?'<div class="reason-box reasoning-pending"><span class="reason-pulse"></span><span>本轮已启用深度思考，模型未返回可展示的思考内容</span></div>':"");
- return '<div class="group-ai-row"><div class="group-stack"><div class="group-head"><span class="msg-avatar">'+(p?avatar(p.name,p.avatar):avatar("AI",""))+'</span><div class="group-head-meta"><strong>'+esc(p?p.name:"AI")+'</strong><span>'+esc(model?model.name:m.modelId||"模型")+'</span><span>'+fmtTime(m.createdAt)+'</span></div></div>'+reason+'<div class="msg group-ai-message"><div class="msg-body">'+esc(m.content)+'</div></div></div></div>';
+ if(m.role==="user"){
+  var userBubble='<div class="msg group-user-message" '+(options.preview?'':'data-group-msg-id="'+m.id+'" data-role="user"')+'><div class="msg-body">'+esc(m.content)+'</div></div>';
+  return messageAnatomyHTML({rowClass:"group-user-row",stackClass:"group-stack",headClass:"group-head",metaClass:"group-head-meta",avatarHTML:avatar(cache.settings.userName||"我",cache.settings.userAvatar),metaHTML:'<span>'+fmtTime(m.createdAt)+'</span>',bubbleHTML:userBubble,actionsHTML:messageActionButtonsHTML(m.id,"user",true,options.preview),preview:options.preview});
+ }
+ var p=options.person||findById(cache.persons,m.personId),reason=messageReasoningHTML(m.reasoning,!!m.thinkingUsed);
+ var bubble='<div class="msg group-ai-message" '+(options.preview?'':'data-group-msg-id="'+m.id+'" data-role="assistant"')+'><div class="msg-body">'+esc(m.content)+'</div></div>';
+ var meta='<strong>'+esc(p?p.name:"AI")+'</strong><span>'+fmtTime(m.createdAt)+'</span>';
+ return messageAnatomyHTML({rowClass:"group-ai-row",stackClass:"group-stack",headClass:"group-head",metaClass:"group-head-meta",avatarHTML:p?avatar(p.name,p.avatar):avatar("AI",""),metaHTML:meta,reasonHTML:reason,bubbleHTML:bubble,actionsHTML:messageActionButtonsHTML(m.id,"assistant",true,options.preview),preview:options.preview});
 }
+function bindGroupMessageEvents(list){
+ if(list.dataset.eventsBound==="1")return;list.dataset.eventsBound="1";
+ var timer=null,targetId=null,moved=false;
+ var clear=function(){if(timer)clearTimeout(timer);timer=null;targetId=null;};
+ list.addEventListener("contextmenu",function(e){var node=e.target.closest(".msg[data-group-msg-id]");if(!node)return;e.preventDefault();openGroupMessageActions(node.dataset.groupMsgId);});
+ list.addEventListener("pointerdown",function(e){var node=e.target.closest(".msg[data-group-msg-id]");if(!node)return;targetId=node.dataset.groupMsgId;moved=false;timer=setTimeout(function(){if(!moved&&targetId)openGroupMessageActions(targetId);clear();},560);});
+ list.addEventListener("pointermove",function(){moved=true;if(timer)clearTimeout(timer);timer=null;});
+ ["pointerup","pointercancel","pointerleave"].forEach(function(type){list.addEventListener(type,clear);});
+}
+function openGroupMessageActions(id){
+ var msg=(state.groupMessages||[]).find(function(x){return x.id===id;});if(!msg)return;
+ var target=document.querySelector('.msg[data-group-msg-id="'+id+'"]');if(!target)return;
+ closeMessageActionPopover();
+ var isUser=msg.role==="user",actions=isUser
+  ? [{icon:"copy",label:"复制",run:function(){copyGroupMessageText(id);}},{icon:"trash",label:"撤回消息",danger:true,run:function(){deleteGroupMessage(id);}}]
+  : [{icon:"refresh",label:"重新生成",run:function(){regenerateGroupMessage(id);}},{icon:"copy",label:"复制",run:function(){copyGroupMessageText(id);}},{icon:"trash",label:"撤回回复",danger:true,run:function(){deleteGroupMessage(id);}}];
+ window.__homyGroupMessageActions=actions;
+ var rect=target.getBoundingClientRect(),layer=document.createElement("div");layer.id="messageActionLayer";layer.className="message-action-layer";
+ layer.innerHTML='<div class="message-action-popover '+(isUser?"user":"assistant")+'">'+actions.map(function(item,index){return '<button type="button" class="message-action-row '+(item.danger?"danger":"")+'" data-action-index="'+index+'"><span class="message-action-icon">'+icon(item.icon)+'</span><span>'+item.label+'</span></button>';}).join("")+'</div>';
+ document.body.appendChild(layer);
+ var pop=layer.querySelector(".message-action-popover"),width=Math.min(248,window.innerWidth-28),left=isUser?Math.max(14,Math.min(window.innerWidth-width-14,rect.right-width)):Math.max(14,Math.min(window.innerWidth-width-14,rect.left)),estimatedHeight=actions.length*48+16,top=rect.bottom+8+estimatedHeight<window.innerHeight?rect.bottom+8:Math.max(12,rect.top-estimatedHeight-8);
+ pop.style.left=left+"px";pop.style.top=top+"px";pop.style.width=width+"px";
+ layer.addEventListener("click",function(e){if(e.target===layer)closeMessageActionPopover();});
+ layer.querySelectorAll("[data-action-index]").forEach(function(btn){btn.addEventListener("click",function(){var action=window.__homyGroupMessageActions?.[Number(btn.dataset.actionIndex)];closeMessageActionPopover();if(action)action.run();});});
+}
+async function copyGroupMessageText(id){
+ var msg=(state.groupMessages||[]).find(function(x){return x.id===id;});if(!msg)return;
+ try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(msg.content||"");else{var box=document.createElement("textarea");box.value=msg.content||"";document.body.appendChild(box);box.select();document.execCommand("copy");box.remove();}toast("已复制");}catch(e){toast("复制失败，请手动选择文字");}
+}
+async function deleteGroupMessage(id){
+ var msg=(state.groupMessages||[]).find(function(x){return x.id===id;});if(!msg)return;
+ await dbDelete("groupMessages",id);state.groupMessages=state.groupMessages.filter(function(x){return x.id!==id;});closeMessageActionPopover();renderGroupMessages();toast("群聊消息已撤回");
+}
+async function regenerateGroupMessage(id){
+ var index=(state.groupMessages||[]).findIndex(function(x){return x.id===id;}),msg=state.groupMessages[index];if(!msg||msg.role!=="assistant")return;
+ var userMsg=null;for(var i=index-1;i>=0;i--){if(state.groupMessages[i].role==="user"){userMsg=state.groupMessages[i];break;}}
+ if(!userMsg){toast("找不到对应的群聊用户消息");return;}
+ var group=groupById(state.groupId);if(!group)return;
+ var tail=state.groupMessages.slice(index);for(var item of tail)await dbDelete("groupMessages",item.id);
+ state.groupMessages=state.groupMessages.filter(function(item){return !tail.some(function(x){return x.id===item.id;});});
+ closeMessageActionPopover();renderGroupMessages({forceBottom:true});await runGroupTurn(group,userMsg,msg.personId);
+}
+
 function renderGroupMessages(options){
  var list=document.getElementById("groupMsgList");if(!list)return;var near=list.scrollHeight-list.scrollTop-list.clientHeight<150;
- list.innerHTML=(state.groupMessages||[]).map(groupMessageHTML).join("");if((options&&options.forceBottom)||near)list.scrollTop=list.scrollHeight;renderGroupStatus();
+ list.innerHTML=(state.groupMessages||[]).map(groupMessageHTML).join("");bindGroupMessageEvents(list);if((options&&options.forceBottom)||near)list.scrollTop=list.scrollHeight;renderGroupStatus();
 }
 function renderGroupStatus(){var el=document.getElementById("groupStatus");if(el)el.textContent=state.groupStatus||"";var stop=document.getElementById("groupStopBtn");if(stop)stop.disabled=!state.groupRunning;}
 function viewGroupChat(){
